@@ -10,7 +10,7 @@ import os
 
 TOKEN = "8681927418:AAHLbJwC8eyKdw3Vr4LhbgQn2Fu6u9eWfPw"
 ADMIN_ID = 5578314612
-SOL_WALLET = "DH2cJUSUSUttoPA2AU4QoZGJjvdEmLLFaAm5rMeV4qGcBRRvWQ"
+SOL_WALLET = "EaFeqxptPuo2jy3dA8dRsgRz8JRCPSK5mXT3qZZYT7f3"
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
