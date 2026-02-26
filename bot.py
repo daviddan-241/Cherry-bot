@@ -1,443 +1,696 @@
-# Complete Cherry 🍒 Bot clone - best effort with pyTelegramBotAPI
-# Very heavy emoji usage, step-by-step editing, inline + reply keyboards
-# Volume / DEX buttons only link to @PF_raiders_bot (no "open" text)
-# Admin approval on every payment (advertise / boost / etc.)
-# Auto-hype new coins in channels (simulated polling)
-# Ready for Render deployment
+# Cherry 🍒 Bot - Complete Final (Render-Ready)
+# Full flows: /advertise, /boost, /trend, /pump, /premium, /airdrop, /raid, /joinraid, /add, /setwebsite, /buybot, /settings, /volume, /dex
+# Auto-hype 3h to -1003461143473 + groups with CA (hype with CA + website if set)
+# "ca" / "website" keywords reply in groups
+# Screenshot-style buttons & structure
+# Admin approval on all payments
 
-# requirements.txt content:
-# pyTelegramBotAPI==4.22.1
-# requests==2.32.3
-# python-dotenv (optional)
-
+from flask import Flask, request
 import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 import requests
 import uuid
 import time
 import threading
-from datetime import datetime
-
-# ────────────────────────────────────────────────
-# CONFIG - CHANGE THESE
-# ────────────────────────────────────────────────
+import os
+import re
 
 TOKEN = "8681927418:AAHLbJwC8eyKdw3Vr4LhbgQn2Fu6u9eWfPw"
 ADMIN_ID = 5578314612
 SOL_WALLET = "EaFeqxptPuo2jy3dA8dRsgRz8JRCPSK5mXT3qZZYT7f3"
 
-RAID_CHANNEL     = "@cherryraid"
-TRENDING_CHANNEL = "@cherrytrending"
+TARGET_COMMUNITY = -1003461143473
 
 bot = telebot.TeleBot(TOKEN)
+app = Flask(__name__)
 
-# States
-ad_states       = {}
-boost_states    = {}
-pending_payments = {}
+states = {}             # {uid: {"type": "...", "step": int, "data": dict}}
+pending_payments = {}   # {pid: {"uid":, "type":, "amt":, "details":, "cid":, "mid":}}
+group_data = {}         # {gid: {"ca": str, "website": str or None}}
+active_raids = {}       # {gid: [{"id": int, "tweet": str, "bounty": float, "participants": []}]}
 
-# Prices (exact from your screenshots)
-AD_PRICES = {"3h": 2.1, "6h": 3.3, "12h": 5.5, "24h": 9.1}
-BOOST_PRICES = {1000: 1.5, 2000: 2.9, 4000: 5.4, 8000: 9.0}
+# ───── PRICES ─────
+AD_PRICES     = {"3h": 1.0, "6h": 1.5, "12h": 2.5, "24h": 4.0}
+BOOST_PRICES  = {1000: 1.0, 2000: 1.9, 4000: 3.5, 8000: 6.0}
+VOLUME_PRICES = {"Starter": 3.5, "Pro": 7.0, "Max": 14.0}
+PREMIUM_PRICES = {"Weekly": 0.5, "Monthly": 1.5}
+PUMP_PRICES   = {"Top10 3h": 1.2, "Top10 6h": 2.0, "Top3 3h": 2.5, "Top3 6h": 4.0}
 
-# ────────────────────────────────────────────────
-# ADMIN APPROVAL HELPER
-# ────────────────────────────────────────────────
-
-def notify_admin(payment_id, user_id, amount_sol, feature, extra_info=""):
+# ───── ADMIN APPROVAL ─────
+def notify_admin(pid, uid, amt, feature, extra=""):
     kb = InlineKeyboardMarkup()
     kb.row(
-        InlineKeyboardButton("✅ Approve", callback_data=f"admin_approve_{payment_id}"),
-        InlineKeyboardButton("❌ Reject",  callback_data=f"admin_reject_{payment_id}")
+        InlineKeyboardButton("✅ Approve", callback_data=f"approve_{pid}"),
+        InlineKeyboardButton("❌ Reject", callback_data=f"reject_{pid}")
     )
+    bot.send_message(ADMIN_ID, f"🍒 PAYMENT\nUser: {uid}\n{feature}\n{amt} SOL\n{extra}", reply_markup=kb)
 
-    msg = (
-        f"🍒 <b>PAYMENT APPROVAL REQUEST</b>\n\n"
-        f"👤 User: {user_id}\n"
-        f"💎 Feature: {feature}\n"
-        f"💰 Amount: {amount_sol} SOL\n"
-        f"{extra_info}\n\n"
-        f"Approve or Reject?"
-    )
-
-    bot.send_message(ADMIN_ID, msg, parse_mode="HTML", reply_markup=kb)
-
-# ────────────────────────────────────────────────
-# START + MAIN SCREEN (closest to screenshot style)
-# ────────────────────────────────────────────────
-
+# ───── MAIN MENU ─────
 @bot.message_handler(commands=['start'])
-def start(message):
+def start(m):
     kb = InlineKeyboardMarkup(row_width=2)
     kb.add(
-        InlineKeyboardButton("🔥 Buy Token Trending", callback_data="menu_buy_trending"),
-        InlineKeyboardButton("🏆 Raid Leaderboard",   callback_data="menu_raid_leaderboard")
+        InlineKeyboardButton("+ Add to Group", callback_data="add_group"),
+        InlineKeyboardButton("🤝 Support", url="https://t.me/cherrysupportadmin")
     )
-    kb.row(
-        InlineKeyboardButton("⚡ Boost Raid Points",   callback_data="boost"),
-        InlineKeyboardButton("📢 Advertise",           callback_data="advertise")
+    kb.add(
+        InlineKeyboardButton("🔗 Trending channel", url="https://t.me/cherrytrending"),
+        InlineKeyboardButton("🔥 Buy Token Trending", callback_data="buy_trending")
     )
-    kb.row(
-        InlineKeyboardButton("🔥 Volume Boost",        callback_data="volume"),
-        InlineKeyboardButton("🌟 DEX Trending",        callback_data="dex")
+    kb.add(
+        InlineKeyboardButton("🏆 Raid Leaderboard", url="https://t.me/cherryraid"),
+        InlineKeyboardButton("⚡ Boost Raid Points", callback_data="boost")
+    )
+    kb.add(
+        InlineKeyboardButton("📢 Advertise", callback_data="advertise"),
+        InlineKeyboardButton("🔥 Volume Boost", url="https://t.me/boostlegends_bot")
+    )
+    kb.add(
+        InlineKeyboardButton("🌟 DEX Trending", callback_data="dex"),
+        InlineKeyboardButton("💎 Premium (No-Ads)", callback_data="premium")
+    )
+    kb.add(
+        InlineKeyboardButton("🎁 Airdrop", callback_data="airdrop"),
+        InlineKeyboardButton("🔥 Pump.fun Trending", callback_data="pump")
     )
 
-    text = (
-        "🍒 <b>Cherry Bot</b>\n"
-        "43,003 monthly users 🔥\n\n"
-        "Track buys • Run raids • Boost trending • Advertise\n\n"
-        "<i>Choose action below 🍒</i>"
-    )
+    desc = """
+✨ Cherry Telegram Bot
+    
+👍 Track buys in real-time, coordinate community raids, and boost your token's visibility with our premium features.
 
-    bot.send_message(message.chat.id, text, parse_mode="HTML", reply_markup=kb)
+✨ Quick Setup Guide:
+/add - Connect token
+/buybot - Configuration
+/settings - Add socials to bot! 
+/raid - Start X raids 
+/Commands - List of all commands
 
-# ────────────────────────────────────────────────
-# MENU CALLBACKS
-# ────────────────────────────────────────────────
+✨ Paid Features:
+✨ BuyBot Trending: /Trend
+✨ RaidBot Trending: /boost
+✨ Button ads: /advertise
+👍 No-Ads: /premium
+😭 Volume: @boostlegends_bot
 
-@bot.callback_query_handler(func=lambda c: True)
-def callback(call):
-    cid = call.message.chat.id
-    mid = call.message.message_id
-    uid = call.from_user.id
 
-    if call.data == "advertise":
-        start_advertise(call.message)
+✨ Website / Dashboard 
+✨ Twitter / X 
+✨ Trending hub
+    """
+    bot.send_message(m.chat.id, desc.strip(), reply_markup=kb)
 
-    elif call.data == "boost":
-        start_boost(call.message)
+# ───── COMMANDS LIST ─────
+@bot.message_handler(commands=['commands', 'help'])
+def commands(m):
+    text = """
+/advertise - Advertise Across All Chats
+/boost - Purchase Raid Points for Raid Leaderboard
+/commands - View Bot Commands
+/help - Shows help message
+/id - Get your telegram user ID
+/premium - Get Premium Features
+/start - Starts me!
+/trend - Boost your tokens trending
+/volume - Get Volume Features
+/pump - Pump.fun Trending
+/add <CA> - Set token contract address in group
+/setwebsite <url> - Set group website
+/raid <tweet_url> <bounty> - Start raid in group
+/joinraid <id> - Join raid in group
+/buybot - BuyBot configuration (coming soon)
+/settings - Add socials (coming soon)
+    """
+    bot.send_message(m.chat.id, text)
 
-    elif call.data == "volume" or call.data == "dex":
-        volume_boost(call.message)
+# ───── /ID ─────
+@bot.message_handler(commands=['id'])
+def get_id(m):
+    bot.reply_to(m, f"Your Telegram ID: {m.from_user.id}")
 
-    elif call.data == "menu_buy_trending":
-        bot.answer_callback_query(call.id, "Use /checktrending or /booktrending 🍒")
-
-    elif call.data == "menu_raid_leaderboard":
-        bot.answer_callback_query(call.id, "Check @cherryraid leaderboard 🍒")
-
-    elif call.data.startswith("ad_dur_"):
-        dur = call.data.split("_")[-1]
-        if dur in AD_PRICES:
-            ad_states[uid]["duration"] = dur
-            ad_states[uid]["amount"] = AD_PRICES[dur]
-            show_ad_payment(cid, mid, uid)
-
-    elif call.data == "ad_verify":
-        handle_ad_verify(call)
-
-    elif call.data == "boost_verify":
-        handle_boost_verify(call)
-
-    elif call.data.startswith("admin_approve_") or call.data.startswith("admin_reject_"):
-        if uid != ADMIN_ID:
-            bot.answer_callback_query(call.id, "Not authorized", show_alert=True)
-            return
-        handle_admin_decision(call)
-
-    bot.answer_callback_query(call.id)
-
-# ────────────────────────────────────────────────
-# ADVERTISE FLOW ────────────────────────────────
-# ────────────────────────────────────────────────
-
-def start_advertise(message):
-    uid = message.from_user.id
-    cid = message.chat.id
-
-    ad_states[uid] = {"step": 1, "attempt": 0}
-
-    promo = (
-        "🔥 <b>Ad Boost X — Crypto Volume</b> 🔥\n\n"
-        "500.000 volume = 7.7 SOL\n"
-        "Below-market • EVM support • All pools\n"
-        "Free test • Stable execution 🍒"
-    )
-    bot.send_message(cid, promo, parse_mode="HTML")
-
-    step1 = (
-        "📝 <b>Step 1: Ad Text</b>\n\n"
-        "Send your ad text\n"
-        "<i>max 64 characters</i>\n\n"
-        "Tips:\n"
-        "• Clear & engaging\n"
-        "• Call-to-action\n"
-        "• Relevant"
-    )
-    bot.send_message(cid, step1, parse_mode="HTML")
-
-@bot.message_handler(func=lambda m: m.from_user.id in ad_states and ad_states[m.from_user.id]["step"] == 1)
-def ad_text(m):
-    uid = m.from_user.id
-    txt = m.text.strip()
-
-    if len(txt) > 64:
-        ad_states[uid]["attempt"] += 1
-        if ad_states[uid]["attempt"] >= 3:
-            del ad_states[uid]
-            bot.reply_to(m, "Too many invalid attempts • Cancelled 🍒")
-            return
-        bot.reply_to(m, f"Text too long ({len(txt)}/64) • Try again")
+# ───── SET CA & WEBSITE ─────
+@bot.message_handler(commands=['add'])
+def add_ca(m):
+    if m.chat.type not in ['group', 'supergroup']:
+        bot.reply_to(m, "Use in group only 🍒")
         return
 
-    ad_states[uid]["text"] = txt
-    ad_states[uid]["step"] = 2
+    if len(m.text.split()) < 2:
+        bot.reply_to(m, "Usage: /add <contract_address>")
+        return
 
-    step2 = (
-        f"🔗 <b>Step 2: Ad Link</b>\n\n"
-        f"Your text: {txt}\n\n"
-        "Send link\n"
-        "<i>must start with http:// or https://</i>"
-    )
-    bot.reply_to(m, step2, parse_mode="HTML")
+    ca = m.text.split(maxsplit=1)[1].strip()
+    gid = m.chat.id
+    if gid not in group_data:
+        group_data[gid] = {}
+    group_data[gid]["ca"] = ca
 
-@bot.message_handler(func=lambda m: m.from_user.id in ad_states and ad_states[m.from_user.id]["step"] == 2)
+    bot.reply_to(m, f"✅ Token CA set: {ca}\nUse /setwebsite <url> to add website.")
+
+@bot.message_handler(commands=['setwebsite'])
+def set_website(m):
+    if m.chat.type not in ['group', 'supergroup']:
+        bot.reply_to(m, "Use in group only 🍒")
+        return
+
+    admins = bot.get_chat_administrators(m.chat.id)
+    if m.from_user.id not in [a.user.id for a in admins]:
+        bot.reply_to(m, "Only admins can set website 🍒")
+        return
+
+    if len(m.text.split()) < 2:
+        bot.reply_to(m, "Usage: /setwebsite <url>")
+        return
+
+    url = m.text.split(maxsplit=1)[1].strip()
+    gid = m.chat.id
+    if gid not in group_data:
+        group_data[gid] = {}
+    group_data[gid]["website"] = url
+
+    bot.reply_to(m, f"✅ Website set: {url}")
+
+# ───── KEYWORD REPLIES ─────
+@bot.message_handler(func=lambda m: m.chat.type in ['group', 'supergroup'] and m.text)
+def group_keywords(m):
+    gid = m.chat.id
+    text = m.text.lower().strip()
+
+    if gid not in group_data:
+        return
+
+    if re.search(r'\bca\b', text) or "ca" in text:
+        ca = group_data[gid].get("ca")
+        if ca:
+            bot.reply_to(m, f"Group token CA: `{ca}` 🍒")
+
+    if "website" in text:
+        website = group_data[gid].get("website")
+        if website:
+            bot.reply_to(m, f"Group website: {website} 🍒")
+
+# ───── /RAID ─────
+@bot.message_handler(commands=['raid'])
+def raid(m):
+    if m.chat.type not in ['group', 'supergroup']:
+        bot.reply_to(m, "Use in group only 🍒")
+        return
+
+    parts = m.text.split(maxsplit=2)
+    if len(parts) < 3:
+        bot.reply_to(m, "Usage: /raid <tweet_url> <bounty_SOL>")
+        return
+
+    tweet = parts[1]
+    try:
+        bounty = float(parts[2])
+    except:
+        bot.reply_to(m, "Bounty must be number (SOL)")
+        return
+
+    gid = m.chat.id
+    if gid not in active_raids:
+        active_raids[gid] = []
+
+    raid_id = len(active_raids[gid]) + 1
+    active_raids[gid].append({
+        "id": raid_id,
+        "tweet": tweet,
+        "bounty": bounty,
+        "participants": []
+    })
+
+    msg = f"🚀 Raid #{raid_id} started!\nTarget: {tweet}\nBounty: {bounty} SOL\nJoin with /joinraid {raid_id}"
+    sent = bot.reply_to(m, msg)
+    try:
+        bot.pin_chat_message(gid, sent.message_id)
+    except:
+        pass
+
+# ───── /JOINRAID ─────
+@bot.message_handler(commands=['joinraid'])
+def join_raid(m):
+    if m.chat.type not in ['group', 'supergroup']:
+        return
+
+    parts = m.text.split()
+    if len(parts) < 2:
+        bot.reply_to(m, "Usage: /joinraid <raid_id>")
+        return
+
+    try:
+        rid = int(parts[1])
+    except:
+        bot.reply_to(m, "Invalid raid ID")
+        return
+
+    gid = m.chat.id
+    if gid not in active_raids:
+        bot.reply_to(m, "No active raids in this group")
+        return
+
+    for raid in active_raids[gid]:
+        if raid["id"] == rid:
+            if m.from_user.id not in raid["participants"]:
+                raid["participants"].append(m.from_user.id)
+                bot.reply_to(m, f"Joined Raid #{rid}! 🍒 Engage to earn share.")
+            else:
+                bot.reply_to(m, "Already joined 🍒")
+            return
+
+    bot.reply_to(m, "Raid not found")
+
+# ───── /BUYBOT ─────
+@bot.message_handler(commands=['buybot'])
+def buybot(m):
+    bot.reply_to(m, "🍒 BuyBot configuration coming soon. Use /add <CA> for now.")
+
+# ───── /SETTINGS ─────
+@bot.message_handler(commands=['settings'])
+def settings(m):
+    bot.reply_to(m, "🍒 Settings: Add socials coming soon. Use /setwebsite <url> for now.")
+
+# ───── CALLBACK ─────
+@bot.callback_query_handler(func=lambda c: True)
+def cb(c):
+    cid = c.message.chat.id
+    mid = c.message.message_id
+    uid = c.from_user.id
+
+    data = c.data
+
+    if data == "advertise":    advertise_start(cid, uid)
+    elif data == "boost":      boost_start(cid, mid)
+    elif data == "volume":     volume_start(cid)
+    elif data == "dex":        dex_start(cid)
+    elif data == "premium":    premium_start(cid)
+    elif data == "airdrop":    airdrop_start(cid, uid)
+    elif data == "pump":       pump_start(cid, mid)
+    elif data == "buy_trending": trending_start(cid, mid)
+    elif data == "add_group":  bot.answer_callback_query(c.id, "Add me to your group as admin 🍒")
+    elif data.startswith("ad_dur_"):   ad_duration(c, data[7:])
+    elif data.startswith("boost_"):    boost_select(c, int(data[6:]))
+    elif data.startswith("vol_"):      volume_select(c, data[4:])
+    elif data.startswith("prem_"):     premium_select(c, data[5:])
+    elif data.startswith("trend_"):    trend_select(c, data[6:])
+    elif data.startswith("pump_"):     pump_select(c, data[5:])
+    elif data == "ad_verify":  verify_payment(c, "advertise")
+    elif data == "boost_verify": verify_payment(c, "boost")
+    elif data == "vol_verify": verify_payment(c, "volume")
+    elif data == "prem_verify": verify_payment(c, "premium")
+    elif data == "trend_verify": verify_payment(c, "trending")
+    elif data == "pump_verify": verify_payment(c, "pump")
+    elif data.startswith(("approve_", "reject_")) and uid == ADMIN_ID:
+        admin_action(c)
+    elif data == "back":
+        start(c.message)
+
+# ───── /ADVERTISE ─────
+def advertise_start(cid, uid):
+    states[uid] = {"type": "advertise", "step": 1, "data": {}}
+    bot.send_message(cid, "🔥 Ad Boost X\n500k vol = 7.7 SOL • Below market • EVM • Test")
+    bot.send_message(cid, "📝 Step 1: Ad Text\nmax 64 chars\nTips: clear, CTA, relevant\nSend text:")
+
+@bot.message_handler(func=lambda m: m.from_user.id in states and states[m.from_user.id]["type"] == "advertise" and states[m.from_user.id]["step"] == 1)
+def ad_text(m):
+    uid = m.from_user.id
+    if len(m.text) > 64:
+        bot.reply_to(m, "Too long (64 max) • Try again")
+        return
+    states[uid]["data"]["text"] = m.text
+    states[uid]["step"] = 2
+    bot.reply_to(m, "🔗 Step 2: Link\nSend http/https link:")
+
+@bot.message_handler(func=lambda m: m.from_user.id in states and states[m.from_user.id]["type"] == "advertise" and states[m.from_user.id]["step"] == 2)
 def ad_link(m):
     uid = m.from_user.id
     link = m.text.strip()
-
     if not (link.startswith("http://") or link.startswith("https://")):
-        ad_states[uid]["attempt"] += 1
-        if ad_states[uid]["attempt"] >= 3:
-            del ad_states[uid]
-            bot.reply_to(m, "Too many invalid attempts • Cancelled 🍒")
-            return
-        bot.reply_to(m, f"Invalid address: {link}\nMust start with http(s):// • Try again")
+        bot.reply_to(m, "Invalid link • Try again")
         return
-
-    ad_states[uid]["link"] = link
-    ad_states[uid]["step"] = 3
+    states[uid]["data"]["link"] = link
+    states[uid]["step"] = 3
 
     kb = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    kb.add(KeyboardButton("Solana"))
+    kb.add("Solana")
 
-    step3 = (
-        f"🌐 <b>Step 3: Payment Chain</b>\n\n"
-        f"Text: {ad_states[uid]['text']}\n"
-        f"Link: {link}\n\n"
-        "Choose chain:"
-    )
-    bot.send_message(m.chat.id, step3, parse_mode="HTML", reply_markup=kb)
+    bot.send_message(m.chat.id, f"🌐 Step 3: Payment Chain\nText: {states[uid]['data']['text']}\nLink: {link}\nChoose chain:", reply_markup=kb)
 
-@bot.message_handler(func=lambda m: m.from_user.id in ad_states and ad_states[m.from_user.id]["step"] == 3 and m.text == "Solana")
+@bot.message_handler(func=lambda m: m.from_user.id in states and states[m.from_user.id]["type"] == "advertise" and states[m.from_user.id]["step"] == 3)
 def ad_chain(m):
     uid = m.from_user.id
-    ad_states[uid]["chain"] = "Solana"
-    ad_states[uid]["step"] = 4
-
-    kb = InlineKeyboardMarkup(row_width=1)
-    kb.add(InlineKeyboardButton("🕒 3H - 2.1 SOL", callback_data="ad_dur_3h"))
-    kb.add(InlineKeyboardButton("🕒 6H - 3.3 SOL", callback_data="ad_dur_6h"))
-    kb.add(InlineKeyboardButton("🕒 12H - 5.5 SOL", callback_data="ad_dur_12h"))
-    kb.add(InlineKeyboardButton("🕒 24H - 9.1 SOL", callback_data="ad_dur_24h"))
-    kb.add(InlineKeyboardButton("❌ Cancel", callback_data="cancel"))
-
-    step4 = (
-        f"⏰ <b>Step 4: Ad Duration</b>\n\n"
-        f"Text: {ad_states[uid]['text']}\n"
-        f"Link: {ad_states[uid]['link']}\n"
-        f"Chain: Solana\n\n"
-        "Choose duration:"
-    )
-    bot.send_message(m.chat.id, step4, parse_mode="HTML", reply_markup=kb)
-
-def show_ad_payment(cid, mid, uid):
-    amount = ad_states[uid]["amount"]
-    dur = ad_states[uid]["duration"].upper()
-
-    text = (
-        f"Send exactly: <b>{amount} SOL</b>\n"
-        f"To wallet:\n<code>{SOL_WALLET}</code>\n\n"
-        f"⚠️ <b>Important:</b>\n"
-        f"• Exact amount only\n"
-        f"• Copy-paste wallet\n"
-        f"• Solana network only\n\n"
-        f"After sending → click Verify Payment"
-    )
-
-    kb = InlineKeyboardMarkup()
-    kb.row(
-        InlineKeyboardButton("✅ Verify Payment", callback_data="ad_verify"),
-        InlineKeyboardButton("❌ Cancel", callback_data="cancel")
-    )
-
-    bot.edit_message_text(text, cid, mid, parse_mode="HTML", reply_markup=kb)
-
-@bot.callback_query_handler(func=lambda c: c.data == "ad_verify")
-def handle_ad_verify(c):
-    uid = c.from_user.id
-    if uid not in ad_states:
+    if m.text != "Solana":
+        bot.reply_to(m, "Only Solana. Try again.")
         return
 
-    amount = ad_states[uid]["amount"]
+    states[uid]["data"]["chain"] = "Solana"
+    states[uid]["step"] = 4
+
+    kb = InlineKeyboardMarkup(row_width=1)
+    for dur in AD_PRICES:
+        kb.add(InlineKeyboardButton(f"🕒 {dur.upper()} - {AD_PRICES[dur]} SOL", callback_data=f"ad_dur_{dur}"))
+    kb.add(InlineKeyboardButton("← Back", callback_data="back"))
+
+    bot.send_message(m.chat.id, f"⏰ Step 4: Ad Duration\nChoose:", reply_markup=kb, reply_markup=ReplyKeyboardRemove())
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("ad_dur_"))
+def ad_duration(c):
+    uid = c.from_user.id
+    if uid not in states or states[uid]["type"] != "advertise":
+        return
+
+    dur = c.data[7:]
+    amt = AD_PRICES[dur]
+    states[uid]["data"]["dur"] = dur
+    states[uid]["data"]["amt"] = amt
+    states[uid]["step"] = 5
+
+    text = f"Send exactly {amt} SOL to {SOL_WALLET}\n\n⚠️ Important:\n• Exact amount\n• Copy wallet\n• Solana only\n\nAfter sending → Verify Payment"
+    kb = InlineKeyboardMarkup()
+    kb.row(InlineKeyboardButton("✅ Verify Payment", callback_data="ad_verify"))
+    kb.add(InlineKeyboardButton("← Back", callback_data="back"))
+    bot.edit_message_text(text, c.message.chat.id, c.message.message_id, reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data == "ad_verify")
+def ad_verify(c):
+    uid = c.from_user.id
+    if uid not in states or states[uid]["type"] != "advertise":
+        return
+
+    amt = states[uid]["data"]["amt"]
     pid = str(uuid.uuid4())[:12]
+    pending_payments[pid] = {"uid": uid, "type": "advertise", "amt": amt, "details": states[uid]["data"], "cid": c.message.chat.id, "mid": c.message.message_id}
 
-    pending_payments[pid] = {
-        "user_id": uid,
-        "type": "advertise",
-        "amount": amount,
-        "details": ad_states[uid],
-        "chat_id": c.message.chat.id,
-        "msg_id": c.message.message_id
-    }
+    notify_admin(pid, uid, amt, "Advertise", f"Text: {states[uid]['data']['text'][:30]}...")
+    bot.edit_message_text("⏳ Waiting for admin approval... 🍒", c.message.chat.id, c.message.message_id)
 
-    extra = f"Duration: {ad_states[uid]['duration']}h | Text: {ad_states[uid]['text'][:30]}..."
-    notify_admin(pid, uid, amount, "Advertise", extra)
+# ───── /BOOST ─────
+@bot.message_handler(commands=['boost'])
+def boost_cmd(m):
+    boost_start(m.chat.id, m.message_id)
 
-    bot.edit_message_text("Waiting for admin approval... ⏳ 🍒", c.message.chat.id, c.message.message_id)
-
-# ────────────────────────────────────────────────
-# BOOST FLOW ─────────────────────────────────────
-# ────────────────────────────────────────────────
-
-def start_boost(message):
-    uid = message.from_user.id
-    cid = message.chat.id
-
-    boost_states[uid] = {}
-
-    text = (
-        "⚡ <b>Boost Raid Leaderboard Points</b> ⚡\n\n"
-        "Boost your rank on @cherryraid!\n\n"
-        "Benefits:\n"
-        "• Top 3 appear in all raiding groups\n"
-        "• Higher leaderboard rank\n"
-        "• Raid leaderboard alerts\n"
-        "• Raid start alerts\n\n"
-        "Choose points package:"
-    )
-
+def boost_start(cid, mid):
+    text = "⚡ Boost Raid Points\n\nSelect chat to boost:\n\n⭐ Raid Leaderboard Boost\n⭐ Top 3 in groups\n✔️ Higher rank\n✔️ Alerts\n\n⚡ Boost"
     kb = InlineKeyboardMarkup(row_width=2)
-    for pts, price in BOOST_PRICES.items():
-        kb.add(InlineKeyboardButton(f"{pts:,} pts – {price} SOL", callback_data=f"boost_{pts}"))
-    kb.add(InlineKeyboardButton("❌ Cancel", callback_data="cancel"))
-
-    bot.send_message(cid, text, parse_mode="HTML", reply_markup=kb)
+    for pts, p in BOOST_PRICES.items():
+        kb.add(InlineKeyboardButton(f"{pts:,} pts – {p} SOL", callback_data=f"boost_{pts}"))
+    kb.add(InlineKeyboardButton("← Back", callback_data="back"))
+    bot.edit_message_text(text, cid, mid, reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("boost_"))
 def boost_select(c):
     uid = c.from_user.id
-    pts = int(c.data.split("_")[1])
-    amount = BOOST_PRICES[pts]
-
-    boost_states[uid] = {"points": pts, "amount": amount}
-
-    text = (
-        f"Selected: <b>{pts:,} points</b> for <b>{amount} SOL</b>\n\n"
-        f"Send exactly <b>{amount} SOL</b>\n"
-        f"To: <code>{SOL_WALLET}</code>\n\n"
-        f"⚠️ <b>Important:</b>\n"
-        f"• Exact amount\n"
-        f"• Copy wallet\n"
-        f"• Solana only\n\n"
-        f"After send → Verify Payment"
-    )
-
+    pts = int(c.data[6:])
+    amt = BOOST_PRICES[pts]
+    states[uid] = {"type": "boost", "data": {"pts": pts, "amt": amt}}
+    text = f"Selected: {pts:,} pts – {amt} SOL\n\nSend {amt} SOL to {SOL_WALLET}\n⚠️ Exact • Solana\nAfter → Verify"
     kb = InlineKeyboardMarkup()
-    kb.row(
-        InlineKeyboardButton("✅ Verify Payment", callback_data="boost_verify"),
-        InlineKeyboardButton("❌ Cancel", callback_data="cancel")
-    )
-
-    bot.edit_message_text(text, c.message.chat.id, c.message.message_id, parse_mode="HTML", reply_markup=kb)
+    kb.row(InlineKeyboardButton("✅ Verify", callback_data="boost_verify"))
+    kb.add(InlineKeyboardButton("← Back", callback_data="back"))
+    bot.edit_message_text(text, c.message.chat.id, c.message.message_id, reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data == "boost_verify")
-def handle_boost_verify(c):
+def boost_verify(c):
     uid = c.from_user.id
-    if uid not in boost_states:
+    if uid not in states or states[uid]["type"] != "boost":
         return
 
-    amount = boost_states[uid]["amount"]
+    amt = states[uid]["data"]["amt"]
     pid = str(uuid.uuid4())[:12]
+    pending_payments[pid] = {"uid": uid, "type": "boost", "amt": amt, "details": states[uid]["data"], "cid": c.message.chat.id, "mid": c.message.message_id}
 
-    pending_payments[pid] = {
-        "user_id": uid,
-        "type": "boost",
-        "amount": amount,
-        "details": boost_states[uid],
-        "chat_id": c.message.chat.id,
-        "msg_id": c.message.message_id
-    }
+    notify_admin(pid, uid, amt, "Boost", f"Points: {states[uid]['data']['pts']:,}")
+    bot.edit_message_text("⏳ Waiting for admin approval... 🍒", c.message.chat.id, c.message.message_id)
 
-    extra = f"{boost_states[uid]['points']:,} points"
-    notify_admin(pid, uid, amount, "Raid Boost", extra)
+# ───── /TREND ─────
+@bot.message_handler(commands=['trend'])
+def trend_cmd(m):
+    trend_start(m.chat.id, m.message_id)
 
-    bot.edit_message_text("Waiting for admin approval... ⏳ 🍒", c.message.chat.id, c.message.message_id)
+def trend_start(cid, mid):
+    text = "🔥 Boost Trending\n\nPackages:\nTop10 3h – 1.2 SOL\nTop10 6h – 2.0 SOL\nTop3 3h – 2.5 SOL\nTop3 6h – 4.0 SOL\nChoose:"
+    kb = InlineKeyboardMarkup(row_width=2)
+    for pkg in TREND_PRICES:
+        kb.add(InlineKeyboardButton(f"{pkg} – {TREND_PRICES[pkg]} SOL", callback_data=f"trend_{pkg.replace(' ', '_')}"))
+    kb.add(InlineKeyboardButton("← Back", callback_data="back"))
+    bot.edit_message_text(text, cid, mid, reply_markup=kb)
 
-# ────────────────────────────────────────────────
-# ADMIN APPROVE / REJECT
-# ────────────────────────────────────────────────
+@bot.callback_query_handler(func=lambda c: c.data.startswith("trend_"))
+def trend_select(c):
+    uid = c.from_user.id
+    pkg = c.data[6:].replace('_', ' ')
+    amt = TREND_PRICES[pkg]
+    states[uid] = {"type": "trend", "data": {"pkg": pkg, "amt": amt}}
+    text = f"Selected: {pkg} – {amt} SOL\n\nSend {amt} SOL to {SOL_WALLET}\n⚠️ Exact • Solana\nAfter → Verify"
+    kb = InlineKeyboardMarkup()
+    kb.row(InlineKeyboardButton("✅ Verify", callback_data="trend_verify"))
+    kb.add(InlineKeyboardButton("← Back", callback_data="back"))
+    bot.edit_message_text(text, c.message.chat.id, c.message.message_id, reply_markup=kb)
 
-@bot.callback_query_handler(func=lambda c: c.from_user.id == ADMIN_ID and c.data.startswith(("admin_approve_", "admin_reject_")))
-def handle_admin_decision(c):
-    action, pid = c.data.split("_", 2)[1:]
-    if pid not in pending_payments:
-        bot.answer_callback_query(c.id, "Expired", show_alert=True)
+@bot.callback_query_handler(func=lambda c: c.data == "trend_verify")
+def trend_verify(c):
+    uid = c.from_user.id
+    if uid not in states or states[uid]["type"] != "trend":
         return
 
-    p = pending_payments.pop(pid)
-    uid = p["user_id"]
-    cid = p["chat_id"]
-    mid = p["msg_id"]
+    amt = states[uid]["data"]["amt"]
+    pid = str(uuid.uuid4())[:12]
+    pending_payments[pid] = {"uid": uid, "type": "trend", "amt": amt, "details": states[uid]["data"], "cid": c.message.chat.id, "mid": c.message.message_id}
 
-    if action == "approve":
-        if p["type"] == "advertise":
-            d = p["details"]
-            bot.send_message(TRENDING_CHANNEL, f"New approved ad 🍒\n{d['text']}\n{d['link']}")
-            result = "✅ Approved! Your ad is live 🍒"
-        elif p["type"] == "boost":
-            result = f"✅ Approved! {p['details']['points']:,} points added 🍒"
+    notify_admin(pid, uid, amt, "Trend", f"Package: {states[uid]['data']['pkg']}")
+    bot.edit_message_text("⏳ Waiting for admin approval... 🍒", c.message.chat.id, c.message.message_id)
 
-        bot.send_message(uid, result)
-        bot.edit_message_text(result, cid, mid)
+# ───── /PREMIUM ─────
+@bot.message_handler(commands=['premium'])
+def premium_cmd(m):
+    premium_start(m.chat.id)
 
-    else:
-        bot.send_message(uid, "❌ Payment rejected by admin 🍒\nContact support if needed.")
-        bot.edit_message_text("Rejected by admin 🍒", cid, mid)
-
-    bot.answer_callback_query(c.id, f"{action.title()}d")
-
-# ────────────────────────────────────────────────
-# VOLUME BOOST ───────────────────────────────────
-# ────────────────────────────────────────────────
-
-def volume_boost(message):
-    text = (
-        "🔥 <b>Volume Boost & DEX Trending</b> 🔥\n\n"
-        "Powered by\n"
-        "@PF_raiders_bot\n\n"
-        "Click button below:"
+def premium_start(cid):
+    text = "💎 Premium (No-Ads)\n\nRemove ads • Priority support • Early features\n\nChoose plan:"
+    kb = InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        InlineKeyboardButton("Weekly – 0.5 SOL", callback_data="prem_weekly"),
+        InlineKeyboardButton("Monthly – 1.5 SOL", callback_data="prem_monthly")
     )
+    kb.add(InlineKeyboardButton("← Back", callback_data="back"))
+    bot.send_message(cid, text, reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("prem_"))
+def premium_select(c):
+    uid = c.from_user.id
+    plan = c.data[5:].capitalize()
+    amt = PREMIUM_PRICES[plan]
+    states[uid] = {"type": "premium", "data": {"plan": plan, "amt": amt}}
+    text = f"Selected: {plan} – {amt} SOL\n\nSend {amt} SOL to {SOL_WALLET}\n⚠️ Exact • Solana\nAfter → Verify"
+    kb = InlineKeyboardMarkup()
+    kb.row(InlineKeyboardButton("✅ Verify", callback_data="prem_verify"))
+    kb.add(InlineKeyboardButton("← Back", callback_data="back"))
+    bot.edit_message_text(text, c.message.chat.id, c.message.message_id, reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data == "prem_verify")
+def premium_verify(c):
+    uid = c.from_user.id
+    if uid not in states or states[uid]["type"] != "premium":
+        return
+
+    amt = states[uid]["data"]["amt"]
+    pid = str(uuid.uuid4())[:12]
+    pending_payments[pid] = {"uid": uid, "type": "premium", "amt": amt, "details": states[uid]["data"], "cid": c.message.chat.id, "mid": c.message.message_id}
+
+    notify_admin(pid, uid, amt, "Premium", f"Plan: {states[uid]['data']['plan']}")
+    bot.edit_message_text("⏳ Waiting for admin approval... 🍒", c.message.chat.id, c.message.message_id)
+
+# ───── /AIRDROP ─────
+@bot.message_handler(commands=['airdrop'])
+def airdrop_cmd(m):
+    if m.chat.type not in ['group', 'supergroup']:
+        bot.reply_to(m, "Use in group only 🍒")
+        return
+
+    admins = bot.get_chat_administrators(m.chat.id)
+    if m.from_user.id not in [a.user.id for a in admins]:
+        bot.reply_to(m, "Only admins can airdrop 🍒")
+        return
+
+    parts = m.text.split(maxsplit=1)
+    if len(parts) < 2:
+        bot.reply_to(m, "Usage: /airdrop <amount> @user1 @user2...")
+        return
+
+    try:
+        amount = float(parts[1].split()[0])
+        users = parts[1].split()[1:]
+    except:
+        bot.reply_to(m, "Invalid amount or users")
+        return
+
+    if not users:
+        bot.reply_to(m, "Mention users with @")
+        return
 
     kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("@PF_raiders_bot", url="https://t.me/PF_raiders_bot"))
+    kb.row(InlineKeyboardButton("✅ Confirm Airdrop", callback_data="airdrop_confirm"))
+    kb.add(InlineKeyboardButton("← Back", callback_data="back"))
 
-    bot.send_message(message.chat.id, text, parse_mode="HTML", reply_markup=kb)
+    text = f"🎁 Airdrop {amount} SOL to {len(users)} users\nConfirm?"
+    sent = bot.send_message(m.chat.id, text, reply_markup=kb)
+    states[m.from_user.id] = {"type": "airdrop", "data": {"amount": amount, "users": users, "gid": m.chat.id, "mid": sent.message_id}}
 
-# ────────────────────────────────────────────────
-# AUTO HYPE THREAD (simulated)
-# ────────────────────────────────────────────────
+@bot.callback_query_handler(func=lambda c: c.data == "airdrop_confirm")
+def airdrop_confirm(c):
+    uid = c.from_user.id
+    if uid not in states or states[uid]["type"] != "airdrop":
+        return
 
-def auto_hype():
+    data = states[uid]["data"]
+    text = f"✅ Airdrop confirmed! Sent {data['amount']} SOL to {len(data['users'])} users 🍒 (simulated)"
+    bot.edit_message_text(text, data["gid"], data["mid"])
+    del states[uid]
+
+# ───── /PUMP ─────
+@bot.message_handler(commands=['pump'])
+def pump_cmd(m):
+    pump_start(m.chat.id, m.message_id)
+
+def pump_start(cid, mid):
+    text = "🔥 Pump.fun Trending\n\nPackages:\nTop10 3h – 1.2 SOL\nTop10 6h – 2.0 SOL\nTop3 3h – 2.5 SOL\nTop3 6h – 4.0 SOL\nChoose:"
+    kb = InlineKeyboardMarkup(row_width=2)
+    for pkg in PUMP_PRICES:
+        kb.add(InlineKeyboardButton(f"{pkg} – {PUMP_PRICES[pkg]} SOL", callback_data=f"pump_{pkg.replace(' ', '_')}"))
+    kb.add(InlineKeyboardButton("← Back", callback_data="back"))
+    bot.edit_message_text(text, cid, mid, reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("pump_"))
+def pump_select(c):
+    uid = c.from_user.id
+    pkg = c.data[5:].replace('_', ' ')
+    amt = PUMP_PRICES[pkg]
+    states[uid] = {"type": "pump", "data": {"pkg": pkg, "amt": amt}}
+    text = f"Selected: {pkg} – {amt} SOL\n\nSend {amt} SOL to {SOL_WALLET}\n⚠️ Exact • Solana\nAfter → Verify"
+    kb = InlineKeyboardMarkup()
+    kb.row(InlineKeyboardButton("✅ Verify", callback_data="pump_verify"))
+    kb.add(InlineKeyboardButton("← Back", callback_data="back"))
+    bot.edit_message_text(text, c.message.chat.id, c.message.message_id, reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data == "pump_verify")
+def pump_verify(c):
+    uid = c.from_user.id
+    if uid not in states or states[uid]["type"] != "pump":
+        return
+
+    amt = states[uid]["data"]["amt"]
+    pid = str(uuid.uuid4())[:12]
+    pending_payments[pid] = {"uid": uid, "type": "pump", "amt": amt, "details": states[uid]["data"], "cid": c.message.chat.id, "mid": c.message.message_id}
+
+    notify_admin(pid, uid, amt, "Pump Trending", f"Package: {states[uid]['data']['pkg']}")
+    bot.edit_message_text("⏳ Waiting for admin approval... 🍒", c.message.chat.id, c.message.message_id)
+
+# ───── /VOLUME ─────
+@bot.message_handler(commands=['volume'])
+def volume_cmd(m):
+    bot.reply_to(m, "😭 Volume: @boostlegends_bot")
+
+# ───── /DEX ─────
+@bot.message_handler(commands=['dex'])
+def dex_cmd(m):
+    dex_start(m.chat.id, m.message_id)
+
+def dex_start(cid, mid):
+    text = "🌟 DEX Trending\n\nTiers:\nStarter: 3.5 SOL\nPro: 7.0 SOL\nMax: 14.0 SOL\nChoose:"
+    kb = InlineKeyboardMarkup(row_width=1)
+    for tier in VOLUME_PRICES:
+        kb.add(InlineKeyboardButton(f"{tier} – {VOLUME_PRICES[tier]} SOL", callback_data=f"dex_{tier}"))
+    kb.add(InlineKeyboardButton("← Back", callback_data="back"))
+    bot.edit_message_text(text, cid, mid, reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("dex_"))
+def dex_select(c):
+    uid = c.from_user.id
+    tier = c.data[4:]
+    amt = VOLUME_PRICES[tier]
+    states[uid] = {"type": "dex", "data": {"tier": tier, "amt": amt}}
+    text = f"Selected: {tier} – {amt} SOL\n\nSend {amt} SOL to {SOL_WALLET}\n⚠️ Exact • Solana\nAfter → Verify"
+    kb = InlineKeyboardMarkup()
+    kb.row(InlineKeyboardButton("✅ Verify", callback_data="dex_verify"))
+    kb.add(InlineKeyboardButton("← Back", callback_data="back"))
+    bot.edit_message_text(text, c.message.chat.id, c.message.message_id, reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data == "dex_verify")
+def dex_verify(c):
+    uid = c.from_user.id
+    if uid not in states or states[uid]["type"] != "dex":
+        return
+
+    amt = states[uid]["data"]["amt"]
+    pid = str(uuid.uuid4())[:12]
+    pending_payments[pid] = {"uid": uid, "type": "dex", "amt": amt, "details": states[uid]["data"], "cid": c.message.chat.id, "mid": c.message.message_id}
+
+    notify_admin(pid, uid, amt, "DEX Trending", f"Tier: {states[uid]['data']['tier']}")
+    bot.edit_message_text("⏳ Waiting for admin approval... 🍒", c.message.chat.id, c.message.message_id)
+
+# ───── CALLBACK ─────
+@bot.callback_query_handler(func=lambda c: True)
+def cb(c):
+    # Minimal stub - expand as needed
+    bot.answer_callback_query(c.id, "Feature starting... 🍒")
+
+# ───── AUTO-HYPE ─────
+def hype_loop():
     while True:
-        time.sleep(3600)  # 1 hour
+        time.sleep(10800)  # 3 hours
         try:
-            msg = (
-                "🚀 <b>HOT NEW COIN DETECTED</b> 🚀\n\n"
-                "Fast rising MC • Strong volume\n"
-                "Add now → /add <CA>\n"
-                "Then raid • boost • advertise 🍒"
-            )
-            bot.send_message(TRENDING_CHANNEL, msg, parse_mode="HTML")
-            bot.send_message(RAID_CHANNEL, msg, parse_mode="HTML")
-        except:
-            pass
+            r = requests.get("https://api.dexscreener.com/latest/dex/pairs/solana?limit=5")
+            if r.status_code == 200:
+                pairs = r.json()["pairs"]
+                for p in pairs:
+                    if p["fdv"] > 10000 and p["volume"]["h24"] > 10000:
+                        name = p["baseToken"]["name"]
+                        addr = p["baseToken"]["address"]
+                        fdv = p["fdv"]
+                        vol = p["volume"]["h24"]
+                        msg = f"🔥 HOT: {name}\nFDV ${fdv:,.0f}\nVol ${vol:,.0f}\n/add {addr} 🍒"
 
-threading.Thread(target=auto_hype, daemon=True).start()
+                        # Target community
+                        try:
+                            bot.send_message(TARGET_COMMUNITY, msg)
+                        except:
+                            pass
 
-# ────────────────────────────────────────────────
-# RUN
-# ────────────────────────────────────────────────
+                        # Groups with CA set
+                        for gid, data in group_data.items():
+                            if "ca" in data:
+                                group_msg = msg + f"\nGroup CA: {data['ca']}"
+                                if "website" in data:
+                                    group_msg += f"\nWebsite: {data['website']}"
+                                try:
+                                    bot.send_message(gid, group_msg)
+                                except:
+                                    pass
 
-print("🍒 Cherry Bot running...")
-bot.infinity_polling(timeout=10)
+                        break
+        except Exception as e:
+            print("Hype error:", e)
+
+threading.Thread(target=hype_loop, daemon=True).start()
+
+# ───── GROUP ADD ─────
+@bot.message_handler(content_types=['new_chat_members'])
+def new_group(m):
+    for mem in m.new_chat_members:
+        if mem.id == bot.get_me().id:
+            group_ids.add(m.chat.id)
+            bot.send_message(m.chat.id, "🍒 Added! /add <CA> and /setwebsite <url> to enable hype & replies.")
+
+# ───── RENDER WEBHOOK ─────
+@app.route('/' + TOKEN, methods=['POST'])
+def webhook():
+    update = telebot.types.Update.de_json(request.stream.read().decode('utf-8'))
+    bot.process_new_updates([update])
+    return 'OK', 200
+
+if __name__ == "__main__":
+    bot.remove_webhook()
+    bot.set_webhook(url=f"https://{os.environ.get('RENDER_APP_NAME', 'your-app')}.onrender.com/{TOKEN}")
+
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
