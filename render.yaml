@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: cherry-bot
+    env: python
+    plan: free                 # or starter / standard depending on your needs
+    branch: main               # or your branch name
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 4 -b 0.0.0.0:$PORT app:app
+    healthCheckPath: /health   # optional but recommended
+    envVars:
+      - key: PYTHONUNBUFFERED
+        sync: false
+        value: "1"               # better logging
+      - key: PORT
+        sync: false
+        value: "10000"           # Render expects this
+      # Add your secrets here if needed (never commit them to git)
+      # - key: TELEGRAM_TOKEN
+      #   sync: false
+      #   value: "your-token-here"   # better to set this in Render dashboard
