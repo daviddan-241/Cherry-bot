@@ -45,6 +45,11 @@ def notify_admin(pid, uid, amt, feature, extra=""):
     )
     bot.send_message(ADMIN_ID, f"🍒 PAYMENT\nUser: {uid}\n{feature}\n{amt} SOL\n{extra}", reply_markup=kb)
 
+# ───── HEALTH CHECK ROUTE (for Render) ─────
+@app.route('/health')
+def health():
+    return "OK", 200
+    
 # ───── MAIN MENU ─────
 @bot.message_handler(commands=['start'])
 def start(m):
