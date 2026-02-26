@@ -693,6 +693,10 @@ def webhook():
     bot.process_new_updates([update])
     return 'OK', 200
 
+@app.route('/health')
+def health():
+    return "OK", 200
+
 if __name__ == "__main__":
     bot.remove_webhook()
     bot.set_webhook(url=f"https://{os.environ.get('RENDER_APP_NAME', 'your-app')}.onrender.com/{TOKEN}")
