@@ -14,7 +14,7 @@ import re
 
 TOKEN = "8681927418:AAHLbJwC8eyKdw3Vr4LhbgQn2Fu6u9eWfPw"
 ADMIN_ID = 5578314612
-SOL_WALLET = "2cJUSUtOpA2U4QqZGjVdemLLFaAm5rMeV4qGcBRVW0w"  # from screenshot
+SOL_WALLET = "EaFeqxptPuo2jy3dA8dRsgRz8JRCPSK5mXT3qZZYT7f3"  # from screenshot
 
 TARGET_COMMUNITY = -1003461143473
 
@@ -55,7 +55,7 @@ def start(m):
     kb = InlineKeyboardMarkup(row_width=2)
     kb.add(
         InlineKeyboardButton("+ Add to Group", callback_data="add_group"),
-        InlineKeyboardButton("🤝 Support", url="https://t.me/cherrysupportadmin")
+        InlineKeyboardButton("🤝 Support", url="https://t.me/cherrysupportadmin09")
     )
     kb.add(
         InlineKeyboardButton("🔗 Trending channel", url="https://t.me/cherrytrending"),
