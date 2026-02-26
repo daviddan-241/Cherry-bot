@@ -1,6 +1,6 @@
-# Cherry 🍒 Bot - FULLY WORKING Version (All Buttons + Pump.fun Fixed)
-# Exact menu layout, your text block, all services/prices from screenshots
-# Render-ready - February 2026
+# Cherry 🍒 Bot - FIXED & COMPLETE (No duplicate reply_markup error)
+# Menu: Add + Support side-by-side → singles → Volume + DEX last row side-by-side
+# All buttons working, Pump.fun integrated, Render-ready
 
 from flask import Flask, request
 import telebot
@@ -19,12 +19,12 @@ app = Flask(__name__)
 states = {}
 pending_payments = {}
 
-# ───── PRICES FROM YOUR SCREENSHOTS ─────
+# ───── PRICES ─────
 AD_PRICES = {"3H": 2.1, "6H": 3.3, "12H": 5.5, "24H": 9.1}
 BOOST_PRICES = {1000: 1.5, 2000: 2.9, 4000: 5.4, 8000: 9.0}
 TREND_PRICES = {"Top10": 2.3, "Top3": 3.2}
 
-# ───── MAIN MENU - EXACT LAYOUT YOU WANTED ─────
+# ───── MAIN MENU ─────
 @bot.message_handler(commands=['start'])
 def start(m):
     kb = InlineKeyboardMarkup(row_width=2)
@@ -44,9 +44,8 @@ def start(m):
         InlineKeyboardButton("🔥 Volume Boo...", url="https://t.me/boostlegends_bot"),
         InlineKeyboardButton("🔥 DEX Trendin...", callback_data="dex")
     )
-    kb.add(InlineKeyboardButton("🔥 Pump.fun Trending", callback_data="buy_trending"))  # merged with trending
+    kb.add(InlineKeyboardButton("🔥 Pump.fun Trending", callback_data="pump_trending"))
 
-    # YOUR EXACT TEXT BLOCK
     menu_text = """
 ✨ Cherry Telegram Bot
     
@@ -74,8 +73,8 @@ def start(m):
 
     bot.send_message(m.chat.id, menu_text.strip(), reply_markup=kb)
 
-# ───── TRENDING / BUY TOKEN / PUMP.FUN (MERGED) ─────
-@bot.callback_query_handler(func=lambda c: c.data == "buy_trending")
+# ───── TRENDING / BUY TOKEN / PUMP.FUN ─────
+@bot.callback_query_handler(func=lambda c: c.data in ["buy_trending", "pump_trending"])
 def trending_start(c):
     uid = c.from_user.id
     cid = c.message.chat.id
@@ -84,12 +83,7 @@ def trending_start(c):
     bot.edit_message_text("Loading...", cid, mid)
     time.sleep(1.2)
 
-    text = (
-        "? Send me the token's\n"
-        "Contract Address or Pair Address:\n\n"
-        "Supported Chains: SOL\n"
-        "Supported Launchpads: PUMPFUN"
-    )
+    text = "? Send me the token's\nContract Address or Pair Address:\n\nSupported Chains: SOL\nSupported Launchpads: PUMPFUN"
 
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("X Close", callback_data="cancel"))
@@ -107,11 +101,7 @@ def trending_ca(m):
     bot.reply_to(m, "Fetching token info...")
     time.sleep(1.5)
 
-    token_info = (
-        f"Selected Token:\n"
-        f"Chain: Solana\n"
-        f"CA: {ca[:8]}...{ca[-6:]}"
-    )
+    token_info = f"Selected Token:\nChain: Solana\nCA: {ca[:8]}...{ca[-6:]}"
 
     kb = InlineKeyboardMarkup()
     kb.row(
@@ -130,18 +120,7 @@ def trending_confirm(c):
     bot.edit_message_text("Loading...", c.message.chat.id, c.message.message_id)
     time.sleep(1.2)
 
-    text = (
-        "Trending on Cherry Boost\n\n"
-        "Top 10 Benefits:\n"
-        "✓ Trending on Cherry\n"
-        "Trending Channel\n"
-        "✓ Trending on Cherry\n"
-        "Website\n"
-        "✓ Entered into trending alerts\n"
-        "✓ All time high alerts\n"
-        "✓ Buy alerts\n"
-        "★ Button Advertisement"
-    )
+    text = "Trending on Cherry Boost\n\nTop 10 Benefits:\n✓ Trending on Cherry\nTrending Channel\n✓ Trending on Cherry\nWebsite\n✓ Entered into trending alerts\n✓ All time high alerts\n✓ Buy alerts\n★ Button Advertisement"
 
     kb = InlineKeyboardMarkup(row_width=2)
     kb.add(
@@ -158,21 +137,13 @@ def trend_period(c):
     period = "Top 10" if c.data == "trend_top10" else "Top 3"
     amt = TREND_PRICES.get(period, 2.3)
 
-    text = (
-        f"{period} Trending Boost\n\n"
-        f"Send exactly **{amt} SOL** to:\n"
-        f"`{SOL_WALLET}`\n\n"
-        "Step 1: Send SOL\n"
-        "Step 2: Click Verify Payment\n"
-        "Step 3: Watch your token soar!"
-    )
+    text = f"{period} Trending Boost\n\nSend exactly **{amt} SOL** to:\n`{SOL_WALLET}`\n\nStep 1: Send SOL\nStep 2: Click Verify Payment\nStep 3: Watch your token soar!"
 
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("✅ Verify Payment", callback_data="verify_trend"))
     kb.add(InlineKeyboardButton("← Back", callback_data="cancel"))
 
-    bot.edit_message_text(text, c.message.chat.id, c.message.message_id,
-                          parse_mode="Markdown", reply_markup=kb)
+    bot.edit_message_text(text, c.message.chat.id, c.message.message_id, parse_mode="Markdown", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data == "verify_trend")
 def verify_trend(c):
@@ -182,7 +153,7 @@ def verify_trend(c):
     bot.edit_message_text("⏳ Waiting for admin approval... 🍒", c.message.chat.id, c.message.message_id)
     bot.answer_callback_query(c.id, "Payment request sent!")
 
-# ───── ADVERTISE - FULL WORKING FLOW ─────
+# ───── ADVERTISE - FIXED (no duplicate reply_markup) ─────
 @bot.callback_query_handler(func=lambda c: c.data == "advertise")
 def advertise(c):
     uid = c.from_user.id
@@ -195,12 +166,7 @@ def advertise(c):
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("X Cancel", callback_data="cancel"))
 
-    bot.edit_message_text(
-        "Step 1: Ad Text\n"
-        "Please send your ad text\n"
-        "(maximum 64 characters)",
-        cid, mid, reply_markup=kb)
-
+    bot.edit_message_text("Step 1: Ad Text\nPlease send your ad text\n(maximum 64 characters).", cid, mid, reply_markup=kb)
     states[uid] = {"type": "advertise", "step": 1, "data": {}}
 
 @bot.message_handler(func=lambda m: m.from_user.id in states and states[m.from_user.id]["type"] == "advertise" and states[m.from_user.id]["step"] == 1)
@@ -214,7 +180,7 @@ def ad_text(m):
 
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("X Cancel", callback_data="cancel"))
-    bot.reply_to(m, "Step 2: Ad Link\nSend the link you want to promote.\nMust start with http:// or https://", reply_markup=kb)
+    bot.reply_to(m, "Step 2: Ad Link\nNow please send the link you want to promote.\nMust start with http:// or https://", reply_markup=kb)
 
 @bot.message_handler(func=lambda m: m.from_user.id in states and states[m.from_user.id]["type"] == "advertise" and states[m.from_user.id]["step"] == 2)
 def ad_link(m):
@@ -228,7 +194,7 @@ def ad_link(m):
 
     kb = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     kb.add("Solana")
-    bot.send_message(m.chat.id, "Step 3: Payment Chain\nChoose chain:", reply_markup=kb)
+    bot.send_message(m.chat.id, "Step 3: Payment Chain\nChoose your payment chain:", reply_markup=kb)
 
 @bot.message_handler(func=lambda m: m.from_user.id in states and states[m.from_user.id]["type"] == "advertise" and states[m.from_user.id]["step"] == 3)
 def ad_chain(m):
@@ -244,7 +210,7 @@ def ad_chain(m):
         kb.add(InlineKeyboardButton(f"{dur} - {price} SOL", callback_data=f"ad_dur_{dur}"))
     kb.add(InlineKeyboardButton("X Cancel", callback_data="cancel"))
 
-    bot.send_message(m.chat.id, "Step 4: Ad Duration\nChoose:", reply_markup=kb, reply_markup=ReplyKeyboardRemove())
+    bot.send_message(m.chat.id, "Step 4: Ad Duration\nChoose ad duration:", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("ad_dur_"))
 def ad_duration(c):
@@ -253,13 +219,14 @@ def ad_duration(c):
     amt = AD_PRICES.get(dur)
     if not amt:
         return
+
     states[uid]["data"]["dur"] = dur
     states[uid]["data"]["amt"] = amt
 
     bot.edit_message_text("Loading...", c.message.chat.id, c.message.message_id)
     time.sleep(1.2)
 
-    text = f"Send exactly **{amt} SOL** to:\n`{SOL_WALLET}`\n\n⚠️ Important:\n• Exact amount\n• Copy wallet\n• Solana only\n\nAfter sending → Verify Payment"
+    text = f"Send exactly **{amt} SOL** to:\n`{SOL_WALLET}`\n\n⚠️ Important:\n• Send the exact amount shown above\n• Copy and Paste the wallet address\n• Use only Solana network\n\nAfter sending, click 'Verify Payment'"
 
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton("✅ Verify Payment", callback_data="ad_verify"))
@@ -279,7 +246,7 @@ def ad_verify(c):
     bot.edit_message_text("⏳ Waiting for admin approval... 🍒", c.message.chat.id, c.message.message_id)
     bot.answer_callback_query(c.id, "Sent to admin!")
 
-# ───── BOOST RAID POINTS - REAL SELECT CHAT ─────
+# ───── BOOST RAID POINTS ─────
 @bot.callback_query_handler(func=lambda c: c.data == "boost")
 def boost(c):
     uid = c.from_user.id
@@ -304,7 +271,7 @@ def boost(c):
 
     bot.edit_message_text(text, cid, mid, reply_markup=kb)
 
-# ───── DEX TRENDING - REAL CA INPUT ─────
+# ───── DEX TRENDING ─────
 @bot.callback_query_handler(func=lambda c: c.data == "dex")
 def dex(c):
     uid = c.from_user.id
@@ -331,10 +298,10 @@ def dex_ca(m):
     bot.reply_to(m, "Fetching DEX info...")
     time.sleep(1.5)
 
-    bot.reply_to(m, f"Token CA received: {ca}\nProcessing for trending... (feature active) 🍒")
+    bot.reply_to(m, f"Token CA received: {ca}\nProcessing for trending... 🍒")
     del states[uid]
 
-# ───── PREMIUM - REAL BENEFITS PREVIEW ─────
+# ───── PREMIUM ─────
 @bot.callback_query_handler(func=lambda c: c.data == "premium")
 def premium(c):
     uid = c.from_user.id
@@ -344,14 +311,7 @@ def premium(c):
     bot.edit_message_text("Loading...", cid, mid)
     time.sleep(1.0)
 
-    text = (
-        "💎 Premium (No-Ads)\n\n"
-        "Benefits:\n"
-        "• No ads across all chats\n"
-        "• Priority support\n"
-        "• Early access to features\n\n"
-        "Choose plan:"
-    )
+    text = "💎 Premium (No-Ads)\n\nBenefits:\n• No ads\n• Priority support\n• Early features\n\nChoose plan:"
 
     kb = InlineKeyboardMarkup(row_width=2)
     kb.add(
@@ -378,14 +338,13 @@ def prem_select(c):
 
 @bot.callback_query_handler(func=lambda c: c.data == "prem_verify")
 def prem_verify(c):
-    uid = c.from_user.id
     bot.edit_message_text("⏳ Waiting for admin approval... 🍒", c.message.chat.id, c.message.message_id)
     bot.answer_callback_query(c.id, "Premium request sent!")
 
-# ───── ADD TO GROUP - REAL BEHAVIOR ─────
+# ───── ADD TO GROUP ─────
 @bot.callback_query_handler(func=lambda c: c.data == "add_group")
 def add_group(c):
-    bot.answer_callback_query(c.id, "Add me to your group as admin to enable all features! 🍒", show_alert=True)
+    bot.answer_callback_query(c.id, "Add me to your group as admin! 🍒", show_alert=True)
     bot.send_message(c.message.chat.id, "To add me:\n1. Go to your group\n2. Add member → search @YourBotUsername\n3. Make me admin\n\nThen use /add <CA> inside the group!")
 
 # ───── CANCEL ─────
@@ -397,7 +356,7 @@ def cancel(c):
     bot.edit_message_text("Cancelled.", c.message.chat.id, c.message.message_id)
     bot.answer_callback_query(c.id, "Action cancelled")
 
-# ───── ADMIN NOTIFICATION HELPER ─────
+# ───── ADMIN NOTIFICATION ─────
 def notify_admin(pid, uid, amt, feature, extra=""):
     kb = InlineKeyboardMarkup()
     kb.row(
