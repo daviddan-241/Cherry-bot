@@ -41,6 +41,8 @@ render.yaml             # Render.com deployment config
 | `ADMIN_TELEGRAM_ID` | Your Telegram user ID — receives order notifications |
 | `PAYMENT_SOL_ADDRESS` | SOL wallet for payment display |
 | `PAYMENT_ETH_ADDRESS` | ETH wallet for payment display |
+| `SUPPORT_USERNAME` | Telegram @username shown in support messages (e.g. `@yourhandle`) |
+| `BOT_DISPLAY_NAME` | Override bot display name (default: `Pump.fun Booster Bot`) |
 | `PORT` | HTTP port (default 5000 in dev, 10000 on Render) |
 
 ## How modes work
@@ -61,7 +63,7 @@ cd artifacts/api-server && pnpm run build && PORT=5000 pnpm run start
 2. Create a new Web Service on Render, connect the repo
 3. Build command: `npm install -g pnpm && pnpm install --no-frozen-lockfile && pnpm --filter @workspace/api-server run build`
 4. Start command: `pnpm --filter @workspace/api-server run start`
-5. Set environment variables: `TELEGRAM_BOT_TOKEN`, `MASTER_SEED`, `ADMIN_TELEGRAM_ID`, `PAYMENT_SOL_ADDRESS`, `PAYMENT_ETH_ADDRESS`
+5. Set environment variables: `TELEGRAM_BOT_TOKEN`, `MASTER_SEED`, `ADMIN_TELEGRAM_ID`, `PAYMENT_SOL_ADDRESS`, `PAYMENT_ETH_ADDRESS`, `SUPPORT_USERNAME`
 6. Render auto-provides `RENDER_EXTERNAL_HOSTNAME` → webhook mode activates automatically
 
 ## User preferences
