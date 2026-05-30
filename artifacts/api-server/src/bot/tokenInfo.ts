@@ -116,11 +116,24 @@ function parseDexPair(pair: any): TokenInfo {
   };
 }
 
+const PF_FETCH_HEADERS = {
+  "User-Agent":      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Accept":          "application/json, text/plain, */*",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Referer":         "https://pump.fun/",
+  "Origin":          "https://pump.fun",
+};
+
+const DEX_FETCH_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Accept":     "application/json",
+};
+
 // ── HTTP helper with timeout ───────────────────────────────────────────────────
-async function getJson(url: string, timeoutMs = 6000): Promise<any | null> {
+async function getJson(url: string, timeoutMs = 6000, isPumpFun = false): Promise<any | null> {
   try {
     const r = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 CherryBot/1.0" },
+      headers: isPumpFun ? PF_FETCH_HEADERS : DEX_FETCH_HEADERS,
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!r.ok) return null;
@@ -156,7 +169,7 @@ async function fromDexScreenerSearch(ca: string): Promise<TokenInfo | null> {
 
 // ── 3. Pump.fun frontend API ───────────────────────────────────────────────────
 async function fromPumpFun(ca: string): Promise<TokenInfo | null> {
-  const data = await getJson(`https://frontend-api.pump.fun/coins/${ca}`);
+  const data = await getJson(`https://frontend-api.pump.fun/coins/${ca}`, 6000, true);
   if (!data?.mint) return null;
 
   const priceRaw = data.usd_market_cap && data.total_supply
