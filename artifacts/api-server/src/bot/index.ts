@@ -7,6 +7,7 @@ import { getSession, setSession, clearSession, getAllSessions } from "./sessions
 import { deriveWalletForUser } from "./wallet.js";
 import { fetchTokenInfo } from "./tokenInfo.js";
 import { saveOrder, updateOrder, getAllOrders } from "./orders.js";
+import { detectChain, verifyTx, isHashUsed, markHashUsed } from "./txVerify.js";
 import { logger } from "../lib/logger.js";
 import {
   mainMenuKeyboard,
@@ -701,33 +702,114 @@ export function createBot(): Telegraf {
       }
 
       case "awaiting_tx_hash": {
-        const txHash = text;
-        const s = { ...session };
+        const raw = text.trim();
+        const s   = { ...session };
+
+        // ── Step 1: format check ──────────────────────────────────────────────
+        const chain = detectChain(raw);
+        if (chain === "invalid") {
+          await ctx.reply(
+            `❌ <b>Invalid Transaction Hash</b>\n\n` +
+            `That doesn't look like a valid TX hash.\n\n` +
+            `<b>Valid formats:</b>\n` +
+            `• <b>Solana</b> — 87–88 base58 characters\n` +
+            `  Example: <code>5KtP9jFhGk...xyZm</code>\n\n` +
+            `• <b>Ethereum</b> — starts with <code>0x</code> + 64 hex chars\n` +
+            `  Example: <code>0x4a3b2c1d...f9e8</code>\n\n` +
+            `📋 Copy the hash directly from your wallet or block explorer and try again:`,
+            { parse_mode: "HTML", ...cancelKeyboard }
+          );
+          break;   // keep session alive so user can retry
+        }
+
+        // ── Step 2: duplicate / replay-attack check ───────────────────────────
+        if (isHashUsed(raw)) {
+          await ctx.reply(
+            `❌ <b>TX Hash Already Used</b>\n\n` +
+            `This transaction hash has already been submitted to an order.\n\n` +
+            `Each TX hash can only be used once.\n` +
+            `Please send a <b>new payment</b> and submit that TX hash.`,
+            { parse_mode: "HTML", ...cancelKeyboard }
+          );
+          break;
+        }
+
+        // ── Step 3: on-chain verification ─────────────────────────────────────
+        const verifyMsg = await ctx.reply(
+          `🔍 <b>Verifying transaction on-chain...</b>\n\nPlease wait a moment.`,
+          { parse_mode: "HTML" }
+        );
+
+        const payWallet   = deriveWalletForUser(ctx.from.id);
+        const lamExpected = s.boostType !== "eth_trending"
+          ? Math.round((s.selectedSol ?? 0) * 1e9)
+          : undefined;
+
+        const result = await verifyTx(
+          raw,
+          chain === "sol" ? payWallet.address : undefined,
+          lamExpected,
+        );
+
+        // Delete the "verifying..." message
+        try { await ctx.deleteMessage(verifyMsg.message_id); } catch {}
+
+        if (!result.ok) {
+          await ctx.reply(
+            `${result.error}\n\n` +
+            `Paste the correct TX hash to continue, or press Cancel:`,
+            { parse_mode: "HTML", ...cancelKeyboard }
+          );
+          break;   // keep session so user can retry with correct hash
+        }
+
+        // ── Step 4: accept — mark hash, clear session, save order ─────────────
+        markHashUsed(raw);
         clearSession(ctx.from.id);
+
         if (s.orderId) {
           updateOrder(s.orderId, {
-            txHash,
-            status: "tx_submitted",
+            txHash:        raw,
+            status:        "tx_submitted",
             txSubmittedAt: new Date(),
           });
         }
+
+        const chainLabel  = chain === "eth" ? "Ethereum" : "Solana";
+        const verifiedLine = result.confirmed
+          ? `✅ <b>Verified on-chain</b> (${chainLabel})`
+          : `⏳ <b>Submitted</b> — will be verified manually`;
+
+        const amountLine = result.lamports
+          ? `💰 Amount: <b>${(result.lamports / 1e9).toFixed(4)} SOL</b>`
+          : s.boostType === "eth_trending"
+          ? `💰 Amount: <b>$${s.ethAmount} USD</b>`
+          : `💰 Amount: <b>${s.selectedSol} SOL</b>`;
+
         await ctx.reply(
-          `✅ <b>Transaction Submitted!</b>\n\n` +
-          `🔗 TX Hash:\n<code>${txHash}</code>\n\n` +
-          `🚀 Your order will be processed within <b>5–30 minutes</b> after on-chain confirmation.\n` +
-          `📬 You'll be notified when your boost goes live!\n\n` +
-          `Need help? Contact @mrpooh`,
+          `✅ <b>Transaction Accepted!</b>\n\n` +
+          `${verifiedLine}\n` +
+          `${amountLine}\n\n` +
+          `🔗 TX Hash:\n<code>${raw}</code>\n\n` +
+          `🚀 Your boost will start within <b>5–30 minutes</b>.\n` +
+          `📬 You'll be notified here when it goes live!\n\n` +
+          `💬 Need help? @mrpooh`,
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
+
         await notifyAdmin(
-          `💸 <b>TX Hash Submitted</b>\n` +
-          `👤 ${ctx.from.first_name}${ctx.from.username ? " (@" + ctx.from.username + ")" : ""}\n` +
-          `🆔 <code>${ctx.from.id}</code>\n` +
-          `🔗 TX: <code>${txHash}</code>\n` +
-          `⚙️ ${s.serviceLabel ?? "N/A"}\n` +
-          `💰 ${s.boostType === "eth_trending" ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}\n` +
-          `🆔 Order: <code>${s.orderId ?? "N/A"}</code>\n` +
-          `📜 CA: <code>${s.contractAddress ?? "N/A"}</code>`
+          `💸 <b>TX Submitted & ${result.confirmed ? "VERIFIED ✅" : "PENDING ⏳"}</b>\n\n` +
+          `👤 ${ctx.from.first_name}${ctx.from.username ? ` (@${ctx.from.username})` : ""}\n` +
+          `🆔 User: <code>${ctx.from.id}</code>\n` +
+          `🔗 TX: <code>${raw}</code>\n` +
+          `⛓ Chain: ${chainLabel}\n` +
+          `✅ On-chain: ${result.confirmed ? "Confirmed" : "Unverified (RPC timeout)"}\n` +
+          `${result.recipient ? `📮 Recipient: <code>${result.recipient}</code>\n` : ""}` +
+          `${result.lamports  ? `💰 Lamports: ${result.lamports} (${(result.lamports/1e9).toFixed(4)} SOL)\n` : ""}` +
+          `⚙️ Service: ${s.serviceLabel ?? "N/A"}\n` +
+          `💵 Cost: ${s.boostType === "eth_trending" ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}\n` +
+          `📜 CA: <code>${s.contractAddress ?? "N/A"}</code>\n` +
+          `🆔 Order: <code>${s.orderId ?? "N/A"}</code>`
         );
         break;
       }

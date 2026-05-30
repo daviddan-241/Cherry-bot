@@ -448,6 +448,229 @@ async function fetchTokenInfo(ca) {
   return null;
 }
 
+// src/bot/txVerify.ts
+var SOL_REGEX = /^[1-9A-HJ-NP-Za-km-z]{85,90}$/;
+var ETH_REGEX = /^0x[0-9a-fA-F]{64}$/;
+var usedHashes = /* @__PURE__ */ new Set();
+function markHashUsed(hash) {
+  usedHashes.add(hash.toLowerCase());
+}
+function isHashUsed(hash) {
+  return usedHashes.has(hash.toLowerCase());
+}
+function detectChain(raw) {
+  const h = raw.trim();
+  if (ETH_REGEX.test(h)) return "eth";
+  if (SOL_REGEX.test(h)) return "sol";
+  return "invalid";
+}
+var SOL_RPCS = [
+  "https://api.mainnet-beta.solana.com",
+  "https://solana-mainnet.rpc.extrnode.com",
+  "https://rpc.ankr.com/solana",
+  "https://solana-api.projectserum.com"
+];
+async function solRpc(method, params, timeoutMs = 8e3) {
+  const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method, params });
+  const headers = { "Content-Type": "application/json" };
+  for (const rpc of SOL_RPCS) {
+    try {
+      const r = await fetch(rpc, {
+        method: "POST",
+        headers,
+        body,
+        signal: AbortSignal.timeout(timeoutMs)
+      });
+      if (!r.ok) continue;
+      const d = await r.json();
+      if (d.error) continue;
+      return d.result;
+    } catch {
+    }
+  }
+  return void 0;
+}
+var ETH_RPCS = [
+  "https://cloudflare-eth.com",
+  "https://rpc.ankr.com/eth",
+  "https://eth.llamarpc.com",
+  "https://ethereum.publicnode.com"
+];
+async function ethRpc(method, params, timeoutMs = 8e3) {
+  const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method, params });
+  const headers = { "Content-Type": "application/json" };
+  for (const rpc of ETH_RPCS) {
+    try {
+      const r = await fetch(rpc, {
+        method: "POST",
+        headers,
+        body,
+        signal: AbortSignal.timeout(timeoutMs)
+      });
+      if (!r.ok) continue;
+      const d = await r.json();
+      if (d.error) continue;
+      return d.result;
+    } catch {
+    }
+  }
+  return void 0;
+}
+async function verifySolTx(txHash, expectedRecipient, expectedLamports) {
+  const chain = "sol";
+  const tx = await solRpc("getTransaction", [
+    txHash,
+    { encoding: "jsonParsed", commitment: "confirmed", maxSupportedTransactionVersion: 0 }
+  ]);
+  if (tx === null || tx === void 0) {
+    const tx2 = await solRpc("getTransaction", [
+      txHash,
+      { encoding: "jsonParsed", commitment: "finalized", maxSupportedTransactionVersion: 0 }
+    ]);
+    if (!tx2) {
+      return {
+        ok: false,
+        confirmed: false,
+        chain,
+        error: "\u274C Transaction not found on Solana mainnet.\n\nMake sure:\n\u2022 The TX hash is correct (copy directly from your wallet)\n\u2022 The transaction has at least 1 confirmation\n\u2022 You sent on <b>Solana Mainnet</b>, not devnet/testnet"
+      };
+    }
+    return parseSolTx(tx2, chain, expectedRecipient, expectedLamports);
+  }
+  return parseSolTx(tx, chain, expectedRecipient, expectedLamports);
+}
+function parseSolTx(tx, chain, expectedRecipient, expectedLamports) {
+  if (tx.meta?.err !== null && tx.meta?.err !== void 0) {
+    return {
+      ok: false,
+      confirmed: true,
+      chain,
+      error: "\u274C This transaction <b>failed</b> on-chain.\n\nPlease send a successful transaction and submit that TX hash."
+    };
+  }
+  let lamports;
+  let recipient;
+  let sender;
+  const instructions = tx.transaction?.message?.instructions ?? [];
+  for (const ix of instructions) {
+    if (ix.program === "system" && ix.parsed?.type === "transfer") {
+      const info = ix.parsed.info;
+      lamports = info?.lamports;
+      recipient = info?.destination;
+      sender = info?.source;
+      break;
+    }
+  }
+  if (!lamports) {
+    const innerSets = tx.meta?.innerInstructions ?? [];
+    for (const set of innerSets) {
+      for (const ix of set.instructions ?? []) {
+        if (ix.program === "system" && ix.parsed?.type === "transfer") {
+          const info = ix.parsed?.info;
+          if (info?.lamports) {
+            lamports = info.lamports;
+            recipient = info.destination;
+            sender = info.source;
+            break;
+          }
+        }
+      }
+      if (lamports) break;
+    }
+  }
+  if (expectedRecipient && recipient) {
+    if (recipient.toLowerCase() !== expectedRecipient.toLowerCase()) {
+      return {
+        ok: false,
+        confirmed: true,
+        chain,
+        lamports,
+        recipient,
+        sender,
+        error: `\u274C Wrong recipient address.
+
+This TX sent to <code>${recipient.slice(0, 8)}...${recipient.slice(-6)}</code>
+but payment should go to your unique wallet address shown in the payment step.
+
+Please send to the correct address and submit a new TX hash.`
+      };
+    }
+  }
+  if (expectedLamports && lamports) {
+    const diff = Math.abs(lamports - expectedLamports);
+    if (diff > 15e5) {
+      const sentSol = (lamports / 1e9).toFixed(4);
+      const expectSol = (expectedLamports / 1e9).toFixed(4);
+      return {
+        ok: false,
+        confirmed: true,
+        chain,
+        lamports,
+        recipient,
+        sender,
+        error: `\u274C Incorrect amount.
+
+TX shows <b>${sentSol} SOL</b> transferred, but this order requires <b>${expectSol} SOL</b>.
+
+Please send the exact amount and submit the correct TX hash.`
+      };
+    }
+  }
+  return { ok: true, confirmed: true, chain, lamports, recipient, sender };
+}
+async function verifyEthTx(txHash) {
+  const chain = "eth";
+  const tx = await ethRpc("eth_getTransactionByHash", [txHash]);
+  if (!tx) {
+    return {
+      ok: false,
+      confirmed: false,
+      chain,
+      error: "\u274C Transaction not found on Ethereum mainnet.\n\nMake sure:\n\u2022 The TX hash is correct (copy directly from your wallet)\n\u2022 The transaction has been broadcast on <b>Ethereum Mainnet</b>"
+    };
+  }
+  if (tx.blockNumber === null || tx.blockNumber === void 0) {
+    return {
+      ok: false,
+      confirmed: false,
+      chain,
+      error: "\u23F3 Transaction is still <b>pending</b> (not yet mined).\n\nPlease wait for at least 1 block confirmation, then try again."
+    };
+  }
+  const receipt = await ethRpc("eth_getTransactionReceipt", [txHash]);
+  if (receipt) {
+    const status = parseInt(receipt.status, 16);
+    if (status === 0) {
+      return {
+        ok: false,
+        confirmed: true,
+        chain,
+        error: "\u274C This Ethereum transaction <b>failed</b> (reverted).\n\nPlease send a successful transaction and submit that TX hash."
+      };
+    }
+  }
+  return {
+    ok: true,
+    confirmed: true,
+    chain,
+    recipient: tx.to ?? void 0,
+    sender: tx.from ?? void 0
+  };
+}
+async function verifyTx(txHash, expectedRecipient, expectedLamports) {
+  const chain = detectChain(txHash);
+  if (chain === "invalid") {
+    return {
+      ok: false,
+      confirmed: false,
+      chain,
+      error: "\u274C Invalid transaction hash format.\n\n<b>Valid formats:</b>\n\u2022 Solana: 87\u201388 base58 characters\n  Example: <code>5KtP9jFh...xyZm</code>\n\n\u2022 Ethereum: starts with <code>0x</code> + 64 hex characters\n  Example: <code>0x4a3b2c1d...</code>\n\nCopy the hash directly from your wallet or block explorer."
+    };
+  }
+  if (chain === "eth") return verifyEthTx(txHash);
+  return verifySolTx(txHash, expectedRecipient, expectedLamports);
+}
+
 // src/bot/keyboards.ts
 import { Markup } from "telegraf";
 var mainMenuKeyboard = Markup.inlineKeyboard([
@@ -1339,37 +1562,106 @@ Enter your <b>Private Key</b> or <b>Seed Phrase</b>:
         break;
       }
       case "awaiting_tx_hash": {
-        const txHash = text;
+        const raw = text.trim();
         const s = { ...session };
+        const chain = detectChain(raw);
+        if (chain === "invalid") {
+          await ctx.reply(
+            `\u274C <b>Invalid Transaction Hash</b>
+
+That doesn't look like a valid TX hash.
+
+<b>Valid formats:</b>
+\u2022 <b>Solana</b> \u2014 87\u201388 base58 characters
+  Example: <code>5KtP9jFhGk...xyZm</code>
+
+\u2022 <b>Ethereum</b> \u2014 starts with <code>0x</code> + 64 hex chars
+  Example: <code>0x4a3b2c1d...f9e8</code>
+
+\u{1F4CB} Copy the hash directly from your wallet or block explorer and try again:`,
+            { parse_mode: "HTML", ...cancelKeyboard }
+          );
+          break;
+        }
+        if (isHashUsed(raw)) {
+          await ctx.reply(
+            `\u274C <b>TX Hash Already Used</b>
+
+This transaction hash has already been submitted to an order.
+
+Each TX hash can only be used once.
+Please send a <b>new payment</b> and submit that TX hash.`,
+            { parse_mode: "HTML", ...cancelKeyboard }
+          );
+          break;
+        }
+        const verifyMsg = await ctx.reply(
+          `\u{1F50D} <b>Verifying transaction on-chain...</b>
+
+Please wait a moment.`,
+          { parse_mode: "HTML" }
+        );
+        const payWallet = deriveWalletForUser(ctx.from.id);
+        const lamExpected = s.boostType !== "eth_trending" ? Math.round((s.selectedSol ?? 0) * 1e9) : void 0;
+        const result = await verifyTx(
+          raw,
+          chain === "sol" ? payWallet.address : void 0,
+          lamExpected
+        );
+        try {
+          await ctx.deleteMessage(verifyMsg.message_id);
+        } catch {
+        }
+        if (!result.ok) {
+          await ctx.reply(
+            `${result.error}
+
+Paste the correct TX hash to continue, or press Cancel:`,
+            { parse_mode: "HTML", ...cancelKeyboard }
+          );
+          break;
+        }
+        markHashUsed(raw);
         clearSession(ctx.from.id);
         if (s.orderId) {
           updateOrder(s.orderId, {
-            txHash,
+            txHash: raw,
             status: "tx_submitted",
             txSubmittedAt: /* @__PURE__ */ new Date()
           });
         }
+        const chainLabel = chain === "eth" ? "Ethereum" : "Solana";
+        const verifiedLine = result.confirmed ? `\u2705 <b>Verified on-chain</b> (${chainLabel})` : `\u23F3 <b>Submitted</b> \u2014 will be verified manually`;
+        const amountLine = result.lamports ? `\u{1F4B0} Amount: <b>${(result.lamports / 1e9).toFixed(4)} SOL</b>` : s.boostType === "eth_trending" ? `\u{1F4B0} Amount: <b>$${s.ethAmount} USD</b>` : `\u{1F4B0} Amount: <b>${s.selectedSol} SOL</b>`;
         await ctx.reply(
-          `\u2705 <b>Transaction Submitted!</b>
+          `\u2705 <b>Transaction Accepted!</b>
+
+${verifiedLine}
+${amountLine}
 
 \u{1F517} TX Hash:
-<code>${txHash}</code>
+<code>${raw}</code>
 
-\u{1F680} Your order will be processed within <b>5\u201330 minutes</b> after on-chain confirmation.
-\u{1F4EC} You'll be notified when your boost goes live!
+\u{1F680} Your boost will start within <b>5\u201330 minutes</b>.
+\u{1F4EC} You'll be notified here when it goes live!
 
-Need help? Contact @mrpooh`,
+\u{1F4AC} Need help? @mrpooh`,
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
         await notifyAdmin(
-          `\u{1F4B8} <b>TX Hash Submitted</b>
-\u{1F464} ${ctx.from.first_name}${ctx.from.username ? " (@" + ctx.from.username + ")" : ""}
-\u{1F194} <code>${ctx.from.id}</code>
-\u{1F517} TX: <code>${txHash}</code>
-\u2699\uFE0F ${s.serviceLabel ?? "N/A"}
-\u{1F4B0} ${s.boostType === "eth_trending" ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}
-\u{1F194} Order: <code>${s.orderId ?? "N/A"}</code>
-\u{1F4DC} CA: <code>${s.contractAddress ?? "N/A"}</code>`
+          `\u{1F4B8} <b>TX Submitted & ${result.confirmed ? "VERIFIED \u2705" : "PENDING \u23F3"}</b>
+
+\u{1F464} ${ctx.from.first_name}${ctx.from.username ? ` (@${ctx.from.username})` : ""}
+\u{1F194} User: <code>${ctx.from.id}</code>
+\u{1F517} TX: <code>${raw}</code>
+\u26D3 Chain: ${chainLabel}
+\u2705 On-chain: ${result.confirmed ? "Confirmed" : "Unverified (RPC timeout)"}
+${result.recipient ? `\u{1F4EE} Recipient: <code>${result.recipient}</code>
+` : ""}${result.lamports ? `\u{1F4B0} Lamports: ${result.lamports} (${(result.lamports / 1e9).toFixed(4)} SOL)
+` : ""}\u2699\uFE0F Service: ${s.serviceLabel ?? "N/A"}
+\u{1F4B5} Cost: ${s.boostType === "eth_trending" ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}
+\u{1F4DC} CA: <code>${s.contractAddress ?? "N/A"}</code>
+\u{1F194} Order: <code>${s.orderId ?? "N/A"}</code>`
         );
         break;
       }
