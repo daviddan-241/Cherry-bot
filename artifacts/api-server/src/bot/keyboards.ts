@@ -47,21 +47,24 @@ export const cancelKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("❌ Cancel", "back_main")],
 ]);
 
-// ── Volume Boost packages ─────────────────────────────────────────────────────
+// ── Volume Boost packages — matches reference bot layout exactly ──────────────
 export const volumeBoostKeyboard = Markup.inlineKeyboard([
   [
-    Markup.button.callback("🥉 Iron   — 1.50 SOL",    "vol_iron"),
-    Markup.button.callback("🥈 Bronze — 2.50 SOL",    "vol_bronze"),
+    Markup.button.callback("1.50 SOL - Iron",     "vol_iron"),
+    Markup.button.callback("2.50 SOL - Bronze",   "vol_bronze"),
   ],
   [
-    Markup.button.callback("🥇 Gold   — 3.50 SOL",    "vol_gold"),
-    Markup.button.callback("⚡ Silver  — 5.00 SOL",   "vol_silver"),
+    Markup.button.callback("3.50 SOL - Gold",     "vol_gold"),
+    Markup.button.callback("7.50 SOL - Platinum", "vol_platinum"),
   ],
   [
-    Markup.button.callback("💎 Platinum — 7.50 SOL",  "vol_platinum"),
-    Markup.button.callback("💠 Diamond  — 10.50 SOL", "vol_diamond"),
+    Markup.button.callback("5.00 SOL - Silver",   "vol_silver"),
+    Markup.button.callback("10.50 SOL - Diamond", "vol_diamond"),
   ],
-  [Markup.button.callback("⬅️ Back to Menu", "back_main")],
+  [
+    Markup.button.callback("⬅️ Back",    "back_main"),
+    Markup.button.callback("🏠 Main Menu", "back_main"),
+  ],
 ]);
 
 // ── Trending type selector ────────────────────────────────────────────────────

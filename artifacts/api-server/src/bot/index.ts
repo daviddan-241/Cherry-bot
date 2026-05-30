@@ -135,14 +135,13 @@ async function showStartBumping(ctx: any) {
 
 async function showVolumeBoost(ctx: any) {
   const caption =
-    `📊 <b>Volume Boost Packages</b>\n\n` +
-    `🥉 Iron     —  $50,000 Volume    —  1.50 SOL\n` +
-    `🥈 Bronze   — $250,000 Volume    —  2.50 SOL\n` +
-    `🥇 Gold     — $100,000 Volume    —  3.50 SOL\n` +
-    `⚡ Silver   — $100M Volume       —  5.00 SOL\n` +
-    `💎 Platinum — $500,000 Volume    —  7.50 SOL\n` +
-    `💠 Diamond  — $2,500,000 Volume  — 10.50 SOL\n\n` +
-    `👇 Select a package:`;
+    `✏️ <b>Iron Package - $50,000 Volume</b>\n` +
+    `✏️ <b>Bronze Package - $250,000 Volume</b>\n` +
+    `✏️ <b>Silver Package - $100,000,000 Volume</b>\n` +
+    `✏️ <b>Gold Package - $100,000 Volume</b>\n` +
+    `✏️ <b>Platinum Package - $500,000 Volume</b>\n` +
+    `✏️ <b>Diamond Package - $2,500,000 Volume</b>\n\n` +
+    `Please select the package below...`;
   await sendPhoto(ctx, IMG.volume, caption, volumeBoostKeyboard);
 }
 

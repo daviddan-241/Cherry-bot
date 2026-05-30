@@ -489,18 +489,21 @@ var cancelKeyboard = Markup.inlineKeyboard([
 ]);
 var volumeBoostKeyboard = Markup.inlineKeyboard([
   [
-    Markup.button.callback("\u{1F949} Iron   \u2014 1.50 SOL", "vol_iron"),
-    Markup.button.callback("\u{1F948} Bronze \u2014 2.50 SOL", "vol_bronze")
+    Markup.button.callback("1.50 SOL - Iron", "vol_iron"),
+    Markup.button.callback("2.50 SOL - Bronze", "vol_bronze")
   ],
   [
-    Markup.button.callback("\u{1F947} Gold   \u2014 3.50 SOL", "vol_gold"),
-    Markup.button.callback("\u26A1 Silver  \u2014 5.00 SOL", "vol_silver")
+    Markup.button.callback("3.50 SOL - Gold", "vol_gold"),
+    Markup.button.callback("7.50 SOL - Platinum", "vol_platinum")
   ],
   [
-    Markup.button.callback("\u{1F48E} Platinum \u2014 7.50 SOL", "vol_platinum"),
-    Markup.button.callback("\u{1F4A0} Diamond  \u2014 10.50 SOL", "vol_diamond")
+    Markup.button.callback("5.00 SOL - Silver", "vol_silver"),
+    Markup.button.callback("10.50 SOL - Diamond", "vol_diamond")
   ],
-  [Markup.button.callback("\u2B05\uFE0F Back to Menu", "back_main")]
+  [
+    Markup.button.callback("\u2B05\uFE0F Back", "back_main"),
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
+  ]
 ]);
 var trendingMenuKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u2600\uFE0F SOL Trending", "trend_sol")],
@@ -714,16 +717,14 @@ For support: @mrpooh
   await editOrSend(ctx, text, solPickerKeyboard);
 }
 async function showVolumeBoost(ctx) {
-  const caption = `\u{1F4CA} <b>Volume Boost Packages</b>
+  const caption = `\u270F\uFE0F <b>Iron Package - $50,000 Volume</b>
+\u270F\uFE0F <b>Bronze Package - $250,000 Volume</b>
+\u270F\uFE0F <b>Silver Package - $100,000,000 Volume</b>
+\u270F\uFE0F <b>Gold Package - $100,000 Volume</b>
+\u270F\uFE0F <b>Platinum Package - $500,000 Volume</b>
+\u270F\uFE0F <b>Diamond Package - $2,500,000 Volume</b>
 
-\u{1F949} Iron     \u2014  $50,000 Volume    \u2014  1.50 SOL
-\u{1F948} Bronze   \u2014 $250,000 Volume    \u2014  2.50 SOL
-\u{1F947} Gold     \u2014 $100,000 Volume    \u2014  3.50 SOL
-\u26A1 Silver   \u2014 $100M Volume       \u2014  5.00 SOL
-\u{1F48E} Platinum \u2014 $500,000 Volume    \u2014  7.50 SOL
-\u{1F4A0} Diamond  \u2014 $2,500,000 Volume  \u2014 10.50 SOL
-
-\u{1F447} Select a package:`;
+Please select the package below...`;
   await sendPhoto(ctx, IMG.volume, caption, volumeBoostKeyboard);
 }
 async function showTrendingBoost(ctx) {
