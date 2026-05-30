@@ -10,7 +10,7 @@ if (Number.isNaN(port) || port <= 0) throw new Error(`Invalid PORT: "${rawPort}"
 const token = process.env["TELEGRAM_BOT_TOKEN"];
 if (!token) {
   logger.warn("TELEGRAM_BOT_TOKEN not set — starting HTTP server only");
-  app.listen(port, () => logger.info({ port }, "Server listening (no bot)"));
+  app.listen(port, "0.0.0.0", () => logger.info({ port }, "Server listening (no bot)"));
 } else {
   const bot = createBot();
 
@@ -20,30 +20,65 @@ if (!token) {
     : process.env["WEBHOOK_DOMAIN"] ?? null;
 
   if (webhookDomain) {
-    // ── Webhook mode (Render production) ─────────────────────────────────
+    // ── Webhook mode (Render production) ─────────────────────────────────────
     const secretPath = `/telegraf/${bot.secretPathComponent()}`;
+
+    // Mount Telegraf BEFORE any body-parsing middleware so it reads raw body
     app.use(bot.webhookCallback(secretPath));
 
-    app.listen(port, () => {
+    const server = app.listen(port, "0.0.0.0", () => {
       logger.info({ port, mode: "webhook", webhookDomain }, "Server listening");
+
+      // Register webhook with Telegram
       bot.telegram
-        .setWebhook(`${webhookDomain}${secretPath}`)
-        .then(() => logger.info({ webhookDomain }, "Webhook registered"))
+        .setWebhook(`${webhookDomain}${secretPath}`, {
+          allowed_updates: ["message", "callback_query"],
+        })
+        .then(() => logger.info({ webhookDomain, secretPath }, "Webhook registered"))
         .catch((err) => logger.error({ err }, "Failed to set webhook"));
     });
+
+    // Keep Render free tier alive — ping own health every 10 min
+    const keepAliveInterval = setInterval(() => {
+      fetch(`${webhookDomain}/health`)
+        .then(() => logger.debug("Keep-alive ping OK"))
+        .catch((err) => logger.debug({ err }, "Keep-alive ping failed"));
+    }, 10 * 60 * 1000);
+
+    // Graceful shutdown for Render SIGTERM
+    const shutdown = (signal: string) => {
+      logger.info({ signal }, "Shutting down gracefully");
+      clearInterval(keepAliveInterval);
+      bot.telegram.deleteWebhook().catch(() => {});
+      server.close(() => {
+        logger.info("HTTP server closed");
+        process.exit(0);
+      });
+      setTimeout(() => process.exit(1), 10_000);
+    };
+
+    process.once("SIGINT",  () => shutdown("SIGINT"));
+    process.once("SIGTERM", () => shutdown("SIGTERM"));
+
   } else {
-    // ── Long-poll mode (local / Replit dev) ───────────────────────────────
+    // ── Long-poll mode (Replit dev / local) ──────────────────────────────────
     bot.telegram.deleteWebhook({ drop_pending_updates: true }).catch(() => {});
 
-    app.listen(port, () => {
+    const server = app.listen(port, "0.0.0.0", () => {
       logger.info({ port, mode: "long-poll" }, "Server listening");
       bot
         .launch({ dropPendingUpdates: true })
-        .then(() => logger.info("Bot launched (long-poll)"))
         .catch((err: unknown) => logger.error({ err }, "Bot launch failed"));
     });
-  }
 
-  process.once("SIGINT", () => bot.stop("SIGINT"));
-  process.once("SIGTERM", () => bot.stop("SIGTERM"));
+    const shutdown = (signal: string) => {
+      logger.info({ signal }, "Shutting down");
+      bot.stop(signal);
+      server.close(() => process.exit(0));
+      setTimeout(() => process.exit(1), 5_000);
+    };
+
+    process.once("SIGINT",  () => shutdown("SIGINT"));
+    process.once("SIGTERM", () => shutdown("SIGTERM"));
+  }
 }

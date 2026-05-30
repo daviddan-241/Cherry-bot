@@ -5,7 +5,9 @@ import cors from "cors";
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+// NOTE: express.json() is NOT applied globally here so Telegraf's webhook
+// middleware can read the raw body itself (required for webhook mode on Render).
+// It is added by individual routes that need it.
 app.use(cookieParser());
 
 app.get("/health", (_req, res) => {

@@ -4,6 +4,7 @@ services:
     runtime: node
     region: oregon
     plan: free
+    healthCheckPath: /health
     buildCommand: npm install -g pnpm && pnpm install --no-frozen-lockfile && pnpm --filter @workspace/api-server run build
     startCommand: pnpm --filter @workspace/api-server run start
     envVars:
