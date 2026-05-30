@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cherry Bot — Admin Dashboard</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0d0f14;--surface:#161920;--surface2:#1e2229;--border:#2a2f3a;
+    --accent:#22c55e;--accent2:#16a34a;--red:#ef4444;--yellow:#f59e0b;
+    --blue:#3b82f6;--purple:#a855f7;--text:#e2e8f0;--muted:#64748b;
+    --radius:10px;
+  }
+  body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh}
+  a{color:var(--accent);text-decoration:none}
+
+  /* ── Layout ── */
+  .wrap{max-width:1200px;margin:0 auto;padding:24px 16px}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px}
+  .logo{display:flex;align-items:center;gap:10px;font-size:1.3rem;font-weight:700}
+  .logo span{color:var(--accent)}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;font-size:.75rem;font-weight:600}
+  .badge.online{background:rgba(34,197,94,.15);color:var(--accent);border:1px solid rgba(34,197,94,.3)}
+  .badge.offline{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  /* ── Stats grid ── */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:28px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px}
+  .card-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+  .card-value{font-size:1.8rem;font-weight:700;line-height:1}
+  .card-value.green{color:var(--accent)}
+  .card-value.yellow{color:var(--yellow)}
+  .card-value.blue{color:var(--blue)}
+  .card-value.purple{color:var(--purple)}
+
+  /* ── Table ── */
+  .section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:28px}
+  .section-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
+  .section-title{font-weight:600;font-size:.95rem}
+  .refresh-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:.8rem;transition:background .2s}
+  .refresh-btn:hover{background:var(--border)}
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:.82rem}
+  th{padding:10px 16px;text-align:left;color:var(--muted);font-weight:500;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+  td{padding:11px 16px;border-top:1px solid var(--border);white-space:nowrap}
+  tr:hover td{background:var(--surface2)}
+  .mono{font-family:'Courier New',monospace;font-size:.78rem;color:var(--muted)}
+  .status-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.72rem;font-weight:600}
+  .status-pending{background:rgba(245,158,11,.15);color:var(--yellow)}
+  .status-tx_submitted{background:rgba(59,130,246,.15);color:var(--blue)}
+  .status-completed{background:rgba(34,197,94,.15);color:var(--accent)}
+  .status-cancelled{background:rgba(239,68,68,.15);color:var(--red)}
+  .empty{text-align:center;padding:40px;color:var(--muted);font-size:.9rem}
+
+  /* ── Auth overlay ── */
+  .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center}
+  .auth-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:36px;width:100%;max-width:380px;text-align:center}
+  .auth-box h2{margin-bottom:8px}
+  .auth-box p{color:var(--muted);font-size:.85rem;margin-bottom:24px}
+  .auth-input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:6px;font-size:.9rem;outline:none;transition:border-color .2s;margin-bottom:12px}
+  .auth-input:focus{border-color:var(--accent)}
+  .auth-btn{width:100%;background:var(--accent);color:#000;border:none;padding:11px;border-radius:6px;font-weight:700;cursor:pointer;font-size:.9rem}
+  .auth-btn:hover{background:var(--accent2)}
+  .auth-err{color:var(--red);font-size:.82rem;margin-top:8px}
+
+  /* ── Uptime ── */
+  .meta-row{display:flex;gap:20px;flex-wrap:wrap;color:var(--muted);font-size:.78rem;margin-bottom:20px}
+  .meta-item strong{color:var(--text)}
+</style>
+</head>
+<body>
+
+<!-- Auth gate (replaced by JS if token in URL/localStorage) -->
+<div id="auth-screen" class="auth-wrap" style="display:none">
+  <div class="auth-box">
+    <div style="font-size:2rem;margin-bottom:12px">🍒</div>
+    <h2>Cherry Bot</h2>
+    <p>Enter your admin token to access the dashboard</p>
+    <input id="token-input" class="auth-input" type="password" placeholder="Admin token" autocomplete="off">
+    <button class="auth-btn" onclick="submitToken()">Login</button>
+    <div id="auth-err" class="auth-err"></div>
+  </div>
+</div>
+
+<!-- Main dashboard (hidden until authenticated) -->
+<div id="dashboard" class="wrap" style="display:none">
+  <header>
+    <div class="logo">🍒 <span>Cherry Bot</span> Dashboard</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span id="bot-status" class="badge offline"><span class="dot"></span> Offline</span>
+      <button class="refresh-btn" onclick="loadAll()">⟳ Refresh</button>
+    </div>
+  </header>
+
+  <div class="meta-row">
+    <div>🕐 Last refresh: <strong id="last-refresh">—</strong></div>
+    <div>🆙 Server uptime: <strong id="uptime">—</strong></div>
+    <div>🤖 Bot: <strong>@Boost_onDex_bot</strong></div>
+  </div>
+
+  <div class="stats" id="stats-grid">
+    <div class="card"><div class="card-label">Total Orders</div><div class="card-value green" id="stat-total">—</div></div>
+    <div class="card"><div class="card-label">Pending</div><div class="card-value yellow" id="stat-pending">—</div></div>
+    <div class="card"><div class="card-label">TX Submitted</div><div class="card-value blue" id="stat-tx">—</div></div>
+    <div class="card"><div class="card-label">Completed</div><div class="card-value green" id="stat-completed">—</div></div>
+    <div class="card"><div class="card-label">Total Users</div><div class="card-value purple" id="stat-users">—</div></div>
+    <div class="card"><div class="card-label">Active (5 min)</div><div class="card-value green" id="stat-active">—</div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">📋 Orders</div>
+      <button class="refresh-btn" onclick="loadOrders()">⟳ Refresh</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>User</th>
+            <th>Token</th>
+            <th>Service</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>TX Hash</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="orders-tbody">
+          <tr><td colspan="8" class="empty">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">👥 Active Sessions</div>
+      <button class="refresh-btn" onclick="loadSessions()">⟳ Refresh</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>User ID</th>
+            <th>Current Step</th>
+            <th>Service</th>
+            <th>Last Seen</th>
+          </tr>
+        </thead>
+        <tbody id="sessions-tbody">
+          <tr><td colspan="4" class="empty">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+let TOKEN = '';
+
+function getToken() {
+  const url = new URL(window.location.href);
+  return url.searchParams.get('token') || localStorage.getItem('cb_token') || '';
+}
+
+function submitToken() {
+  const t = document.getElementById('token-input').value.trim();
+  if (!t) { document.getElementById('auth-err').textContent = 'Please enter a token'; return; }
+  TOKEN = t;
+  localStorage.setItem('cb_token', t);
+  showDashboard();
+}
+
+async function showDashboard() {
+  // Verify token works
+  try {
+    const r = await fetch(`/api/stats?token=${TOKEN}`);
+    if (!r.ok) throw new Error('bad token');
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    loadAll();
+    setInterval(loadAll, 30000);
+  } catch {
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('auth-err').textContent = 'Invalid token. Use your Admin Telegram ID.';
+  }
+}
+
+async function api(path) {
+  const r = await fetch(`${path}?token=${TOKEN}`);
+  if (!r.ok) throw new Error('API error');
+  return r.json();
+}
+
+function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return new Date(iso).toLocaleDateString();
+}
+
+function statusBadge(s) {
+  return `<span class="status-badge status-${s}">${s.replace('_', ' ')}</span>`;
+}
+
+async function loadStats() {
+  try {
+    const d = await api('/api/stats');
+    document.getElementById('stat-total').textContent    = d.total ?? 0;
+    document.getElementById('stat-pending').textContent  = d.pending ?? 0;
+    document.getElementById('stat-tx').textContent       = d.txSubmitted ?? 0;
+    document.getElementById('stat-completed').textContent= d.completed ?? 0;
+    document.getElementById('stat-users').textContent    = d.totalUsers ?? 0;
+    document.getElementById('stat-active').textContent   = d.activeSessions ?? 0;
+    document.getElementById('uptime').textContent        = d.uptime ?? '—';
+    document.getElementById('bot-status').className = 'badge online';
+    document.getElementById('bot-status').innerHTML = '<span class="dot"></span> Online';
+  } catch {
+    document.getElementById('bot-status').className = 'badge offline';
+    document.getElementById('bot-status').innerHTML = '<span class="dot"></span> Offline';
+  }
+}
+
+async function loadOrders() {
+  try {
+    const orders = await api('/api/orders');
+    const tbody = document.getElementById('orders-tbody');
+    if (!orders.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty">No orders yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML = orders.map(o => `
+      <tr>
+        <td class="mono">${o.id}</td>
+        <td>${escHtml(o.userName)}${o.userHandle ? ' <span class="mono">@' + escHtml(o.userHandle) + '</span>' : ''}</td>
+        <td><b>${escHtml(o.tokenSymbol)}</b> <span class="mono">${escHtml(o.tokenName)}</span></td>
+        <td>${escHtml(o.service)}</td>
+        <td>${o.solAmount > 0 ? o.solAmount + ' SOL' : '$' + o.usdAmount + ' USD'}</td>
+        <td>${statusBadge(o.status)}</td>
+        <td class="mono">${o.txHash ? o.txHash.slice(0, 16) + '…' : '<span style="color:var(--muted)">—</span>'}</td>
+        <td>${timeAgo(o.createdAt)}</td>
+      </tr>`).join('');
+  } catch {
+    document.getElementById('orders-tbody').innerHTML = '<tr><td colspan="8" class="empty">Failed to load orders</td></tr>';
+  }
+}
+
+async function loadSessions() {
+  try {
+    const sessions = await api('/api/sessions');
+    const tbody = document.getElementById('sessions-tbody');
+    const active = sessions.filter(s => s.lastSeen && (Date.now() - new Date(s.lastSeen).getTime()) < 300000);
+    if (!active.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty">No active sessions</td></tr>';
+      return;
+    }
+    tbody.innerHTML = active.map(s => `
+      <tr>
+        <td class="mono">${s.userId}</td>
+        <td>${s.session.step ? '<b>' + escHtml(s.session.step) + '</b>' : '<span style="color:var(--muted)">idle</span>'}</td>
+        <td>${s.session.serviceLabel ? escHtml(s.session.serviceLabel) : '<span style="color:var(--muted)">—</span>'}</td>
+        <td>${timeAgo(s.lastSeen)}</td>
+      </tr>`).join('');
+  } catch {
+    document.getElementById('sessions-tbody').innerHTML = '<tr><td colspan="4" class="empty">Failed to load sessions</td></tr>';
+  }
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function loadAll() {
+  document.getElementById('last-refresh').textContent = new Date().toLocaleTimeString();
+  await Promise.all([loadStats(), loadOrders(), loadSessions()]);
+}
+
+// Boot
+TOKEN = getToken();
+if (TOKEN) {
+  showDashboard();
+} else {
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+</script>
+</body>
+</html>

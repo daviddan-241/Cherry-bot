@@ -1,5 +1,5 @@
 import { build } from "esbuild";
-import { cpSync, mkdirSync } from "fs";
+import { cpSync, mkdirSync, copyFileSync } from "fs";
 
 await build({
   entryPoints: ["src/index.ts"],
@@ -27,8 +27,11 @@ await build({
   ],
 });
 
-// Copy bot images into dist so __dirname resolution works at runtime
+// Copy bot images → dist/images/
 mkdirSync("dist/images", { recursive: true });
 cpSync("src/bot/images", "dist/images", { recursive: true });
 
-console.log("Build complete: dist/index.mjs (images copied)");
+// Copy admin dashboard HTML → dist/dashboard.html
+copyFileSync("src/dashboard.html", "dist/dashboard.html");
+
+console.log("Build complete: dist/index.mjs + images + dashboard.html");
