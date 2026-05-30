@@ -306,7 +306,7 @@ footer{border-top:1px solid var(--border);padding:20px 16px;max-width:1280px;mar
     <a href="https://t.me/pumpmints" target="_blank" class="icon-btn" title="Trending alerts @pumpmints">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
     </a>
-    <a href="https://t.me/Boost_onDex_bot" target="_blank" class="btn btn-green">🚀 Launch Bot</a>
+    <a id="nav-bot-btn" href="https://t.me/Boost_onDex_bot" target="_blank" class="btn btn-green">🚀 Launch Bot</a>
   </div>
 </nav>
 
@@ -386,7 +386,7 @@ footer{border-top:1px solid var(--border);padding:20px 16px;max-width:1280px;mar
       <div class="koth-mc" id="koth-mc">—</div>
       <div class="koth-mc-label">market cap</div>
       <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px;align-items:flex-end">
-        <a href="https://t.me/Boost_onDex_bot" target="_blank" class="btn btn-green btn-sm">🔥 Boost this</a>
+        <a id="koth-boost-btn" href="https://t.me/Boost_onDex_bot" target="_blank" class="btn btn-green btn-sm">🔥 Boost this</a>
         <a id="koth-link" href="https://pump.fun" target="_blank" class="btn btn-ghost btn-sm">View on pump.fun</a>
       </div>
     </div>
@@ -512,7 +512,7 @@ footer{border-top:1px solid var(--border);padding:20px 16px;max-width:1280px;mar
 <footer>
   <div class="flogo">pump<span class="dot">.</span>fun</div>
   <div class="flinks">
-    <a href="https://t.me/Boost_onDex_bot" target="_blank" class="flink">🤖 @Boost_onDex_bot</a>
+    <a id="footer-bot-link" href="https://t.me/Boost_onDex_bot" target="_blank" class="flink">🤖 @Boost_onDex_bot</a>
     <a href="https://t.me/mrpooh" target="_blank" class="flink">💬 Support @mrpooh</a>
     <a href="https://t.me/pumpmints" target="_blank" class="flink">📊 @pumpmints</a>
     <a href="https://t.me/pumpswap_pools" target="_blank" class="flink">🔔 @pumpswap_pools</a>
@@ -535,10 +535,31 @@ footer{border-top:1px solid var(--border);padding:20px 16px;max-width:1280px;mar
 
 <script>
 /* ─── CONFIG ─── */
-const BOT_URL     = 'https://t.me/Boost_onDex_bot';
-const SUPPORT_URL = 'https://t.me/mrpooh';
-const TREND_URL   = 'https://t.me/pumpmints';
-const ALERTS_URL  = 'https://t.me/pumpswap_pools';
+let BOT_URL     = 'https://t.me/Boost_onDex_bot';
+let SUPPORT_URL = 'https://t.me/mrpooh';
+let TREND_URL   = 'https://t.me/pumpmints';
+let ALERTS_URL  = 'https://t.me/pumpswap_pools';
+let BOT_USERNAME = 'Boost_onDex_bot';
+
+async function loadConfig(){
+  try{
+    const r=await fetch('/api/config');
+    if(!r.ok)return;
+    const c=await r.json();
+    if(c.botUsername)  BOT_USERNAME = c.botUsername;
+    if(c.botUrl)       BOT_URL      = c.botUrl;
+    if(c.supportUsername) SUPPORT_URL = `https://t.me/${c.supportUsername}`;
+    if(c.trendChannel)    TREND_URL   = `https://t.me/${c.trendChannel}`;
+    if(c.alertsChannel)   ALERTS_URL  = `https://t.me/${c.alertsChannel}`;
+    // Patch static DOM links
+    const navBtn = document.getElementById('nav-bot-btn');
+    if(navBtn){ navBtn.href=BOT_URL; navBtn.textContent=`🚀 @${BOT_USERNAME}`; }
+    const kothBoost = document.getElementById('koth-boost-btn');
+    if(kothBoost) kothBoost.href=BOT_URL;
+    const footerLink = document.getElementById('footer-bot-link');
+    if(footerLink){ footerLink.href=BOT_URL; footerLink.textContent=`🤖 @${BOT_USERNAME}`; }
+  }catch(e){}
+}
 
 const SERVICES = [
   { id:'bump',    emoji:'🟢', name:'Volume Bump',       ticker:'BUMP', badge:'LIVE',  badgeCls:'',
@@ -645,7 +666,7 @@ function openSvcModal(id){
     <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">Packages</div>
     ${s.packages.map(p=>`<div class="modal-stat"><span class="modal-stat-l">${esc(p.l)}</span><span class="modal-stat-r" style="color:var(--green)">${esc(p.l)}</span></div>`).join('')}
     <a href="${BOT_URL}" target="_blank" class="modal-btn">🚀 Start on Telegram Bot</a>
-    <div class="modal-note">Opens @Boost_onDex_bot · Support: <a href="${SUPPORT_URL}" target="_blank" style="color:var(--blue)">@mrpooh</a></div>
+    <div class="modal-note">Opens @${BOT_USERNAME} · Support: <a href="${SUPPORT_URL}" target="_blank" style="color:var(--blue)">@mrpooh</a></div>
   `;
   document.getElementById('modal').classList.add('open');
 }
@@ -875,6 +896,7 @@ function startLiveCounts(){
 }
 
 /* ─── INIT ─── */
+loadConfig();
 renderServices();
 loadTicker();
 loadKOTH();
