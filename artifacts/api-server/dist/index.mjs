@@ -1138,6 +1138,11 @@ var IMG = {
 };
 var ETH_ADDRESS = process.env.PAYMENT_ETH_ADDRESS ?? "";
 var SUPPORT_USERNAME = process.env.SUPPORT_USERNAME ?? "";
+function supportLink() {
+  if (!SUPPORT_USERNAME) return "";
+  const handle = SUPPORT_USERNAME.replace(/^@/, "");
+  return `<a href="https://t.me/${handle}">@${handle}</a>`;
+}
 async function delMsg(ctx) {
   try {
     await ctx.deleteMessage();
@@ -1280,9 +1285,10 @@ From 0.3 - 0.4 - 0.5 - 0.6 SOL bumps boost trend with mass volume of high stabil
 }
 async function showStartBumping(ctx) {
   await delMsg(ctx);
-  const support = SUPPORT_USERNAME ? `
+  const link = supportLink();
+  const support = link ? `
 
-For more information, please contact ${SUPPORT_USERNAME}` : "";
+For more information, contact: ${link}` : "";
   await ctx.reply(
     `The fastest and cheapest Telegram bot for creating bump orders.
 
@@ -1378,7 +1384,8 @@ Your security is our top priority. We use industry-standard encryption to protec
 }
 async function showSupport(ctx) {
   await delMsg(ctx);
-  const contactLine = SUPPORT_USERNAME ? `For assistance, contact: <b>${SUPPORT_USERNAME}</b>` : `Please reach out via the official channel.`;
+  const link = supportLink();
+  const contactLine = link ? `For assistance, contact: ${link}` : `Please reach out via the official channel.`;
   await ctx.reply(
     `\u{1F4AC} <b>Contact Support</b>
 

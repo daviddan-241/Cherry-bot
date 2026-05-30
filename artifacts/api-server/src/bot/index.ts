@@ -43,6 +43,13 @@ const IMG = {
 const ETH_ADDRESS      = process.env.PAYMENT_ETH_ADDRESS ?? "";
 const SUPPORT_USERNAME = process.env.SUPPORT_USERNAME    ?? "";
 
+// Returns a tappable Telegram link, e.g. <a href="https://t.me/handle">@handle</a>
+function supportLink(): string {
+  if (!SUPPORT_USERNAME) return "";
+  const handle = SUPPORT_USERNAME.replace(/^@/, "");
+  return `<a href="https://t.me/${handle}">@${handle}</a>`;
+}
+
 // ── Delete the current message (the one that triggered a button click) ─────────
 async function delMsg(ctx: any) {
   try { await ctx.deleteMessage(); } catch {}
@@ -188,7 +195,8 @@ async function sendWelcome(ctx: any) {
 
 async function showStartBumping(ctx: any) {
   await delMsg(ctx);
-  const support = SUPPORT_USERNAME ? `\n\nFor more information, please contact ${SUPPORT_USERNAME}` : "";
+  const link = supportLink();
+  const support = link ? `\n\nFor more information, contact: ${link}` : "";
   await ctx.reply(
     `The fastest and cheapest Telegram bot for creating bump orders.\n\n` +
     `<b>Supported Platform:</b>\n` +
@@ -272,8 +280,9 @@ async function showConnectWallet(ctx: any) {
 
 async function showSupport(ctx: any) {
   await delMsg(ctx);
-  const contactLine = SUPPORT_USERNAME
-    ? `For assistance, contact: <b>${SUPPORT_USERNAME}</b>`
+  const link = supportLink();
+  const contactLine = link
+    ? `For assistance, contact: ${link}`
     : `Please reach out via the official channel.`;
   await ctx.reply(
     `💬 <b>Contact Support</b>\n\n` +
