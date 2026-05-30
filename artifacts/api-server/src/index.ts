@@ -15,10 +15,8 @@ if (!token) {
   const bot = createBot();
 
   // Set bot profile on startup from env vars
-  const botDisplayName = process.env["BOT_DISPLAY_NAME"];
-  if (botDisplayName) {
-    bot.telegram.setMyName(botDisplayName).catch(() => {});
-  }
+  const botDisplayName = process.env["BOT_DISPLAY_NAME"] ?? "Pump.fun Booster Bot";
+  bot.telegram.setMyName(botDisplayName).catch(() => {});
   bot.telegram.setMyDescription(
     "🚀 #1 Pump.fun Booster Bot — Volume Boosting, SOL/ETH Trending, DexScreener & PumpFun Trending.\n\n" +
     "240K+ monthly users. Fast, cheap, real results.\n\n" +
