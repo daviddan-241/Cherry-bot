@@ -61,7 +61,7 @@ app.get("/api/config", (_req, res) => {
   res.json({
     botUsername,
     botUrl:          `https://t.me/${botUsername}`,
-    supportUsername: process.env["SUPPORT_USERNAME"] || "mrpooh",
+    supportUsername: process.env["SUPPORT_USERNAME"] || "",
     trendChannel:    process.env["TREND_CHANNEL"]    || "pumpmints",
     alertsChannel:   process.env["ALERTS_CHANNEL"]   || "pumpswap_pools",
   });

