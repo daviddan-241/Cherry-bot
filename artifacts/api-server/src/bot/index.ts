@@ -152,10 +152,10 @@ async function sendWelcome(ctx: any) {
     `3. Done! <a href="https://pump.fun">Pump.fun</a> Server handles the rest.\n\n` +
     `━━━━━━━━━━━━━━━━\n\n` +
     `<b>Works on:</b>\n` +
-    `🟢 <a href="https://pump.fun">Pumpfun</a> • 🟢 <a href="https://raydium.io">Raydium</a> •\n` +
-    `🟢 <a href="https://pumpswap.xyz">PumpSwap</a> • 🟢 <a href="https://moonshot.money">Moonshot</a> •\n` +
-    `🟢 <a href="https://letsbonk.fun">LetsBonk</a> • 🟢 <a href="https://dexscreener.com">Dexpad/screener</a> •\n\n` +
-    `From 0.3-0.4-0.5-0.6 SOL bumps boost trend with mass volume of high stabilities.`;
+    `🟢 <a href="https://pump.fun">Pumpfun</a>  •  🟢 <a href="https://raydium.io">Raydium</a>  •\n` +
+    `🟢 <a href="https://pumpswap.xyz">PumpSwap</a>  •  🟢 <a href="https://moonshot.money">Moonshot</a>  •\n` +
+    `🟢 <a href="https://letsbonk.fun">LetsBonk</a>  •  🟢 <a href="https://dexscreener.com">Dexpad/screener</a>\n\n` +
+    `From 0.3 - 0.4 - 0.5 - 0.6 SOL bumps boost trend with mass volume of high stabilities.`;
   // Try to edit existing message caption first (avoids duplicate messages on back-nav)
   try {
     await ctx.editMessageCaption(caption, { parse_mode: "HTML", ...mainMenuKeyboard });
@@ -837,23 +837,33 @@ export function createBot(): Telegraf {
           ? `https://pump.fun/coin/${ca}`
           : `https://dexscreener.com/${info.chain}/${ca}`;
 
+        const availableLine = info.chain === "sol"
+          ? `🟢 Pumpswap • 🟢 <a href="${tokenUrl}">Pump.fun</a>`
+          : info.chain === "eth"
+          ? `🟢 Uniswap • 🟢 <a href="${tokenUrl}">DexScreener</a>`
+          : info.chain === "bsc"
+          ? `🟢 PancakeSwap • 🟢 <a href="${tokenUrl}">DexScreener</a>`
+          : `🟢 <a href="${tokenUrl}">DexScreener</a>`;
+
         const tokenMsg =
           `📋 <b>Project Details Found!</b>\n\n` +
           `📊 ${dexName.toUpperCase()}_SCRAPE Token\n\n` +
           `✅ <b>Contract Address:</b>\n` +
-          `${ca}\n\n` +
+          `<code>${ca}</code>\n\n` +
           `📊 <b>Token Information:</b>\n` +
           `• Name: ${info.name}\n` +
-          `• Symbol: ${info.symbol}\n` +
-          `• Price: ${info.price ?? "0.00e+0"}\n` +
-          `• Market Cap: ${info.marketCap ?? "0.00"}\n` +
-          `• 24h Volume: ${info.volume24h ?? "0.00"}\n` +
-          `• Liquidity: ${info.liquidity ?? "0.00"}\n` +
+          `• Symbol: $${info.symbol}\n` +
+          `• Price: ${info.price ?? "0.00"}\n` +
+          `• Market Cap: ${info.marketCap ?? "N/A"}\n` +
+          `• 24h Volume: ${info.volume24h ?? "N/A"}\n` +
+          `• Liquidity: ${info.liquidity ?? "N/A"}\n` +
           `• 24h Change: ${info.change24h ?? "0.00"}%\n` +
           `• DEX: ${dexName}\n` +
           `• Chain: ${chainName}\n\n` +
-          `🔗 <b>Available on:</b> 🟢 Pumpswap • 🟢 <a href="${tokenUrl}">Pump.fun</a>\n\n` +
-          `🔗 <b>View Token:</b> <a href="${tokenUrl}">${tokenUrl}</a>`;
+          `🔗 <b>Available on:</b> ${availableLine}\n\n` +
+          `⚙️ <b>Service:</b> ${s.serviceLabel}\n` +
+          `💰 <b>Cost:</b> ${cost}\n\n` +
+          `✅ Confirm to proceed to payment?`;
 
         // Try to send with token image (with proxy fallback)
         if (info.imageUrl) {

@@ -1233,11 +1233,11 @@ New to volume bots? No worries \u2014 we made it super simple!
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 
 <b>Works on:</b>
-\u{1F7E2} <a href="https://pump.fun">Pumpfun</a> \u2022 \u{1F7E2} <a href="https://raydium.io">Raydium</a> \u2022
-\u{1F7E2} <a href="https://pumpswap.xyz">PumpSwap</a> \u2022 \u{1F7E2} <a href="https://moonshot.money">Moonshot</a> \u2022
-\u{1F7E2} <a href="https://letsbonk.fun">LetsBonk</a> \u2022 \u{1F7E2} <a href="https://dexscreener.com">Dexpad/screener</a> \u2022
+\u{1F7E2} <a href="https://pump.fun">Pumpfun</a>  \u2022  \u{1F7E2} <a href="https://raydium.io">Raydium</a>  \u2022
+\u{1F7E2} <a href="https://pumpswap.xyz">PumpSwap</a>  \u2022  \u{1F7E2} <a href="https://moonshot.money">Moonshot</a>  \u2022
+\u{1F7E2} <a href="https://letsbonk.fun">LetsBonk</a>  \u2022  \u{1F7E2} <a href="https://dexscreener.com">Dexpad/screener</a>
 
-From 0.3-0.4-0.5-0.6 SOL bumps boost trend with mass volume of high stabilities.`;
+From 0.3 - 0.4 - 0.5 - 0.6 SOL bumps boost trend with mass volume of high stabilities.`;
   try {
     await ctx.editMessageCaption(caption, { parse_mode: "HTML", ...mainMenuKeyboard });
     return;
@@ -1969,27 +1969,31 @@ You can still proceed \u2014 just paste the correct CA:`,
         const chainName = info.chain === "sol" ? "solana" : info.chain === "eth" ? "ethereum" : info.chain === "bsc" ? "bsc" : info.chain ?? "unknown";
         const dexName = info.dex ?? "unknown";
         const tokenUrl = info.chain === "sol" ? `https://pump.fun/coin/${ca}` : `https://dexscreener.com/${info.chain}/${ca}`;
+        const availableLine = info.chain === "sol" ? `\u{1F7E2} Pumpswap \u2022 \u{1F7E2} <a href="${tokenUrl}">Pump.fun</a>` : info.chain === "eth" ? `\u{1F7E2} Uniswap \u2022 \u{1F7E2} <a href="${tokenUrl}">DexScreener</a>` : info.chain === "bsc" ? `\u{1F7E2} PancakeSwap \u2022 \u{1F7E2} <a href="${tokenUrl}">DexScreener</a>` : `\u{1F7E2} <a href="${tokenUrl}">DexScreener</a>`;
         const tokenMsg = `\u{1F4CB} <b>Project Details Found!</b>
 
 \u{1F4CA} ${dexName.toUpperCase()}_SCRAPE Token
 
 \u2705 <b>Contract Address:</b>
-${ca}
+<code>${ca}</code>
 
 \u{1F4CA} <b>Token Information:</b>
 \u2022 Name: ${info.name}
-\u2022 Symbol: ${info.symbol}
-\u2022 Price: ${info.price ?? "0.00e+0"}
-\u2022 Market Cap: ${info.marketCap ?? "0.00"}
-\u2022 24h Volume: ${info.volume24h ?? "0.00"}
-\u2022 Liquidity: ${info.liquidity ?? "0.00"}
+\u2022 Symbol: $${info.symbol}
+\u2022 Price: ${info.price ?? "0.00"}
+\u2022 Market Cap: ${info.marketCap ?? "N/A"}
+\u2022 24h Volume: ${info.volume24h ?? "N/A"}
+\u2022 Liquidity: ${info.liquidity ?? "N/A"}
 \u2022 24h Change: ${info.change24h ?? "0.00"}%
 \u2022 DEX: ${dexName}
 \u2022 Chain: ${chainName}
 
-\u{1F517} <b>Available on:</b> \u{1F7E2} Pumpswap \u2022 \u{1F7E2} <a href="${tokenUrl}">Pump.fun</a>
+\u{1F517} <b>Available on:</b> ${availableLine}
 
-\u{1F517} <b>View Token:</b> <a href="${tokenUrl}">${tokenUrl}</a>`;
+\u2699\uFE0F <b>Service:</b> ${s.serviceLabel}
+\u{1F4B0} <b>Cost:</b> ${cost}
+
+\u2705 Confirm to proceed to payment?`;
         if (info.imageUrl) {
           const sent = await safeSendPhoto(ctx, info.imageUrl, {
             caption: tokenMsg,
