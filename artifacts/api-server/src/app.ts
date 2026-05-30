@@ -46,6 +46,18 @@ app.get("/favicon.ico", (_req, res) => res.status(204).end());
 app.get("/health", (_req, res) =>
   res.json({ status: "ok", ts: Date.now(), uptime: formatUptime(Date.now() - startTime) })
 );
+
+// ── Public config (bot username etc.) ────────────────────────────────────────
+app.get("/api/config", (_req, res) => {
+  const botUsername = process.env["BOT_USERNAME"] || "Boost_onDex_bot";
+  res.json({
+    botUsername,
+    botUrl:          `https://t.me/${botUsername}`,
+    supportUsername: process.env["SUPPORT_USERNAME"] || "mrpooh",
+    trendChannel:    process.env["TREND_CHANNEL"]    || "pumpmints",
+    alertsChannel:   process.env["ALERTS_CHANNEL"]   || "pumpswap_pools",
+  });
+});
 app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("/admin", (_req, res) => res.sendFile(path.join(__dirname, "dashboard.html")));
 
