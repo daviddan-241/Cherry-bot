@@ -14,6 +14,20 @@ if (!token) {
 } else {
   const bot = createBot();
 
+  // Set bot profile on startup from env vars
+  const botDisplayName = process.env["BOT_DISPLAY_NAME"];
+  if (botDisplayName) {
+    bot.telegram.setMyName(botDisplayName).catch(() => {});
+  }
+  bot.telegram.setMyDescription(
+    "🚀 #1 Pump.fun Booster Bot — Volume Boosting, SOL/ETH Trending, DexScreener & PumpFun Trending.\n\n" +
+    "240K+ monthly users. Fast, cheap, real results.\n\n" +
+    "Start with /start"
+  ).catch(() => {});
+  bot.telegram.setMyShortDescription(
+    "Volume Boost • SOL/ETH Trending • DexScreener • Pump.fun Trending"
+  ).catch(() => {});
+
   const renderHostname = process.env["RENDER_EXTERNAL_HOSTNAME"];
   const webhookDomain = renderHostname
     ? `https://${renderHostname}`
