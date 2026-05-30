@@ -111,8 +111,9 @@ async function sendWelcome(ctx: any) {
     `2. Pick duration.\n` +
     `3. Done! Pump.fun Server handles the rest.\n\n` +
     `<b>Works on:</b>\n` +
-    `🟢 Pumpfun  🟢 Raydium  🟢 PumpSwap\n` +
-    `🟢 Moonshot  🟢 LetsBonk  🟢 Dexpad/screener\n\n` +
+    `🟢 <a href="https://pump.fun">Pumpfun</a> • 🟢 <a href="https://raydium.io">Raydium</a> •\n` +
+    `🟢 <a href="https://pumpswap.xyz">PumpSwap</a> • 🟢 <a href="https://moonshot.money">Moonshot</a> •\n` +
+    `🟢 <a href="https://letsbonk.fun">LetsBonk</a> • 🟢 <a href="https://dexscreener.com">Dexpad/screener</a> •\n\n` +
     `From 0.3-0.4-0.5-0.6 SOL bumps, boost trend with mass volume and high stability.\n\n` +
     `👇 <b>Choose a service:</b>`;
   await sendPhoto(ctx, IMG.welcome, caption, mainMenuKeyboard);
