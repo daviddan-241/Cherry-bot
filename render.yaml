@@ -22,3 +22,5 @@ services:
         sync: false
       - key: PAYMENT_ETH_ADDRESS
         sync: false
+      - key: SUPPORT_USERNAME
+        sync: false
