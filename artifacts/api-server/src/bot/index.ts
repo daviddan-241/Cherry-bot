@@ -41,6 +41,28 @@ const IMG = {
 const SOL_ADDRESS = process.env.PAYMENT_SOL_ADDRESS ?? "";
 const ETH_ADDRESS = process.env.PAYMENT_ETH_ADDRESS ?? "";
 
+// ── Bot's own public base URL (for image proxy) ───────────────────────────────
+const BOT_SERVER_BASE =
+  process.env["RENDER_EXTERNAL_HOSTNAME"] ? `https://${process.env["RENDER_EXTERNAL_HOSTNAME"]}` :
+  process.env["REPLIT_DEV_DOMAIN"]        ? `https://${process.env["REPLIT_DEV_DOMAIN"]}` :
+  null;
+
+function proxyImgUrl(raw: string): string | null {
+  if (!raw || !BOT_SERVER_BASE) return null;
+  return `${BOT_SERVER_BASE}/api/img?url=${encodeURIComponent(raw)}`;
+}
+
+async function safeSendPhoto(ctx: any, url: string, opts: any): Promise<boolean> {
+  // 1) try direct URL
+  try { await ctx.replyWithPhoto(url, opts); return true; } catch {}
+  // 2) try via our image proxy (bypasses CORS/IPFS issues)
+  const proxied = proxyImgUrl(url);
+  if (proxied) {
+    try { await ctx.replyWithPhoto(proxied, opts); return true; } catch {}
+  }
+  return false;
+}
+
 // ── Package tables ─────────────────────────────────────────────────────────────
 interface VolPkg { label: string; sol: number; volume: string; service: string }
 const VOLUME_PKGS: Record<string, VolPkg> = {
@@ -468,14 +490,11 @@ export function createBot(): Telegraf {
     // Show payment screen with token image if available
     let sentWithPhoto = false;
     if (s.tokenImageUrl) {
-      try {
-        await ctx.replyWithPhoto(s.tokenImageUrl, {
-          caption: paymentMsg,
-          parse_mode: "HTML",
-          ...paymentSentKeyboard,
-        });
-        sentWithPhoto = true;
-      } catch { /* fall through */ }
+      sentWithPhoto = await safeSendPhoto(ctx, s.tokenImageUrl, {
+        caption: paymentMsg,
+        parse_mode: "HTML",
+        ...paymentSentKeyboard,
+      });
     }
     if (!sentWithPhoto) {
       await ctx.reply(paymentMsg, { parse_mode: "HTML", ...paymentSentKeyboard });
@@ -802,27 +821,14 @@ export function createBot(): Telegraf {
           `💰 Cost: <b>${cost}</b>\n\n` +
           `✅ <b>Confirm order to proceed to payment?</b>`;
 
-        // Try to send with token image
+        // Try to send with token image (with proxy fallback)
         if (info.imageUrl) {
-          try {
-            await ctx.replyWithPhoto(info.imageUrl, {
-              caption: tokenMsg,
-              parse_mode: "HTML",
-              ...confirmOrderKeyboard,
-            });
-            break;
-          } catch {
-            // Image URL failed — try via our proxy
-            try {
-              const proxyUrl = `${process.env.RENDER_EXTERNAL_URL || "http://localhost:5000"}/api/img?url=${encodeURIComponent(info.imageUrl)}`;
-              await ctx.replyWithPhoto(proxyUrl, {
-                caption: tokenMsg,
-                parse_mode: "HTML",
-                ...confirmOrderKeyboard,
-              });
-              break;
-            } catch { /* fall through to text */ }
-          }
+          const sent = await safeSendPhoto(ctx, info.imageUrl, {
+            caption: tokenMsg,
+            parse_mode: "HTML",
+            ...confirmOrderKeyboard,
+          });
+          if (sent) break;
         }
         await ctx.reply(tokenMsg, { parse_mode: "HTML", ...confirmOrderKeyboard });
         break;
