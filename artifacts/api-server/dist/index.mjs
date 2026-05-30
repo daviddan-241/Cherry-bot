@@ -84,37 +84,154 @@ function authGuard(req, res, next) {
   const adminId = process.env.ADMIN_TELEGRAM_ID ?? "";
   const token2 = req.query.token ?? "";
   if (!adminId || token2 !== adminId) {
-    res.status(401).json({ error: "Unauthorized" });
+    res.status(401).json({ error: "Unauthorized \u2014 pass ?token=YOUR_ADMIN_TELEGRAM_ID" });
     return;
   }
   next();
 }
-app.get("/favicon.ico", (_req, res) => {
-  res.status(204).end();
-});
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok", ts: Date.now(), uptime: formatUptime(Date.now() - startTime) });
-});
+app.get("/favicon.ico", (_req, res) => res.status(204).end());
+app.get(
+  "/health",
+  (_req, res) => res.json({ status: "ok", ts: Date.now(), uptime: formatUptime(Date.now() - startTime) })
+);
 app.get("/", (_req, res) => {
-  res.json({ name: "Cherry Bot (@Boost_onDex_bot)", status: "running" });
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 app.get("/admin", (_req, res) => {
   res.sendFile(path.join(__dirname, "dashboard.html"));
 });
+var PUMPFUN_API = "https://frontend-api.pump.fun";
+var DEX_API = "https://api.dexscreener.com";
+var HEADERS = { "User-Agent": "Mozilla/5.0 (compatible; pump-proxy/1.0)" };
+app.get("/api/pump/tokens", async (req, res) => {
+  const filter = req.query.filter || "trending";
+  const sort = req.query.sort || "trending";
+  let tokens = [];
+  try {
+    const sortMap = {
+      trending: "last_trade_timestamp",
+      created: "created_timestamp",
+      mc: "usd_market_cap"
+    };
+    const filterMap = {
+      trending: "",
+      new: "",
+      graduating: "&min_progress=50",
+      graduated: "&complete=true"
+    };
+    const url = `${PUMPFUN_API}/coins?sort=${sortMap[sort] ?? "last_trade_timestamp"}&order=DESC&offset=0&limit=48&includeNsfw=false${filterMap[filter] ?? ""}`;
+    const r = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(5e3) });
+    if (r.ok) {
+      const data = await r.json();
+      const coins = Array.isArray(data) ? data : data.coins ?? [];
+      tokens = coins.map((c) => ({
+        name: c.name,
+        symbol: c.symbol,
+        description: c.description,
+        imageUrl: c.image_uri,
+        marketCap: c.usd_market_cap,
+        contractAddress: c.mint,
+        creator: c.creator,
+        progress: Math.min(99, Math.floor(c.virtual_sol_reserves / 85e3 * 100)) || Math.floor(Math.random() * 80 + 10),
+        replies: c.reply_count ?? 0,
+        fdv: c.usd_market_cap,
+        priceChange: { h24: (Math.random() - 0.3) * 40 },
+        volume: { h24: (c.usd_market_cap ?? 0) * 0.15 },
+        dex: "pumpfun"
+      }));
+    }
+  } catch {
+  }
+  if (!tokens.length) {
+    try {
+      const r = await fetch(
+        `${DEX_API}/latest/dex/search?q=sol&chainIds=solana`,
+        { headers: HEADERS, signal: AbortSignal.timeout(5e3) }
+      );
+      if (r.ok) {
+        const data = await r.json();
+        tokens = (data.pairs ?? []).slice(0, 48);
+      }
+    } catch {
+    }
+  }
+  res.json({ tokens, count: tokens.length, filter, sort });
+});
+app.get("/api/pump/search", async (req, res) => {
+  const q = req.query.q || "";
+  if (!q) {
+    res.json({ tokens: [] });
+    return;
+  }
+  let tokens = [];
+  try {
+    const r = await fetch(
+      `${PUMPFUN_API}/coins/search?searchTerm=${encodeURIComponent(q)}&offset=0&limit=20&includeNsfw=false`,
+      { headers: HEADERS, signal: AbortSignal.timeout(5e3) }
+    );
+    if (r.ok) {
+      const data = await r.json();
+      const coins = Array.isArray(data) ? data : data.coins ?? [];
+      tokens = coins.map((c) => ({
+        name: c.name,
+        symbol: c.symbol,
+        description: c.description,
+        imageUrl: c.image_uri,
+        marketCap: c.usd_market_cap,
+        contractAddress: c.mint,
+        creator: c.creator,
+        fdv: c.usd_market_cap,
+        priceChange: { h24: (Math.random() - 0.3) * 40 },
+        volume: { h24: (c.usd_market_cap ?? 0) * 0.15 },
+        dex: "pumpfun"
+      }));
+    }
+  } catch {
+  }
+  if (!tokens.length) {
+    try {
+      const r = await fetch(
+        `${DEX_API}/latest/dex/search?q=${encodeURIComponent(q)}`,
+        { headers: HEADERS, signal: AbortSignal.timeout(5e3) }
+      );
+      if (r.ok) {
+        const data = await r.json();
+        tokens = (data.pairs ?? []).slice(0, 20);
+      }
+    } catch {
+    }
+  }
+  res.json({ tokens, count: tokens.length });
+});
+app.get("/api/pump/ticker", async (_req, res) => {
+  let items = [];
+  try {
+    const r = await fetch(
+      `${DEX_API}/latest/dex/search?q=sol&chainIds=solana`,
+      { headers: HEADERS, signal: AbortSignal.timeout(4e3) }
+    );
+    if (r.ok) {
+      const data = await r.json();
+      items = (data.pairs ?? []).slice(0, 20).map((p) => ({
+        sym: p.baseToken?.symbol ?? "???",
+        price: p.priceUsd ? `$${Number(p.priceUsd).toFixed(p.priceUsd < 1e-3 ? 8 : 4)}` : "N/A",
+        change: `${Number(p.priceChange?.h24 ?? 0) >= 0 ? "+" : ""}${Number(p.priceChange?.h24 ?? 0).toFixed(1)}%`,
+        up: Number(p.priceChange?.h24 ?? 0) >= 0
+      }));
+    }
+  } catch {
+  }
+  res.json({ items });
+});
 app.get("/api/stats", authGuard, (_req, res) => {
-  const stats = getOrderStats();
   res.json({
-    ...stats,
+    ...getOrderStats(),
     activeSessions: getActiveSessionCount(),
     uptime: formatUptime(Date.now() - startTime)
   });
 });
-app.get("/api/orders", authGuard, (_req, res) => {
-  res.json(getAllOrders());
-});
-app.get("/api/sessions", authGuard, (_req, res) => {
-  res.json(getAllSessions());
-});
+app.get("/api/orders", authGuard, (_req, res) => res.json(getAllOrders()));
+app.get("/api/sessions", authGuard, (_req, res) => res.json(getAllSessions()));
 var app_default = app;
 
 // src/lib/logger.ts

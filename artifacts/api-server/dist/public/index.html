@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>pump.fun</title>
+<meta name="description" content="pump ensures fair launches with no presales and no team allocations — 100% of liquidity goes to the bonding curve">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#000;--bg2:#0d0d0d;--bg3:#111;--border:#1a1a1a;--border2:#222;
+  --green:#22c55e;--green2:#16a34a;--red:#ef4444;--yellow:#f59e0b;
+  --blue:#3b82f6;--purple:#a855f7;--pink:#ec4899;
+  --text:#fff;--text2:#a1a1aa;--text3:#52525b;
+  --font-mono:'Courier New',Courier,monospace;
+  --radius:4px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14px;min-height:100vh;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;font-family:inherit;border:none;outline:none}
+img{display:block}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── NAV ── */
+.nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:rgba(0,0,0,.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  height:52px;display:flex;align-items:center;
+  padding:0 16px;gap:8px;
+}
+.nav-logo{
+  font-size:1.15rem;font-weight:700;letter-spacing:-.02em;
+  color:var(--text);white-space:nowrap;display:flex;align-items:center;gap:6px;
+}
+.nav-logo .dot{color:var(--green)}
+.nav-links{display:flex;align-items:center;gap:2px;margin-left:8px}
+.nav-link{
+  padding:5px 10px;border-radius:var(--radius);color:var(--text2);
+  font-size:.8rem;transition:color .15s,background .15s;white-space:nowrap;
+}
+.nav-link:hover,.nav-link.active{color:var(--text);background:var(--bg3)}
+.nav-sep{flex:1}
+.nav-search{
+  display:flex;align-items:center;gap:6px;
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:var(--radius);padding:6px 10px;width:220px;
+}
+.nav-search input{
+  background:none;border:none;outline:none;color:var(--text);
+  font-size:.82rem;width:100%;
+}
+.nav-search input::placeholder{color:var(--text3)}
+.nav-search svg{color:var(--text3);flex-shrink:0}
+.nav-actions{display:flex;align-items:center;gap:8px;margin-left:8px}
+.btn{padding:7px 14px;border-radius:var(--radius);font-size:.8rem;font-weight:600;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btn-ghost{background:none;color:var(--text2);border:1px solid var(--border2)}
+.btn-ghost:hover{color:var(--text);border-color:var(--text3)}
+.btn-green{background:var(--green);color:#000}
+.btn-sm{padding:5px 10px;font-size:.75rem}
+.icon-btn{
+  width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+  background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);
+  color:var(--text2);transition:color .15s;
+}
+.icon-btn:hover{color:var(--text)}
+
+/* ── TICKER ── */
+.ticker-wrap{
+  position:fixed;top:52px;left:0;right:0;z-index:90;
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  height:28px;overflow:hidden;display:flex;align-items:center;
+}
+.ticker-track{
+  display:flex;gap:0;white-space:nowrap;
+  animation:ticker 60s linear infinite;
+}
+.ticker-track:hover{animation-play-state:paused}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ticker-item{
+  display:inline-flex;align-items:center;gap:5px;padding:0 16px;
+  font-size:.72rem;font-family:var(--font-mono);color:var(--text2);
+  border-right:1px solid var(--border);
+}
+.ticker-item .sym{color:var(--text);font-weight:600}
+.ticker-item .up{color:var(--green)}
+.ticker-item .dn{color:var(--red)}
+
+/* ── MAIN ── */
+.main{padding-top:88px;max-width:1280px;margin:0 auto;padding-left:16px;padding-right:16px;padding-bottom:60px}
+
+/* ── FILTERS ── */
+.filters-row{
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:10px;margin-bottom:16px;
+}
+.filter-tabs{display:flex;gap:4px;flex-wrap:wrap}
+.filter-tab{
+  padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:600;
+  background:var(--bg3);border:1px solid var(--border2);color:var(--text2);
+  transition:all .15s;
+}
+.filter-tab:hover{color:var(--text);border-color:var(--text3)}
+.filter-tab.active{background:var(--green);color:#000;border-color:var(--green)}
+.filter-right{display:flex;align-items:center;gap:8px}
+.sort-select{
+  background:var(--bg3);border:1px solid var(--border2);color:var(--text2);
+  padding:6px 10px;border-radius:var(--radius);font-size:.78rem;outline:none;cursor:pointer;
+}
+
+/* ── KOTH ── */
+.koth-banner{
+  background:linear-gradient(135deg,#0d1a0d 0%,#0a1a0a 100%);
+  border:1px solid #1a3a1a;border-radius:8px;
+  padding:20px;margin-bottom:20px;
+  display:flex;align-items:center;gap:20px;flex-wrap:wrap;position:relative;overflow:hidden;
+}
+.koth-banner::before{
+  content:'';position:absolute;top:-50%;right:-10%;width:300px;height:300px;
+  background:radial-gradient(circle,rgba(34,197,94,.08) 0%,transparent 70%);
+  pointer-events:none;
+}
+.koth-crown{font-size:2rem;line-height:1}
+.koth-info{flex:1;min-width:0}
+.koth-label{font-size:.65rem;color:var(--green);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:4px}
+.koth-name{font-size:1.1rem;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.koth-ticker{color:var(--text2);font-size:.8rem;font-family:var(--font-mono)}
+.koth-desc{font-size:.78rem;color:var(--text2);line-height:1.5;max-width:500px}
+.koth-stats{display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right}
+.koth-mc{font-size:1.4rem;font-weight:700;color:var(--green)}
+.koth-img{width:80px;height:80px;border-radius:8px;object-fit:cover;border:2px solid var(--border2)}
+.koth-img-placeholder{width:80px;height:80px;border-radius:8px;background:var(--bg3);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:2rem}
+
+/* ── BOOST SERVICES SECTION ── */
+.services-section{margin-bottom:24px}
+.section-label{
+  font-size:.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;
+  font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;
+}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.services-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;
+}
+.service-card{
+  background:var(--bg2);border:1px solid var(--border2);border-radius:6px;
+  padding:14px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;
+  display:flex;flex-direction:column;gap:8px;
+  text-decoration:none;
+}
+.service-card::before{content:'';position:absolute;inset:0;background:var(--green);opacity:0;transition:opacity .2s}
+.service-card:hover{border-color:var(--green);transform:translateY(-1px)}
+.service-card:hover::before{opacity:.03}
+.service-img{width:100%;aspect-ratio:1;border-radius:4px;object-fit:cover;background:var(--bg3)}
+.service-img-placeholder{width:100%;aspect-ratio:1;border-radius:4px;background:linear-gradient(135deg,#1a1a1a,#0d0d0d);display:flex;align-items:center;justify-content:center;font-size:2.5rem}
+.service-name{font-weight:700;font-size:.9rem;display:flex;align-items:center;justify-content:space-between}
+.service-ticker{font-family:var(--font-mono);color:var(--text3);font-size:.72rem}
+.service-desc{font-size:.75rem;color:var(--text2);line-height:1.5}
+.service-meta{display:flex;align-items:center;justify-content:space-between;margin-top:auto}
+.service-mc{font-size:.8rem;font-weight:700;color:var(--green);font-family:var(--font-mono)}
+.service-badge{
+  font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:3px;
+  background:rgba(34,197,94,.15);color:var(--green);text-transform:uppercase;
+}
+.service-boost-bar{height:3px;background:var(--border2);border-radius:2px;margin-top:4px}
+.service-boost-fill{height:100%;background:var(--green);border-radius:2px;transition:width .5s}
+.service-replies{font-size:.7rem;color:var(--text3);font-family:var(--font-mono)}
+
+/* ── TOKEN GRID ── */
+.token-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;
+}
+.token-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:6px;
+  padding:12px;cursor:pointer;transition:border-color .2s;
+  display:flex;flex-direction:column;gap:8px;
+}
+.token-card:hover{border-color:var(--border2)}
+.token-top{display:flex;gap:10px;align-items:flex-start}
+.token-img{width:64px;height:64px;border-radius:6px;object-fit:cover;flex-shrink:0;background:var(--bg3)}
+.token-img-placeholder{width:64px;height:64px;border-radius:6px;flex-shrink:0;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:1.5rem}
+.token-body{flex:1;min-width:0}
+.token-creator{font-size:.68rem;color:var(--text3);font-family:var(--font-mono);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.token-creator span{color:var(--blue)}
+.token-name{font-size:.88rem;font-weight:700;margin-bottom:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.token-sym{color:var(--text2);font-size:.75rem;font-family:var(--font-mono);font-weight:400}
+.token-mc{font-size:.78rem;margin-bottom:4px}
+.token-mc span{color:var(--green);font-weight:700;font-family:var(--font-mono)}
+.token-desc{font-size:.73rem;color:var(--text2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.token-footer{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.progress-wrap{flex:1}
+.progress-label{display:flex;align-items:center;justify-content:space-between;font-size:.65rem;color:var(--text3);margin-bottom:3px}
+.progress-bar{height:3px;background:var(--border2);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--green);border-radius:2px;transition:width .5s}
+.token-stats{display:flex;align-items:center;gap:8px;font-size:.68rem;color:var(--text3);font-family:var(--font-mono);white-space:nowrap}
+.token-stats .up{color:var(--green)}
+.token-stats .dn{color:var(--red)}
+
+/* ── LIVE BADGE ── */
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite;margin-right:4px}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
+
+/* ── LOADING / SKELETON ── */
+.skeleton{background:linear-gradient(90deg,var(--bg3) 25%,var(--border) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-card{height:200px;border-radius:6px}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+.empty-state h3{font-size:1rem;margin-bottom:6px;color:var(--text2)}
+
+/* ── START COIN CTA ── */
+.cta-bar{
+  text-align:center;padding:12px;background:rgba(34,197,94,.06);
+  border:1px solid rgba(34,197,94,.2);border-radius:6px;margin-bottom:20px;
+  display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;
+}
+.cta-text{font-size:.85rem;color:var(--text2)}
+.cta-text strong{color:var(--text)}
+
+/* ── FOOTER ── */
+footer{
+  border-top:1px solid var(--border);padding:24px 16px;
+  max-width:1280px;margin:0 auto;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+}
+.footer-logo{font-weight:700;color:var(--text2);font-size:.9rem}
+.footer-logo .dot{color:var(--green)}
+.footer-links{display:flex;gap:16px}
+.footer-link{font-size:.78rem;color:var(--text3);transition:color .15s}
+.footer-link:hover{color:var(--text)}
+.footer-copy{font-size:.72rem;color:var(--text3)}
+
+/* ── MODAL ── */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{
+  background:var(--bg2);border:1px solid var(--border2);border-radius:10px;
+  max-width:480px;width:100%;max-height:90vh;overflow-y:auto;
+  transform:translateY(20px);transition:transform .2s;padding:24px;
+}
+.modal-bg.open .modal{transform:translateY(0)}
+.modal-close{float:right;background:none;color:var(--text2);font-size:1.2rem;line-height:1;padding:4px}
+.modal-close:hover{color:var(--text)}
+.modal h2{font-size:1.1rem;margin-bottom:4px}
+.modal-sub{font-size:.8rem;color:var(--text2);margin-bottom:16px}
+.modal-img{width:120px;height:120px;border-radius:8px;object-fit:cover;margin:0 auto 16px;display:block}
+.modal-stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:.82rem}
+.modal-stat:last-of-type{border-bottom:none}
+.modal-stat-label{color:var(--text2)}
+.modal-stat-val{font-family:var(--font-mono);font-weight:600}
+.modal-btn{
+  width:100%;padding:12px;border-radius:6px;font-size:.9rem;font-weight:700;
+  margin-top:16px;background:var(--green);color:#000;display:block;text-align:center;
+  transition:opacity .15s;
+}
+.modal-btn:hover{opacity:.85}
+.modal-note{font-size:.72rem;color:var(--text3);text-align:center;margin-top:8px}
+
+/* ── TOAST ── */
+.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:300;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{
+  background:var(--bg2);border:1px solid var(--border2);border-radius:6px;
+  padding:10px 16px;font-size:.82rem;color:var(--text);
+  transform:translateX(120px);opacity:0;transition:all .3s;pointer-events:auto;
+  max-width:280px;
+}
+.toast.show{transform:translateX(0);opacity:1}
+.toast.green{border-color:var(--green)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:640px){
+  .nav-links{display:none}
+  .nav-search{width:140px}
+  .koth-banner{flex-wrap:wrap}
+  .koth-stats{align-items:flex-start;text-align:left}
+  .services-grid{grid-template-columns:repeat(2,1fr)}
+  .token-grid{grid-template-columns:1fr 1fr}
+  footer{flex-direction:column;text-align:center}
+}
+@media(max-width:380px){
+  .token-grid{grid-template-columns:1fr}
+  .services-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav class="nav">
+  <a href="/" class="nav-logo">pump<span class="dot">.</span>fun</a>
+  <div class="nav-links">
+    <a class="nav-link active" href="/">board</a>
+    <a class="nav-link" href="#services">boost</a>
+    <a class="nav-link" href="#how">how it works</a>
+  </div>
+  <div class="nav-sep"></div>
+  <div class="nav-search">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input id="search-input" type="text" placeholder="Search token or CA..." autocomplete="off">
+  </div>
+  <div class="nav-actions">
+    <button class="icon-btn" title="Notifications" onclick="showToast('🔔 Notifications coming soon','green')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </button>
+    <a href="https://t.me/Boost_onDex_bot" target="_blank" class="btn btn-green">🚀 Launch Bot</a>
+  </div>
+</nav>
+
+<!-- ── TICKER ── -->
+<div class="ticker-wrap">
+  <div class="ticker-track" id="ticker-track">
+    <!-- populated by JS -->
+  </div>
+</div>
+
+<!-- ── MAIN ── -->
+<div class="main">
+
+  <!-- KOTH -->
+  <div class="koth-banner" id="koth-section">
+    <div class="koth-crown">👑</div>
+    <div id="koth-img" class="koth-img-placeholder">🚀</div>
+    <div class="koth-info">
+      <div class="koth-label"><span class="live-dot"></span> king of the hill</div>
+      <div class="koth-name" id="koth-name">Loading...</div>
+      <div class="koth-ticker" id="koth-ticker"></div>
+      <div class="koth-desc" id="koth-desc" style="margin-top:6px;color:var(--text2);font-size:.78rem"></div>
+    </div>
+    <div class="koth-stats">
+      <div class="koth-mc" id="koth-mc">—</div>
+      <div style="font-size:.72rem;color:var(--text3)">market cap</div>
+      <div style="margin-top:8px">
+        <a href="https://t.me/Boost_onDex_bot" target="_blank" class="btn btn-green btn-sm">🔥 Boost This Token</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA BAR -->
+  <div class="cta-bar">
+    <span class="cta-text">Ready to send your token to the moon? <strong>Boost volume, trending, and visibility in minutes.</strong></span>
+    <a href="https://t.me/Boost_onDex_bot" target="_blank" class="btn btn-green">🍒 Start Boosting on Telegram</a>
+  </div>
+
+  <!-- BOOST SERVICES -->
+  <div class="services-section" id="services">
+    <div class="section-label">⚡ Featured Boost Services</div>
+    <div class="services-grid" id="services-grid">
+      <!-- Services rendered by JS -->
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div id="how" style="margin-bottom:24px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:24px">
+    <div style="font-size:1rem;font-weight:700;margin-bottom:16px">How it works</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+      <div>
+        <div style="font-size:1.5rem;margin-bottom:8px">1️⃣</div>
+        <div style="font-weight:600;margin-bottom:4px">Pick your service</div>
+        <div style="font-size:.78rem;color:var(--text2)">Choose from Volume Boost, SOL/ETH Trending, DexScreener, or Pump.fun trending packages.</div>
+      </div>
+      <div>
+        <div style="font-size:1.5rem;margin-bottom:8px">2️⃣</div>
+        <div style="font-weight:600;margin-bottom:4px">Enter your token CA</div>
+        <div style="font-size:.78rem;color:var(--text2)">Paste your contract address — we look up live data from DexScreener and Pump.fun instantly.</div>
+      </div>
+      <div>
+        <div style="font-size:1.5rem;margin-bottom:8px">3️⃣</div>
+        <div style="font-weight:600;margin-bottom:4px">Send SOL payment</div>
+        <div style="font-size:.78rem;color:var(--text2)">Each user gets a unique HD wallet. Send the exact SOL shown and submit your TX hash.</div>
+      </div>
+      <div>
+        <div style="font-size:1.5rem;margin-bottom:8px">🚀</div>
+        <div style="font-weight:600;margin-bottom:4px">Watch it pump</div>
+        <div style="font-size:.78rem;color:var(--text2)">Your boost starts within 5–30 minutes. Volume, trending rank, and visibility increase automatically.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTER ROW -->
+  <div class="filters-row">
+    <div class="filter-tabs">
+      <button class="filter-tab active" data-filter="trending" onclick="setFilter(this,'trending')">🔥 trending</button>
+      <button class="filter-tab" data-filter="new" onclick="setFilter(this,'new')">⭐ new coins</button>
+      <button class="filter-tab" data-filter="graduating" onclick="setFilter(this,'graduating')">🎓 graduating</button>
+      <button class="filter-tab" data-filter="graduated" onclick="setFilter(this,'graduated')">🏆 graduated</button>
+    </div>
+    <div class="filter-right">
+      <select class="sort-select" id="sort-select" onchange="loadTokens()">
+        <option value="trending">Sort: trending</option>
+        <option value="created">Sort: newest</option>
+        <option value="mc">Sort: market cap</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- TOKEN GRID -->
+  <div id="token-grid" class="token-grid">
+    <!-- Skeleton loaders -->
+    <div class="skeleton skel-card"></div>
+    <div class="skeleton skel-card"></div>
+    <div class="skeleton skel-card"></div>
+    <div class="skeleton skel-card"></div>
+    <div class="skeleton skel-card"></div>
+    <div class="skeleton skel-card"></div>
+    <div class="skeleton skel-card"></div>
+    <div class="skeleton skel-card"></div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">pump<span class="dot">.</span>fun</div>
+  <div class="footer-links">
+    <a href="https://t.me/Boost_onDex_bot" target="_blank" class="footer-link">🤖 Telegram Bot</a>
+    <a href="https://t.me/pumpmints" target="_blank" class="footer-link">📊 Trending Channel</a>
+    <a href="https://t.me/pumpswap_pools" target="_blank" class="footer-link">🔔 PF Alerts</a>
+    <a href="#" class="footer-link" onclick="showToast('Support: @mrpooh on Telegram','green');return false">💬 Support</a>
+  </div>
+  <div class="footer-copy">© 2025 pump.fun · All tokens are made by users.</div>
+</footer>
+
+<!-- SERVICE MODAL -->
+<div class="modal-bg" id="service-modal" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="document.getElementById('service-modal').classList.remove('open')">✕</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const SERVICES = [
+  {
+    id:'bump', emoji:'🟢', name:'Volume Bump', ticker:'BUMP',
+    desc:'Fastest bump bot on Pumpfun & Raydium. Real wallet activity, stable uptrend.',
+    packages:[
+      {label:'0.3 SOL',sol:.3},{label:'0.4 SOL',sol:.4},
+      {label:'0.5 SOL',sol:.5},{label:'0.6 SOL',sol:.6},
+    ],
+    mc:'0.3–0.6 SOL', bar:72, replies:1042, badge:'LIVE'
+  },
+  {
+    id:'vol_iron', emoji:'🥉', name:'Iron Volume', ticker:'IRON',
+    desc:'$50,000 on-chain volume. Perfect for early-stage tokens.',
+    packages:[{label:'1.5 SOL',sol:1.5}],
+    mc:'1.50 SOL', bar:45, replies:328, badge:'HOT'
+  },
+  {
+    id:'vol_bronze', emoji:'🥈', name:'Bronze Volume', ticker:'BRNZ',
+    desc:'$250,000 on-chain volume. Pushes your token to mid-table.',
+    packages:[{label:'2.5 SOL',sol:2.5}],
+    mc:'2.50 SOL', bar:58, replies:512, badge:'HOT'
+  },
+  {
+    id:'vol_gold', emoji:'🥇', name:'Gold Volume', ticker:'GOLD',
+    desc:'$100,000 targeted volume with consistent wallet activity.',
+    packages:[{label:'3.5 SOL',sol:3.5}],
+    mc:'3.50 SOL', bar:64, replies:891, badge:'🔥'
+  },
+  {
+    id:'vol_silver', emoji:'⚡', name:'Silver Volume', ticker:'SLVR',
+    desc:'$100M volume blast. Puts your token on every trader\'s radar.',
+    packages:[{label:'5.0 SOL',sol:5.0}],
+    mc:'5.00 SOL', bar:88, replies:1337, badge:'🚀'
+  },
+  {
+    id:'vol_platinum', emoji:'💎', name:'Platinum Volume', ticker:'PLAT',
+    desc:'$500,000 volume + automatic SOL trending bonus included.',
+    packages:[{label:'7.5 SOL',sol:7.5}],
+    mc:'7.50 SOL', bar:91, replies:2104, badge:'ELITE'
+  },
+  {
+    id:'vol_diamond', emoji:'💠', name:'Diamond Volume', ticker:'DMND',
+    desc:'$2.5M volume. Maximum exposure. For tokens ready to graduate.',
+    packages:[{label:'10.5 SOL',sol:10.5}],
+    mc:'10.50 SOL', bar:99, replies:5001, badge:'MAX'
+  },
+  {
+    id:'trend_sol', emoji:'☀️', name:'SOL Trending', ticker:'STRD',
+    desc:'TOP 3 & TOP 10 Solana trending. 3h, 6h, 12h, 24h durations.',
+    packages:[
+      {label:'TOP10 3hr',sol:1.0},{label:'TOP3 3hr',sol:1.5},
+      {label:'TOP10 6hr',sol:1.6},{label:'TOP3 6hr',sol:2.3},
+      {label:'TOP10 12hr',sol:2.6},{label:'TOP3 12hr',sol:3.7},
+      {label:'TOP10 24hr',sol:4.1},{label:'TOP3 24hr',sol:5.9},
+    ],
+    mc:'from 1 SOL', bar:85, replies:3201, badge:'TOP'
+  },
+  {
+    id:'trend_eth', emoji:'🔵', name:'ETH Trending', ticker:'ETRD',
+    desc:'Ethereum trending boost. $100–$300 packages.',
+    packages:[{label:'$100',sol:0,usd:100},{label:'$200',sol:0,usd:200},{label:'$300',sol:0,usd:300}],
+    mc:'from $100', bar:67, replies:741, badge:'ETH'
+  },
+  {
+    id:'trend_pumpfun', emoji:'🔥', name:'PumpFun Trending', ticker:'PFTR',
+    desc:'#1 PumpFun trending. 30 SOL gets you 12hr FREE SOL trending included.',
+    packages:[{label:'30 SOL P.F.T',sol:30}],
+    mc:'30 SOL', bar:78, replies:4420, badge:'🔥'
+  },
+  {
+    id:'dex', emoji:'🌐', name:'DexScreener Trending', ticker:'DEXT',
+    desc:'TOP 6 DexScreener trending. 5hr–32hr durations. Massive cross-chain exposure.',
+    packages:[
+      {label:'5hr',sol:2},{label:'7hr',sol:3.5},{label:'12hr',sol:7},
+      {label:'18hr',sol:10},{label:'24hr',sol:15},{label:'32hr',sol:22},
+    ],
+    mc:'from 2 SOL', bar:92, replies:6102, badge:'DEX'
+  },
+];
+
+let currentFilter = 'trending';
+let allTokens = [];
+let tickerTokens = [];
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function fmt(n) {
+  if (!n || isNaN(n)) return 'N/A';
+  if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return '$' + (n / 1e3).toFixed(1) + 'K';
+  return '$' + Number(n).toFixed(2);
+}
+function short(addr) {
+  if (!addr) return '';
+  return addr.slice(0, 6) + '...' + addr.slice(-4);
+}
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function rnd(a, b) { return Math.random() * (b - a) + a; }
+function randInt(a, b) { return Math.floor(rnd(a, b)); }
+
+// ── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg, cls='') {
+  const wrap = document.getElementById('toast-wrap');
+  const t = document.createElement('div');
+  t.className = 'toast' + (cls ? ' ' + cls : '');
+  t.textContent = msg;
+  wrap.appendChild(t);
+  requestAnimationFrame(() => { requestAnimationFrame(() => t.classList.add('show')); });
+  setTimeout(() => {
+    t.classList.remove('show');
+    setTimeout(() => t.remove(), 350);
+  }, 3000);
+}
+
+// ── FILTER ───────────────────────────────────────────────────────────────────
+function setFilter(btn, filter) {
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentFilter = filter;
+  loadTokens();
+}
+
+// ── SERVICES GRID ─────────────────────────────────────────────────────────────
+function renderServices() {
+  const grid = document.getElementById('services-grid');
+  grid.innerHTML = SERVICES.map(s => `
+    <div class="service-card" onclick="openServiceModal('${s.id}')">
+      <div class="service-img-placeholder">${s.emoji}</div>
+      <div class="service-name">
+        <span>${esc(s.name)}</span>
+        <span class="service-badge">${esc(s.badge)}</span>
+      </div>
+      <div class="service-ticker">${esc(s.ticker)}</div>
+      <div class="service-desc">${esc(s.desc)}</div>
+      <div class="service-boost-bar"><div class="service-boost-fill" style="width:${s.bar}%"></div></div>
+      <div class="service-meta">
+        <div class="service-mc">${esc(s.mc)}</div>
+        <div class="service-replies">replies: ${s.replies.toLocaleString()}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── SERVICE MODAL ─────────────────────────────────────────────────────────────
+function openServiceModal(id) {
+  const s = SERVICES.find(x => x.id === id);
+  if (!s) return;
+  const mc = document.getElementById('modal-content');
+  mc.innerHTML = `
+    <h2>${s.emoji} ${esc(s.name)}</h2>
+    <div class="modal-sub">${esc(s.ticker)} · <span class="service-badge">${esc(s.badge)}</span></div>
+    <div style="font-size:.82rem;color:var(--text2);line-height:1.6;margin-bottom:16px">${esc(s.desc)}</div>
+    <div style="font-size:.72rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Packages</div>
+    ${s.packages.map(p => `
+      <div class="modal-stat">
+        <span class="modal-stat-label">${esc(p.label)}</span>
+        <span class="modal-stat-val" style="color:var(--green)">${p.usd ? '$' + p.usd + ' USD' : p.sol + ' SOL'}</span>
+      </div>
+    `).join('')}
+    <a href="https://t.me/Boost_onDex_bot" target="_blank" class="modal-btn">🚀 Start on Telegram Bot</a>
+    <div class="modal-note">Opens @Boost_onDex_bot in Telegram · 24/7 support @mrpooh</div>
+  `;
+  document.getElementById('service-modal').classList.add('open');
+}
+function closeModal(e) {
+  if (e.target.classList.contains('modal-bg')) {
+    e.target.classList.remove('open');
+  }
+}
+
+// ── TOKEN CARD ────────────────────────────────────────────────────────────────
+function renderTokenCard(t) {
+  const mc = t.fdv || t.marketCap || 0;
+  const vol = t.volume?.h24 || 0;
+  const change = t.priceChange?.h24 || 0;
+  const progress = Math.min(99, Math.max(1, Math.floor(rnd(15, 95))));
+  const replies = randInt(5, 999);
+  const imgUrl = t.info?.imageUrl || t.imageUrl || '';
+  const name = t.baseToken?.name || t.name || 'Unknown';
+  const sym = t.baseToken?.symbol || t.symbol || '???';
+  const desc = t.description || t.info?.description || `Community-driven ${sym} token on Solana. Trading live on DexScreener and Pump.fun.`;
+  const creator = t.creator || t.pairAddress || '';
+  const addr = t.baseToken?.address || t.contractAddress || '';
+  const upClass = change >= 0 ? 'up' : 'dn';
+  const changeStr = (change >= 0 ? '+' : '') + Number(change).toFixed(1) + '%';
+
+  return `
+    <div class="token-card" onclick="openTokenModal(${JSON.stringify({name,sym,desc,mc,vol,change,imgUrl,addr,creator,progress}).replace(/"/g,'&quot;')})">
+      <div class="token-top">
+        ${imgUrl
+          ? `<img class="token-img" src="${esc(imgUrl)}" alt="${esc(sym)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+          : ''
+        }
+        <div class="token-img-placeholder" style="${imgUrl?'display:none':''}">${sym.slice(0,2)}</div>
+        <div class="token-body">
+          <div class="token-creator">Created by: <span>${esc(short(creator || addr))}</span></div>
+          <div class="token-name">${esc(name)} <span class="token-sym">${esc(sym)}</span></div>
+          <div class="token-mc">market cap: <span>${fmt(mc)}</span></div>
+          <div class="token-desc">${esc(desc.slice(0,120))}</div>
+        </div>
+      </div>
+      <div class="token-footer">
+        <div class="progress-wrap">
+          <div class="progress-label"><span>bonding curve</span><span>${progress}%</span></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
+        </div>
+        <div class="token-stats">
+          <span class="${upClass}">${changeStr}</span>
+          <span>💬 ${replies}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── TOKEN MODAL ───────────────────────────────────────────────────────────────
+function openTokenModal(t) {
+  const mc = document.getElementById('modal-content');
+  mc.innerHTML = `
+    ${t.imgUrl ? `<img class="modal-img" src="${esc(t.imgUrl)}" alt="${esc(t.sym)}" onerror="this.style.display='none'">` : `<div style="font-size:3rem;text-align:center;margin-bottom:16px">${t.sym.slice(0,2)}</div>`}
+    <h2>${esc(t.name)} <span style="color:var(--text2);font-size:.85rem">(${esc(t.sym)})</span></h2>
+    <div class="modal-sub" style="margin-bottom:12px">${esc((t.desc||'').slice(0,200))}</div>
+    <div class="modal-stat"><span class="modal-stat-label">Market Cap</span><span class="modal-stat-val" style="color:var(--green)">${fmt(t.mc)}</span></div>
+    <div class="modal-stat"><span class="modal-stat-label">24h Volume</span><span class="modal-stat-val">${fmt(t.vol)}</span></div>
+    <div class="modal-stat"><span class="modal-stat-label">24h Change</span><span class="modal-stat-val" style="color:${t.change>=0?'var(--green)':'var(--red)'}">${(t.change>=0?'+':'')+Number(t.change).toFixed(2)}%</span></div>
+    <div class="modal-stat"><span class="modal-stat-label">Bonding Curve</span><span class="modal-stat-val">${t.progress}%</span></div>
+    ${t.addr ? `<div class="modal-stat"><span class="modal-stat-label">Contract</span><span class="modal-stat-val" style="font-size:.72rem">${esc(short(t.addr))}</span></div>` : ''}
+    <a href="https://t.me/Boost_onDex_bot" target="_blank" class="modal-btn">🚀 Boost this token</a>
+    <div class="modal-note">Send your CA to @Boost_onDex_bot — we handle the rest.</div>
+  `;
+  document.getElementById('service-modal').classList.add('open');
+}
+
+// ── LOAD TOKENS ───────────────────────────────────────────────────────────────
+async function loadTokens() {
+  const grid = document.getElementById('token-grid');
+  grid.innerHTML = Array(8).fill('<div class="skeleton skel-card"></div>').join('');
+
+  let tokens = [];
+  const sort = document.getElementById('sort-select').value;
+
+  try {
+    // Try our server-side proxy first
+    const res = await fetch(`/api/pump/tokens?filter=${currentFilter}&sort=${sort}`);
+    if (res.ok) {
+      const d = await res.json();
+      tokens = d.tokens || [];
+    }
+  } catch {}
+
+  // Fallback: fetch DexScreener directly
+  if (!tokens.length) {
+    try {
+      const res = await fetch('https://api.dexscreener.com/latest/dex/tokens/solana', {
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
+      if (res.ok) {
+        const d = await res.json();
+        tokens = (d.pairs || []).slice(0, 24);
+      }
+    } catch {}
+  }
+
+  allTokens = tokens;
+
+  if (!tokens.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><h3>No tokens found</h3><div>Try refreshing or changing the filter</div></div>`;
+    return;
+  }
+
+  grid.innerHTML = tokens.slice(0, 24).map(renderTokenCard).join('');
+
+  // Set KOTH to first token
+  if (tokens[0]) setKOTH(tokens[0]);
+}
+
+// ── KOTH ──────────────────────────────────────────────────────────────────────
+function setKOTH(t) {
+  const name = t.baseToken?.name || t.name || 'Unknown';
+  const sym = t.baseToken?.symbol || t.symbol || '???';
+  const mc = t.fdv || t.marketCap || 0;
+  const imgUrl = t.info?.imageUrl || t.imageUrl || '';
+  const desc = t.description || t.info?.description || `The #1 trending token on Solana right now.`;
+
+  document.getElementById('koth-name').innerHTML = `${esc(name)} <span class="token-sym">${esc(sym)}</span>`;
+  document.getElementById('koth-ticker').textContent = '$' + sym;
+  document.getElementById('koth-mc').textContent = fmt(mc);
+  document.getElementById('koth-desc').textContent = desc.slice(0, 120);
+
+  const imgEl = document.getElementById('koth-img');
+  if (imgUrl) {
+    imgEl.outerHTML = `<img id="koth-img" class="koth-img" src="${esc(imgUrl)}" alt="${esc(sym)}" onerror="this.outerHTML='<div id=koth-img class=koth-img-placeholder>🚀</div>'">`;
+  }
+}
+
+// ── TICKER ────────────────────────────────────────────────────────────────────
+async function loadTicker() {
+  let items = [];
+  try {
+    const res = await fetch('/api/pump/ticker');
+    if (res.ok) {
+      const d = await res.json();
+      items = d.items || [];
+    }
+  } catch {}
+
+  if (!items.length) {
+    // Fallback static data
+    items = [
+      {sym:'SOL',price:'$168.42',change:'+2.4%',up:true},
+      {sym:'BONK',price:'$0.0000248',change:'+12.1%',up:true},
+      {sym:'WIF',price:'$1.82',change:'-3.2%',up:false},
+      {sym:'POPCAT',price:'$0.412',change:'+8.7%',up:true},
+      {sym:'MOODENG',price:'$0.0032',change:'+44.2%',up:true},
+      {sym:'PNUT',price:'$0.184',change:'-1.8%',up:false},
+      {sym:'FWOG',price:'$0.0091',change:'+22.3%',up:true},
+      {sym:'GOAT',price:'$0.228',change:'+5.1%',up:true},
+      {sym:'SIGMA',price:'$0.00041',change:'-6.7%',up:false},
+      {sym:'AI16Z',price:'$0.882',change:'+18.4%',up:true},
+      {sym:'ZEREBRO',price:'$0.041',change:'+31.2%',up:true},
+      {sym:'CHILLGUY',price:'$0.192',change:'+9.3%',up:true},
+    ];
+  }
+
+  // Duplicate for seamless loop
+  const track = document.getElementById('ticker-track');
+  const allItems = [...items, ...items];
+  track.innerHTML = allItems.map(item => `
+    <div class="ticker-item">
+      <span class="sym">${esc(item.sym)}</span>
+      <span>${esc(item.price)}</span>
+      <span class="${item.up ? 'up' : 'dn'}">${esc(item.change)}</span>
+    </div>
+  `).join('');
+}
+
+// ── SEARCH ────────────────────────────────────────────────────────────────────
+let searchTimeout;
+document.getElementById('search-input').addEventListener('input', e => {
+  clearTimeout(searchTimeout);
+  const q = e.target.value.trim();
+  if (!q) {
+    document.getElementById('token-grid').innerHTML = allTokens.slice(0, 24).map(renderTokenCard).join('');
+    return;
+  }
+  searchTimeout = setTimeout(() => searchTokens(q), 400);
+});
+
+async function searchTokens(q) {
+  const grid = document.getElementById('token-grid');
+  grid.innerHTML = '<div class="skeleton skel-card"></div>'.repeat(4);
+  try {
+    const res = await fetch(`/api/pump/search?q=${encodeURIComponent(q)}`);
+    if (res.ok) {
+      const d = await res.json();
+      const tokens = d.tokens || [];
+      if (tokens.length) {
+        grid.innerHTML = tokens.slice(0, 12).map(renderTokenCard).join('');
+      } else {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><h3>No results for "${esc(q)}"</h3><div>Try a token name, symbol, or contract address</div></div>`;
+      }
+      return;
+    }
+  } catch {}
+  // Fallback: filter local
+  const lq = q.toLowerCase();
+  const filtered = allTokens.filter(t => {
+    const name = (t.baseToken?.name || t.name || '').toLowerCase();
+    const sym = (t.baseToken?.symbol || t.symbol || '').toLowerCase();
+    const addr = (t.baseToken?.address || t.contractAddress || '').toLowerCase();
+    return name.includes(lq) || sym.includes(lq) || addr.includes(lq);
+  });
+  if (filtered.length) {
+    grid.innerHTML = filtered.slice(0, 12).map(renderTokenCard).join('');
+  } else {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><h3>No results for "${esc(q)}"</h3></div>`;
+  }
+}
+
+// ── LIVE UPDATES ──────────────────────────────────────────────────────────────
+function startLiveUpdates() {
+  // Refresh tokens every 60 seconds
+  setInterval(loadTokens, 60000);
+  // Update ticker prices slightly every 10 seconds for "live" feel
+  setInterval(() => {
+    document.querySelectorAll('.ticker-item .up, .ticker-item .dn').forEach(el => {
+      const isUp = Math.random() > .4;
+      const pct = (rnd(0.1, 8.5)).toFixed(1);
+      el.className = isUp ? 'up' : 'dn';
+      el.textContent = (isUp ? '+' : '-') + pct + '%';
+    });
+  }, 10000);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+renderServices();
+loadTicker();
+loadTokens();
+startLiveUpdates();
+</script>
+</body>
+</html>
