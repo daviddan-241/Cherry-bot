@@ -11,10 +11,8 @@ export const mainMenuKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("🌐 DexScreener",  "menu_dex"),
     Markup.button.callback("💰 Deposit",      "menu_deposit"),
   ],
-  [
-    Markup.button.callback("🔗 Connect Wallet",  "menu_wallet"),
-    Markup.button.callback("💬 Contact Support", "menu_support"),
-  ],
+  [Markup.button.callback("🔗 Connect Wallet",   "menu_wallet")],
+  [Markup.button.callback("💬 Contact Support ↗", "menu_support")],
 ]);
 
 // ── SOL bump amount picker ────────────────────────────────────────────────────
