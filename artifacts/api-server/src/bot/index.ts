@@ -5,7 +5,7 @@ import { Telegraf } from "telegraf";
 import { notifyAdmin, setBot } from "./admin.js";
 import { getSession, setSession, clearSession, getAllSessions } from "./sessions.js";
 import { deriveWalletForUser } from "./wallet.js";
-import { fetchTokenInfo } from "./tokenInfo.js";
+import { fetchTokenInfo, isValidCA, detectCAChain } from "./tokenInfo.js";
 import { saveOrder, updateOrder, getAllOrders } from "./orders.js";
 import { detectChain, verifyTx, isHashUsed, markHashUsed } from "./txVerify.js";
 import { logger } from "../lib/logger.js";
@@ -418,9 +418,9 @@ export function createBot(): Telegraf {
   bot.action("confirm_bump", async (ctx) => {
     await ctx.answerCbQuery();
     const s = getSession(ctx.from.id);
-    const wallet = deriveWalletForUser(ctx.from.id);
-    const orderId = randomUUID().split("-")[0].toUpperCase();
-    const isEth = s.boostType === "eth_trending";
+    const wallet   = deriveWalletForUser(ctx.from.id);
+    const orderId  = randomUUID().split("-")[0].toUpperCase();
+    const isEth    = s.boostType === "eth_trending";
     const payWallet = isEth ? ETH_ADDRESS : wallet.address;
 
     setSession(ctx.from.id, {
@@ -431,55 +431,87 @@ export function createBot(): Telegraf {
 
     // Save order to the in-memory store
     saveOrder({
-      id: orderId,
-      userId: ctx.from.id,
-      userName: `${ctx.from.first_name}${ctx.from.last_name ? " " + ctx.from.last_name : ""}`,
-      userHandle: ctx.from.username ?? "",
-      tokenName: s.tokenName ?? "Unknown",
-      tokenSymbol: s.tokenSymbol ?? "???",
+      id:              orderId,
+      userId:          ctx.from.id,
+      userName:        `${ctx.from.first_name}${ctx.from.last_name ? " " + ctx.from.last_name : ""}`,
+      userHandle:      ctx.from.username ?? "",
+      tokenName:       s.tokenName    ?? "Unknown",
+      tokenSymbol:     s.tokenSymbol  ?? "???",
       contractAddress: s.contractAddress ?? "",
-      service: s.serviceLabel ?? "Boost",
-      solAmount: s.selectedSol ?? 0,
-      usdAmount: s.ethAmount,
-      paymentWallet: payWallet,
-      status: "pending",
-      createdAt: new Date(),
+      service:         s.serviceLabel ?? "Boost",
+      solAmount:       s.selectedSol  ?? 0,
+      usdAmount:       s.ethAmount,
+      paymentWallet:   payWallet,
+      status:          "pending",
+      createdAt:       new Date(),
     });
 
+    const chainLabel = s.tokenChain === "sol" ? "◎ Solana"
+                     : s.tokenChain === "eth" ? "Ξ Ethereum"
+                     : s.tokenChain === "bsc" ? "⬡ BSC"
+                     : s.tokenChain === "base" ? "🔵 Base"
+                     : "🔗";
+
     const amountLine = isEth
-      ? `💵 Amount: <b>$${s.ethAmount} USD</b>\n` +
-        `<b>ETH Wallet:</b>\n<code>${ETH_ADDRESS || SOL_ADDRESS}</code>`
-      : `◎ Amount: <b>${s.selectedSol} SOL</b>\n` +
-        `<b>SOL Wallet:</b>\n<code>${wallet.address}</code>`;
+      ? `💵 <b>$${s.ethAmount} USD</b>\n📮 ETH Wallet:\n<code>${ETH_ADDRESS || SOL_ADDRESS}</code>`
+      : `◎ <b>${s.selectedSol} SOL</b>\n📮 SOL Wallet:\n<code>${wallet.address}</code>`;
 
-    await editOrSend(ctx,
+    const paymentMsg =
       `💰 <b>Payment Required</b>\n\n` +
-      `📋 <b>Order Summary</b>\n` +
-      `• Service: ${s.serviceLabel}\n` +
-      `• Token: ${s.tokenName} (${s.tokenSymbol})\n` +
-      `• CA: <code>${s.contractAddress}</code>\n` +
-      `• Order ID: <code>${orderId}</code>\n\n` +
-      `💳 <b>Send Payment To:</b>\n` +
-      `${amountLine}\n\n` +
-      `⚠️ <b>Important</b>\n` +
-      `• Send the EXACT amount shown\n` +
-      `• Use the correct network\n` +
-      `• Payment expires in 15 minutes\n` +
-      `• Click ✅ Payment Sent after sending`,
-      paymentSentKeyboard
-    );
+      `🪙 <b>${s.tokenName} (${s.tokenSymbol})</b>  ${chainLabel}\n` +
+      `📍 CA: <code>${s.contractAddress}</code>\n\n` +
+      (s.tokenPrice      ? `💵 Price: ${s.tokenPrice}\n`         : "") +
+      (s.tokenMarketCap  ? `📈 Market Cap: ${s.tokenMarketCap}\n` : "") +
+      (s.tokenLiquidity  ? `💧 Liquidity: ${s.tokenLiquidity}\n`  : "") +
+      (s.tokenVolume24h  ? `🔄 24h Volume: ${s.tokenVolume24h}\n` : "") +
+      `\n📋 <b>Order Summary</b>\n` +
+      `⚙️ Service: <b>${s.serviceLabel}</b>\n` +
+      `🆔 Order ID: <code>${orderId}</code>\n\n` +
+      `💳 <b>Send Exact Amount:</b>\n${amountLine}\n\n` +
+      `⚠️ Send the <b>EXACT</b> amount • Correct network • Click ✅ after sending`;
 
-    await notifyAdmin(
-      `📋 <b>New Order</b>\n` +
-      `👤 ${ctx.from.first_name}${ctx.from.username ? " (@" + ctx.from.username + ")" : ""}\n` +
-      `🆔 <code>${ctx.from.id}</code>\n` +
-      `🪙 ${s.tokenName} (${s.tokenSymbol})\n` +
-      `📜 CA: <code>${s.contractAddress}</code>\n` +
-      `⚙️ ${s.serviceLabel}\n` +
-      `💰 ${isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}\n` +
+    // Show payment screen with token image if available
+    let sentWithPhoto = false;
+    if (s.tokenImageUrl) {
+      try {
+        await ctx.replyWithPhoto(s.tokenImageUrl, {
+          caption: paymentMsg,
+          parse_mode: "HTML",
+          ...paymentSentKeyboard,
+        });
+        sentWithPhoto = true;
+      } catch { /* fall through */ }
+    }
+    if (!sentWithPhoto) {
+      await ctx.reply(paymentMsg, { parse_mode: "HTML", ...paymentSentKeyboard });
+    }
+
+    // Admin notification with token image
+    const adminMsg =
+      `📋 <b>New Order</b>\n\n` +
+      `👤 ${ctx.from.first_name}${ctx.from.username ? ` (@${ctx.from.username})` : ""}\n` +
+      `🆔 User: <code>${ctx.from.id}</code>\n\n` +
+      `🪙 <b>${s.tokenName} (${s.tokenSymbol})</b>  ${chainLabel}\n` +
+      `📍 CA: <code>${s.contractAddress}</code>\n` +
+      (s.tokenPrice     ? `💵 Price: ${s.tokenPrice}\n`          : "") +
+      (s.tokenMarketCap ? `📈 Market Cap: ${s.tokenMarketCap}\n` : "") +
+      (s.tokenLiquidity ? `💧 Liq: ${s.tokenLiquidity}\n`        : "") +
+      (s.tokenVolume24h ? `🔄 Vol 24h: ${s.tokenVolume24h}\n`    : "") +
+      (s.tokenDex       ? `🏦 DEX: ${s.tokenDex}\n`             : "") +
+      `\n⚙️ Service: ${s.serviceLabel}\n` +
+      `💰 Cost: ${isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}\n` +
       `🆔 Order: <code>${orderId}</code>\n` +
-      `📮 Pay to: <code>${payWallet}</code>`
-    );
+      `📮 Pay to: <code>${payWallet}</code>`;
+
+    if (s.tokenImageUrl) {
+      try {
+        await notifyAdmin(adminMsg, s.tokenImageUrl);
+      } catch {
+        await notifyAdmin(adminMsg);
+      }
+    } else {
+      await notifyAdmin(adminMsg);
+    }
   });
 
   // ── Payment Sent — ask for TX hash ────────────────────────────────────────
@@ -660,34 +692,100 @@ export function createBot(): Telegraf {
     switch (session.step) {
 
       case "awaiting_ca": {
-        setSession(ctx.from.id, { contractAddress: text });
-        const msg = await ctx.reply(`🔍 Looking up token...\n<code>${text}</code>`, { parse_mode: "HTML" });
-        const info = await fetchTokenInfo(text);
-        await ctx.telegram.deleteMessage(ctx.chat.id, msg.message_id).catch(() => {});
-        setSession(ctx.from.id, {
-          step: "awaiting_confirm",
-          tokenName: info?.name ?? "Unknown",
-          tokenSymbol: info?.symbol ?? "???",
-        });
-        const s = getSession(ctx.from.id);
-        const isEth = s.boostType === "eth_trending";
-        const cost = isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`;
-        const tokenMsg =
-          `📋 <b>Token Details</b>\n\n` +
-          `✅ <b>CA:</b> <code>${text}</code>\n\n` +
-          `• Name: ${info?.name ?? "Unknown"}\n` +
-          `• Symbol: ${info?.symbol ?? "???"}\n` +
-          `• Price: ${info?.price ?? "N/A"}\n` +
-          `• Market Cap: ${info?.marketCap ?? "N/A"}\n` +
-          `• 24h Volume: ${info?.volume24h ?? "N/A"}\n` +
-          `• Liquidity: ${info?.liquidity ?? "N/A"}\n` +
-          `• 24h Change: ${info?.change24h ?? "0.00"}%\n` +
-          `• DEX: ${info?.dex ?? "pumpfun"}\n\n` +
-          `⚙️ Service: <b>${s.serviceLabel}</b>\n` +
-          `💰 Cost: <b>${cost}</b>\n\n` +
-          `✅ Confirm to proceed with payment?`;
+        const ca = text.trim();
 
-        if (info?.imageUrl) {
+        // ── Step 1: validate CA format ────────────────────────────────────────
+        if (!isValidCA(ca)) {
+          await ctx.reply(
+            `❌ <b>Invalid Contract Address</b>\n\n` +
+            `That doesn't look like a valid token address.\n\n` +
+            `<b>Valid formats:</b>\n` +
+            `• Solana — 32–44 base58 characters\n` +
+            `  Example: <code>EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</code>\n\n` +
+            `• Ethereum — starts with <code>0x</code> + 40 hex characters\n` +
+            `  Example: <code>0xdAC17F958D2ee523a2206206994597C13D831ec7</code>\n\n` +
+            `Please paste your token contract address:`,
+            { parse_mode: "HTML", ...cancelKeyboard }
+          );
+          break; // keep session step alive
+        }
+
+        // ── Step 2: fetch token info from all sources ─────────────────────────
+        setSession(ctx.from.id, { contractAddress: ca });
+        const lookMsg = await ctx.reply(
+          `🔍 <b>Fetching token info...</b>\n<code>${ca}</code>`,
+          { parse_mode: "HTML" }
+        );
+
+        const info = await fetchTokenInfo(ca);
+        await ctx.telegram.deleteMessage(ctx.chat.id, lookMsg.message_id).catch(() => {});
+
+        // ── Step 3: if not found on any source, show error + retry ────────────
+        if (!info) {
+          const caChain = detectCAChain(ca);
+          await ctx.reply(
+            `❌ <b>Token Not Found</b>\n\n` +
+            `Could not find token info for:\n<code>${ca}</code>\n\n` +
+            `<b>Possible reasons:</b>\n` +
+            `• Token is too new (not indexed yet) — try again in a few minutes\n` +
+            `• Wrong address — double-check and paste again\n` +
+            `• Token is on a different chain than expected (${caChain === "sol" ? "Solana" : caChain === "eth" ? "Ethereum" : "unknown"})\n\n` +
+            `You can still proceed — just paste the correct CA:`,
+            { parse_mode: "HTML", ...cancelKeyboard }
+          );
+          break;
+        }
+
+        // ── Step 4: store all token data in session ───────────────────────────
+        setSession(ctx.from.id, {
+          step:            "awaiting_confirm",
+          tokenName:       info.name,
+          tokenSymbol:     info.symbol,
+          tokenChain:      info.chain,
+          tokenImageUrl:   info.imageUrl,
+          tokenPrice:      info.price,
+          tokenMarketCap:  info.marketCap,
+          tokenVolume24h:  info.volume24h,
+          tokenLiquidity:  info.liquidity,
+          tokenChange24h:  info.change24h,
+          tokenDex:        info.dex,
+          tokenWebsite:    info.website,
+          tokenTwitter:    info.twitter,
+          tokenTelegram:   info.telegram,
+        });
+
+        const s = getSession(ctx.from.id);
+        const isEth  = s.boostType === "eth_trending";
+        const cost   = isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`;
+        const chain  = info.chain === "sol" ? "◎ Solana" : info.chain === "eth" ? "Ξ Ethereum" : info.chain === "bsc" ? "⬡ BSC" : info.chain === "base" ? "🔵 Base" : "🔗 Unknown";
+        const c24    = Number(info.change24h ?? 0);
+        const arrow  = c24 >= 0 ? "🟢" : "🔴";
+
+        // Build social links line
+        const socials: string[] = [];
+        if (info.website)  socials.push(`<a href="${info.website}">🌐 Website</a>`);
+        if (info.twitter)  socials.push(`<a href="${info.twitter}">🐦 Twitter</a>`);
+        if (info.telegram) socials.push(`<a href="${info.telegram}">📢 Telegram</a>`);
+
+        const tokenMsg =
+          `🪙 <b>${info.name} (${info.symbol})</b>\n` +
+          `${chain}${info.dex ? ` • ${info.dex.charAt(0).toUpperCase() + info.dex.slice(1)}` : ""}\n\n` +
+          `📍 <b>CA:</b> <code>${ca}</code>\n\n` +
+          `📊 <b>Live Market Data</b>\n` +
+          `💵 Price: <b>${info.price ?? "N/A"}</b>\n` +
+          `📈 Market Cap: <b>${info.marketCap ?? "N/A"}</b>\n` +
+          `💧 Liquidity: <b>${info.liquidity ?? "N/A"}</b>\n` +
+          `🔄 24h Volume: <b>${info.volume24h ?? "N/A"}</b>\n` +
+          `${arrow} 24h Change: <b>${c24 >= 0 ? "+" : ""}${info.change24h ?? "0.00"}%</b>\n` +
+          (info.change1h ? `⏱ 1h Change: <b>${Number(info.change1h) >= 0 ? "+" : ""}${info.change1h}%</b>\n` : "") +
+          (socials.length ? `\n🔗 ${socials.join(" · ")}\n` : "") +
+          (info.description ? `\n📝 ${info.description.slice(0, 150)}${info.description.length > 150 ? "…" : ""}\n` : "") +
+          `\n⚙️ Service: <b>${s.serviceLabel}</b>\n` +
+          `💰 Cost: <b>${cost}</b>\n\n` +
+          `✅ <b>Confirm order to proceed to payment?</b>`;
+
+        // Try to send with token image
+        if (info.imageUrl) {
           try {
             await ctx.replyWithPhoto(info.imageUrl, {
               caption: tokenMsg,
@@ -695,7 +793,18 @@ export function createBot(): Telegraf {
               ...confirmOrderKeyboard,
             });
             break;
-          } catch { /* fall through */ }
+          } catch {
+            // Image URL failed — try via our proxy
+            try {
+              const proxyUrl = `${process.env.RENDER_EXTERNAL_URL || "http://localhost:5000"}/api/img?url=${encodeURIComponent(info.imageUrl)}`;
+              await ctx.replyWithPhoto(proxyUrl, {
+                caption: tokenMsg,
+                parse_mode: "HTML",
+                ...confirmOrderKeyboard,
+              });
+              break;
+            } catch { /* fall through to text */ }
+          }
         }
         await ctx.reply(tokenMsg, { parse_mode: "HTML", ...confirmOrderKeyboard });
         break;

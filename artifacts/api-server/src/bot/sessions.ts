@@ -5,6 +5,17 @@ export interface UserSession {
   contractAddress?: string;
   tokenName?: string;
   tokenSymbol?: string;
+  tokenChain?: string;
+  tokenImageUrl?: string;
+  tokenPrice?: string;
+  tokenMarketCap?: string;
+  tokenVolume24h?: string;
+  tokenLiquidity?: string;
+  tokenChange24h?: string;
+  tokenDex?: string;
+  tokenWebsite?: string;
+  tokenTwitter?: string;
+  tokenTelegram?: string;
   paymentWallet?: string;
   orderId?: string;
   serviceLabel?: string;

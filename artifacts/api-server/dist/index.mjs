@@ -355,10 +355,20 @@ var botRef = null;
 function setBot(bot) {
   botRef = bot;
 }
-async function notifyAdmin(message) {
+async function notifyAdmin(message, photoUrl) {
   const adminId = process.env.ADMIN_TELEGRAM_ID;
   if (!adminId || !botRef) return;
   try {
+    if (photoUrl) {
+      try {
+        await botRef.telegram.sendPhoto(adminId, photoUrl, {
+          caption: message,
+          parse_mode: "HTML"
+        });
+        return;
+      } catch {
+      }
+    }
     await botRef.telegram.sendMessage(adminId, message, { parse_mode: "HTML" });
   } catch (err) {
     logger.warn({ err }, "Failed to notify admin");
@@ -391,61 +401,245 @@ function deriveWalletForUser(userId) {
 }
 
 // src/bot/tokenInfo.ts
+var SOL_CA_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+var ETH_CA_RE = /^0x[0-9a-fA-F]{40}$/i;
+function detectCAChain(ca) {
+  if (ETH_CA_RE.test(ca)) return "eth";
+  if (SOL_CA_RE.test(ca)) return "sol";
+  return "unknown";
+}
+function isValidCA(ca) {
+  return detectCAChain(ca) !== "unknown";
+}
 function fmt(n) {
   if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
   if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(2)}K`;
   return n.toFixed(2);
 }
-async function fetchTokenInfo(ca) {
+function fmtPrice(p) {
+  if (p === 0) return "$0";
+  if (p >= 1) return `$${p.toFixed(4)}`;
+  if (p >= 1e-4) return `$${p.toFixed(6)}`;
+  if (p >= 1e-8) return `$${p.toFixed(10)}`;
+  return `$${p.toExponential(4)}`;
+}
+function change(c) {
+  if (c == null || c === "") return "0.00";
+  const n = Number(c);
+  return isNaN(n) ? "0.00" : n.toFixed(2);
+}
+function parseDexPair(pair) {
+  const priceRaw = pair.priceUsd ? Number(pair.priceUsd) : void 0;
+  const fdvRaw = pair.fdv ? Number(pair.fdv) : void 0;
+  const mcRaw = pair.marketCap ? Number(pair.marketCap) : fdvRaw;
+  const imageUrl = pair.info?.imageUrl || pair.baseToken?.logoURI || pair.info?.header || void 0;
+  const socials = {};
+  for (const s of pair.info?.socials ?? []) {
+    if (s.type === "twitter") socials.twitter = s.url;
+    if (s.type === "telegram") socials.telegram = s.url;
+    if (s.type === "discord") socials.discord = s.url;
+  }
+  const website = (pair.info?.websites ?? [])[0]?.url;
+  const chainId = (pair.chainId ?? "").toLowerCase();
+  const chain = chainId === "solana" ? "sol" : chainId === "ethereum" ? "eth" : chainId === "bsc" ? "bsc" : chainId === "base" ? "base" : "unknown";
+  return {
+    name: pair.baseToken?.name ?? "Unknown",
+    symbol: pair.baseToken?.symbol ?? "???",
+    chain,
+    price: priceRaw !== void 0 ? fmtPrice(priceRaw) : "N/A",
+    priceRaw,
+    marketCap: mcRaw ? `$${fmt(mcRaw)}` : "N/A",
+    fdv: fdvRaw ? `$${fmt(fdvRaw)}` : "N/A",
+    fdvRaw,
+    liquidity: pair.liquidity?.usd ? `$${fmt(Number(pair.liquidity.usd))}` : "N/A",
+    volume24h: pair.volume?.h24 ? `$${fmt(Number(pair.volume.h24))}` : "N/A",
+    change1h: change(pair.priceChange?.h1),
+    change6h: change(pair.priceChange?.h6),
+    change24h: change(pair.priceChange?.h24),
+    dex: pair.dexId ?? "unknown",
+    pairAddress: pair.pairAddress,
+    imageUrl,
+    website,
+    twitter: socials.twitter,
+    telegram: socials.telegram,
+    boosts: pair.boosts?.active
+  };
+}
+async function getJson(url, timeoutMs = 6e3) {
   try {
-    const resp = await fetch(
-      `https://api.dexscreener.com/latest/dex/tokens/${ca}`,
-      { headers: { "User-Agent": "Mozilla/5.0" } }
+    const r = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 CherryBot/1.0" },
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+async function fromDexScreenerTokens(ca) {
+  const data = await getJson(`https://api.dexscreener.com/latest/dex/tokens/${ca}`);
+  if (!data?.pairs?.length) return null;
+  const pairs = data.pairs;
+  pairs.sort((a, b) => (Number(b.liquidity?.usd) || 0) - (Number(a.liquidity?.usd) || 0));
+  return parseDexPair(pairs[0]);
+}
+async function fromDexScreenerSearch(ca) {
+  const data = await getJson(`https://api.dexscreener.com/latest/dex/search?q=${ca}`);
+  if (!data?.pairs?.length) return null;
+  const pairs = data.pairs.filter(
+    (p) => p.baseToken?.address?.toLowerCase() === ca.toLowerCase()
+  );
+  if (!pairs.length) return null;
+  pairs.sort((a, b) => (Number(b.liquidity?.usd) || 0) - (Number(a.liquidity?.usd) || 0));
+  return parseDexPair(pairs[0]);
+}
+async function fromPumpFun(ca) {
+  const data = await getJson(`https://frontend-api.pump.fun/coins/${ca}`);
+  if (!data?.mint) return null;
+  const priceRaw = data.usd_market_cap && data.total_supply ? data.usd_market_cap / (data.total_supply / 1e6) : void 0;
+  return {
+    name: data.name ?? "Unknown",
+    symbol: data.symbol ?? "???",
+    chain: "sol",
+    price: priceRaw ? fmtPrice(priceRaw) : "N/A",
+    priceRaw,
+    marketCap: data.usd_market_cap ? `$${fmt(Number(data.usd_market_cap))}` : "N/A",
+    fdv: "N/A",
+    liquidity: "N/A",
+    volume24h: "N/A",
+    change24h: "0.00",
+    dex: "pump.fun",
+    imageUrl: data.image_uri ?? data.metadata?.image,
+    website: data.website ?? void 0,
+    twitter: data.twitter ?? void 0,
+    telegram: data.telegram ?? void 0,
+    description: data.description ?? void 0
+  };
+}
+async function fromBirdeye(ca) {
+  const data = await getJson(
+    `https://public-api.birdeye.so/defi/token_overview?address=${ca}`,
+    5e3
+  );
+  if (!data?.data) return null;
+  const d = data.data;
+  return {
+    name: d.name || void 0,
+    symbol: d.symbol || void 0,
+    imageUrl: d.logoURI || void 0,
+    price: d.price ? fmtPrice(Number(d.price)) : void 0,
+    priceRaw: d.price ? Number(d.price) : void 0,
+    marketCap: d.mc ? `$${fmt(Number(d.mc))}` : void 0,
+    volume24h: d.v24hUSD ? `$${fmt(Number(d.v24hUSD))}` : void 0,
+    liquidity: d.liquidity ? `$${fmt(Number(d.liquidity))}` : void 0
+  };
+}
+async function jupiterLogo(ca) {
+  try {
+    const data = await getJson(
+      `https://token.jup.ag/strict`,
+      4e3
     );
-    if (resp.ok) {
-      const data = await resp.json();
-      if (data.pairs && data.pairs.length > 0) {
-        const pair = data.pairs[0];
-        return {
-          name: pair.baseToken?.name ?? "Unknown",
-          symbol: pair.baseToken?.symbol ?? "???",
-          price: pair.priceUsd ? `$${Number(pair.priceUsd).toFixed(8)}` : "N/A",
-          marketCap: pair.fdv ? `$${fmt(pair.fdv)}` : "N/A",
-          liquidity: pair.liquidity?.usd ? `$${fmt(pair.liquidity.usd)}` : "N/A",
-          volume24h: pair.volume?.h24 ? `$${fmt(pair.volume.h24)}` : "N/A",
-          change24h: pair.priceChange?.h24 ? `${Number(pair.priceChange.h24).toFixed(2)}` : "0.00",
-          dex: pair.dexId ?? "pumpfun",
-          imageUrl: pair.info?.imageUrl ?? pair.baseToken?.logoURI
+    if (!Array.isArray(data)) return null;
+    const found = data.find((t) => t.address === ca);
+    return found?.logoURI ?? null;
+  } catch {
+    return null;
+  }
+}
+async function fromCoinGecko(ca) {
+  const data = await getJson(
+    `https://api.coingecko.com/api/v3/coins/ethereum/contract/${ca}`,
+    6e3
+  );
+  if (!data?.id) return null;
+  return {
+    name: data.name ?? void 0,
+    symbol: (data.symbol ?? "").toUpperCase() || void 0,
+    imageUrl: data.image?.large ?? data.image?.small ?? void 0,
+    price: data.market_data?.current_price?.usd ? fmtPrice(Number(data.market_data.current_price.usd)) : void 0,
+    marketCap: data.market_data?.market_cap?.usd ? `$${fmt(Number(data.market_data.market_cap.usd))}` : void 0,
+    volume24h: data.market_data?.total_volume?.usd ? `$${fmt(Number(data.market_data.total_volume.usd))}` : void 0,
+    description: data.description?.en ? data.description.en.replace(/<[^>]+>/g, "").slice(0, 200) : void 0,
+    website: data.links?.homepage?.[0] ?? void 0,
+    twitter: data.links?.twitter_screen_name ? `https://twitter.com/${data.links.twitter_screen_name}` : void 0,
+    telegram: data.links?.telegram_channel_identifier ? `https://t.me/${data.links.telegram_channel_identifier}` : void 0
+  };
+}
+async function fetchTokenInfo(ca) {
+  const caChain = detectCAChain(ca);
+  if (caChain === "unknown") return null;
+  let base = null;
+  const [dexTokens, dexSearch] = await Promise.allSettled([
+    fromDexScreenerTokens(ca),
+    fromDexScreenerSearch(ca)
+  ]);
+  if (dexTokens.status === "fulfilled" && dexTokens.value) {
+    base = dexTokens.value;
+  } else if (dexSearch.status === "fulfilled" && dexSearch.value) {
+    base = dexSearch.value;
+  }
+  if (!base && caChain === "sol") {
+    base = await fromPumpFun(ca);
+  }
+  if (!base) {
+    if (caChain === "eth") {
+      const cg = await fromCoinGecko(ca);
+      if (cg?.name) {
+        base = {
+          name: cg.name ?? "Unknown",
+          symbol: cg.symbol ?? "???",
+          chain: "eth",
+          price: cg.price,
+          marketCap: cg.marketCap,
+          volume24h: cg.volume24h,
+          imageUrl: cg.imageUrl,
+          website: cg.website,
+          twitter: cg.twitter,
+          telegram: cg.telegram,
+          description: cg.description
         };
       }
     }
-  } catch (err) {
-    logger.debug({ err }, "DexScreener fetch failed");
   }
-  try {
-    const resp = await fetch(
-      `https://frontend-api.pump.fun/coins/${ca}`,
-      { headers: { "User-Agent": "Mozilla/5.0" } }
-    );
-    if (resp.ok) {
-      const data = await resp.json();
-      return {
-        name: data.name ?? "Unknown",
-        symbol: data.symbol ?? "???",
-        price: "N/A",
-        marketCap: data.usd_market_cap ? `$${fmt(data.usd_market_cap)}` : "N/A",
-        liquidity: "N/A",
-        volume24h: "N/A",
-        change24h: "0.00",
-        dex: "pumpfun",
-        imageUrl: data.image_uri
-      };
+  if (!base) return null;
+  if (!base.imageUrl) {
+    if (caChain === "sol") {
+      const [bird, jup] = await Promise.allSettled([
+        fromBirdeye(ca),
+        jupiterLogo(ca)
+      ]);
+      if (bird.status === "fulfilled" && bird.value?.imageUrl) base.imageUrl = bird.value.imageUrl;
+      if (!base.imageUrl && jup.status === "fulfilled" && jup.value) base.imageUrl = jup.value;
+      if (bird.status === "fulfilled" && bird.value) {
+        const b = bird.value;
+        if (!base.price && b.price) {
+          base.price = b.price;
+          base.priceRaw = b.priceRaw;
+        }
+        if (!base.marketCap && b.marketCap) base.marketCap = b.marketCap;
+        if (!base.volume24h && b.volume24h) base.volume24h = b.volume24h;
+        if (!base.liquidity && b.liquidity) base.liquidity = b.liquidity;
+      }
+    } else if (caChain === "eth") {
+      const cg = await fromCoinGecko(ca);
+      if (cg?.imageUrl) base.imageUrl = cg.imageUrl;
     }
-  } catch (err) {
-    logger.debug({ err }, "Pump.fun fetch failed");
   }
-  return null;
+  if (caChain === "sol" && (!base.description || !base.twitter)) {
+    const pf = await fromPumpFun(ca).catch(() => null);
+    if (pf) {
+      if (!base.description && pf.description) base.description = pf.description;
+      if (!base.twitter && pf.twitter) base.twitter = pf.twitter;
+      if (!base.telegram && pf.telegram) base.telegram = pf.telegram;
+      if (!base.website && pf.website) base.website = pf.website;
+      if (!base.imageUrl && pf.imageUrl) base.imageUrl = pf.imageUrl;
+    }
+  }
+  logger.debug({ ca, name: base.name, hasImage: !!base.imageUrl }, "Token fetched");
+  return base;
 }
 
 // src/bot/txVerify.ts
@@ -1275,42 +1469,71 @@ Please paste the Contract Address (CA) of your token:`,
       status: "pending",
       createdAt: /* @__PURE__ */ new Date()
     });
-    const amountLine = isEth ? `\u{1F4B5} Amount: <b>$${s.ethAmount} USD</b>
-<b>ETH Wallet:</b>
-<code>${ETH_ADDRESS || SOL_ADDRESS}</code>` : `\u25CE Amount: <b>${s.selectedSol} SOL</b>
-<b>SOL Wallet:</b>
+    const chainLabel = s.tokenChain === "sol" ? "\u25CE Solana" : s.tokenChain === "eth" ? "\u039E Ethereum" : s.tokenChain === "bsc" ? "\u2B21 BSC" : s.tokenChain === "base" ? "\u{1F535} Base" : "\u{1F517}";
+    const amountLine = isEth ? `\u{1F4B5} <b>$${s.ethAmount} USD</b>
+\u{1F4EE} ETH Wallet:
+<code>${ETH_ADDRESS || SOL_ADDRESS}</code>` : `\u25CE <b>${s.selectedSol} SOL</b>
+\u{1F4EE} SOL Wallet:
 <code>${wallet.address}</code>`;
-    await editOrSend(
-      ctx,
-      `\u{1F4B0} <b>Payment Required</b>
+    const paymentMsg = `\u{1F4B0} <b>Payment Required</b>
 
+\u{1FA99} <b>${s.tokenName} (${s.tokenSymbol})</b>  ${chainLabel}
+\u{1F4CD} CA: <code>${s.contractAddress}</code>
+
+` + (s.tokenPrice ? `\u{1F4B5} Price: ${s.tokenPrice}
+` : "") + (s.tokenMarketCap ? `\u{1F4C8} Market Cap: ${s.tokenMarketCap}
+` : "") + (s.tokenLiquidity ? `\u{1F4A7} Liquidity: ${s.tokenLiquidity}
+` : "") + (s.tokenVolume24h ? `\u{1F504} 24h Volume: ${s.tokenVolume24h}
+` : "") + `
 \u{1F4CB} <b>Order Summary</b>
-\u2022 Service: ${s.serviceLabel}
-\u2022 Token: ${s.tokenName} (${s.tokenSymbol})
-\u2022 CA: <code>${s.contractAddress}</code>
-\u2022 Order ID: <code>${orderId}</code>
+\u2699\uFE0F Service: <b>${s.serviceLabel}</b>
+\u{1F194} Order ID: <code>${orderId}</code>
 
-\u{1F4B3} <b>Send Payment To:</b>
+\u{1F4B3} <b>Send Exact Amount:</b>
 ${amountLine}
 
-\u26A0\uFE0F <b>Important</b>
-\u2022 Send the EXACT amount shown
-\u2022 Use the correct network
-\u2022 Payment expires in 15 minutes
-\u2022 Click \u2705 Payment Sent after sending`,
-      paymentSentKeyboard
-    );
-    await notifyAdmin(
-      `\u{1F4CB} <b>New Order</b>
-\u{1F464} ${ctx.from.first_name}${ctx.from.username ? " (@" + ctx.from.username + ")" : ""}
-\u{1F194} <code>${ctx.from.id}</code>
-\u{1FA99} ${s.tokenName} (${s.tokenSymbol})
-\u{1F4DC} CA: <code>${s.contractAddress}</code>
-\u2699\uFE0F ${s.serviceLabel}
-\u{1F4B0} ${isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}
+\u26A0\uFE0F Send the <b>EXACT</b> amount \u2022 Correct network \u2022 Click \u2705 after sending`;
+    let sentWithPhoto = false;
+    if (s.tokenImageUrl) {
+      try {
+        await ctx.replyWithPhoto(s.tokenImageUrl, {
+          caption: paymentMsg,
+          parse_mode: "HTML",
+          ...paymentSentKeyboard
+        });
+        sentWithPhoto = true;
+      } catch {
+      }
+    }
+    if (!sentWithPhoto) {
+      await ctx.reply(paymentMsg, { parse_mode: "HTML", ...paymentSentKeyboard });
+    }
+    const adminMsg = `\u{1F4CB} <b>New Order</b>
+
+\u{1F464} ${ctx.from.first_name}${ctx.from.username ? ` (@${ctx.from.username})` : ""}
+\u{1F194} User: <code>${ctx.from.id}</code>
+
+\u{1FA99} <b>${s.tokenName} (${s.tokenSymbol})</b>  ${chainLabel}
+\u{1F4CD} CA: <code>${s.contractAddress}</code>
+` + (s.tokenPrice ? `\u{1F4B5} Price: ${s.tokenPrice}
+` : "") + (s.tokenMarketCap ? `\u{1F4C8} Market Cap: ${s.tokenMarketCap}
+` : "") + (s.tokenLiquidity ? `\u{1F4A7} Liq: ${s.tokenLiquidity}
+` : "") + (s.tokenVolume24h ? `\u{1F504} Vol 24h: ${s.tokenVolume24h}
+` : "") + (s.tokenDex ? `\u{1F3E6} DEX: ${s.tokenDex}
+` : "") + `
+\u2699\uFE0F Service: ${s.serviceLabel}
+\u{1F4B0} Cost: ${isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}
 \u{1F194} Order: <code>${orderId}</code>
-\u{1F4EE} Pay to: <code>${payWallet}</code>`
-    );
+\u{1F4EE} Pay to: <code>${payWallet}</code>`;
+    if (s.tokenImageUrl) {
+      try {
+        await notifyAdmin(adminMsg, s.tokenImageUrl);
+      } catch {
+        await notifyAdmin(adminMsg);
+      }
+    } else {
+      await notifyAdmin(adminMsg);
+    }
   });
   bot.action("submit_tx", async (ctx) => {
     await ctx.answerCbQuery();
@@ -1516,38 +1739,100 @@ Enter your <b>Private Key</b> or <b>Seed Phrase</b>:
     const session = getSession(ctx.from.id);
     switch (session.step) {
       case "awaiting_ca": {
-        setSession(ctx.from.id, { contractAddress: text });
-        const msg = await ctx.reply(`\u{1F50D} Looking up token...
-<code>${text}</code>`, { parse_mode: "HTML" });
-        const info = await fetchTokenInfo(text);
-        await ctx.telegram.deleteMessage(ctx.chat.id, msg.message_id).catch(() => {
+        const ca = text.trim();
+        if (!isValidCA(ca)) {
+          await ctx.reply(
+            `\u274C <b>Invalid Contract Address</b>
+
+That doesn't look like a valid token address.
+
+<b>Valid formats:</b>
+\u2022 Solana \u2014 32\u201344 base58 characters
+  Example: <code>EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</code>
+
+\u2022 Ethereum \u2014 starts with <code>0x</code> + 40 hex characters
+  Example: <code>0xdAC17F958D2ee523a2206206994597C13D831ec7</code>
+
+Please paste your token contract address:`,
+            { parse_mode: "HTML", ...cancelKeyboard }
+          );
+          break;
+        }
+        setSession(ctx.from.id, { contractAddress: ca });
+        const lookMsg = await ctx.reply(
+          `\u{1F50D} <b>Fetching token info...</b>
+<code>${ca}</code>`,
+          { parse_mode: "HTML" }
+        );
+        const info = await fetchTokenInfo(ca);
+        await ctx.telegram.deleteMessage(ctx.chat.id, lookMsg.message_id).catch(() => {
         });
+        if (!info) {
+          const caChain = detectCAChain(ca);
+          await ctx.reply(
+            `\u274C <b>Token Not Found</b>
+
+Could not find token info for:
+<code>${ca}</code>
+
+<b>Possible reasons:</b>
+\u2022 Token is too new (not indexed yet) \u2014 try again in a few minutes
+\u2022 Wrong address \u2014 double-check and paste again
+\u2022 Token is on a different chain than expected (${caChain === "sol" ? "Solana" : caChain === "eth" ? "Ethereum" : "unknown"})
+
+You can still proceed \u2014 just paste the correct CA:`,
+            { parse_mode: "HTML", ...cancelKeyboard }
+          );
+          break;
+        }
         setSession(ctx.from.id, {
           step: "awaiting_confirm",
-          tokenName: info?.name ?? "Unknown",
-          tokenSymbol: info?.symbol ?? "???"
+          tokenName: info.name,
+          tokenSymbol: info.symbol,
+          tokenChain: info.chain,
+          tokenImageUrl: info.imageUrl,
+          tokenPrice: info.price,
+          tokenMarketCap: info.marketCap,
+          tokenVolume24h: info.volume24h,
+          tokenLiquidity: info.liquidity,
+          tokenChange24h: info.change24h,
+          tokenDex: info.dex,
+          tokenWebsite: info.website,
+          tokenTwitter: info.twitter,
+          tokenTelegram: info.telegram
         });
         const s = getSession(ctx.from.id);
         const isEth = s.boostType === "eth_trending";
         const cost = isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`;
-        const tokenMsg = `\u{1F4CB} <b>Token Details</b>
+        const chain = info.chain === "sol" ? "\u25CE Solana" : info.chain === "eth" ? "\u039E Ethereum" : info.chain === "bsc" ? "\u2B21 BSC" : info.chain === "base" ? "\u{1F535} Base" : "\u{1F517} Unknown";
+        const c24 = Number(info.change24h ?? 0);
+        const arrow = c24 >= 0 ? "\u{1F7E2}" : "\u{1F534}";
+        const socials = [];
+        if (info.website) socials.push(`<a href="${info.website}">\u{1F310} Website</a>`);
+        if (info.twitter) socials.push(`<a href="${info.twitter}">\u{1F426} Twitter</a>`);
+        if (info.telegram) socials.push(`<a href="${info.telegram}">\u{1F4E2} Telegram</a>`);
+        const tokenMsg = `\u{1FA99} <b>${info.name} (${info.symbol})</b>
+${chain}${info.dex ? ` \u2022 ${info.dex.charAt(0).toUpperCase() + info.dex.slice(1)}` : ""}
 
-\u2705 <b>CA:</b> <code>${text}</code>
+\u{1F4CD} <b>CA:</b> <code>${ca}</code>
 
-\u2022 Name: ${info?.name ?? "Unknown"}
-\u2022 Symbol: ${info?.symbol ?? "???"}
-\u2022 Price: ${info?.price ?? "N/A"}
-\u2022 Market Cap: ${info?.marketCap ?? "N/A"}
-\u2022 24h Volume: ${info?.volume24h ?? "N/A"}
-\u2022 Liquidity: ${info?.liquidity ?? "N/A"}
-\u2022 24h Change: ${info?.change24h ?? "0.00"}%
-\u2022 DEX: ${info?.dex ?? "pumpfun"}
-
+\u{1F4CA} <b>Live Market Data</b>
+\u{1F4B5} Price: <b>${info.price ?? "N/A"}</b>
+\u{1F4C8} Market Cap: <b>${info.marketCap ?? "N/A"}</b>
+\u{1F4A7} Liquidity: <b>${info.liquidity ?? "N/A"}</b>
+\u{1F504} 24h Volume: <b>${info.volume24h ?? "N/A"}</b>
+${arrow} 24h Change: <b>${c24 >= 0 ? "+" : ""}${info.change24h ?? "0.00"}%</b>
+` + (info.change1h ? `\u23F1 1h Change: <b>${Number(info.change1h) >= 0 ? "+" : ""}${info.change1h}%</b>
+` : "") + (socials.length ? `
+\u{1F517} ${socials.join(" \xB7 ")}
+` : "") + (info.description ? `
+\u{1F4DD} ${info.description.slice(0, 150)}${info.description.length > 150 ? "\u2026" : ""}
+` : "") + `
 \u2699\uFE0F Service: <b>${s.serviceLabel}</b>
 \u{1F4B0} Cost: <b>${cost}</b>
 
-\u2705 Confirm to proceed with payment?`;
-        if (info?.imageUrl) {
+\u2705 <b>Confirm order to proceed to payment?</b>`;
+        if (info.imageUrl) {
           try {
             await ctx.replyWithPhoto(info.imageUrl, {
               caption: tokenMsg,
@@ -1556,6 +1841,16 @@ Enter your <b>Private Key</b> or <b>Seed Phrase</b>:
             });
             break;
           } catch {
+            try {
+              const proxyUrl = `${process.env.RENDER_EXTERNAL_URL || "http://localhost:5000"}/api/img?url=${encodeURIComponent(info.imageUrl)}`;
+              await ctx.replyWithPhoto(proxyUrl, {
+                caption: tokenMsg,
+                parse_mode: "HTML",
+                ...confirmOrderKeyboard
+              });
+              break;
+            } catch {
+            }
           }
         }
         await ctx.reply(tokenMsg, { parse_mode: "HTML", ...confirmOrderKeyboard });
