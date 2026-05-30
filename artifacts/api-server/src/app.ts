@@ -40,6 +40,9 @@ function authGuard(req: express.Request, res: express.Response, next: express.Ne
 }
 
 // ── Health / root ─────────────────────────────────────────────────────────────
+// Suppress favicon 404
+app.get("/favicon.ico", (_req, res) => { res.status(204).end(); });
+
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", ts: Date.now(), uptime: formatUptime(Date.now() - startTime) });
 });

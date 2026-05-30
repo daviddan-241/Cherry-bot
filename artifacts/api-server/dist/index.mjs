@@ -89,6 +89,9 @@ function authGuard(req, res, next) {
   }
   next();
 }
+app.get("/favicon.ico", (_req, res) => {
+  res.status(204).end();
+});
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", ts: Date.now(), uptime: formatUptime(Date.now() - startTime) });
 });
