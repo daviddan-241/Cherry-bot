@@ -7,7 +7,10 @@ app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
+  res.json({ status: "ok", ts: Date.now() });
+});
+app.get("/", (_req, res) => {
+  res.json({ name: "Cherry Bot", status: "running" });
 });
 var app_default = app;
 
@@ -34,7 +37,8 @@ async function notifyAdmin(message) {
   if (!adminId || !botRef) return;
   try {
     await botRef.telegram.sendMessage(adminId, message, { parse_mode: "HTML" });
-  } catch (e) {
+  } catch (err) {
+    logger.warn({ err }, "Failed to notify admin");
   }
 }
 
@@ -58,21 +62,37 @@ import nacl from "tweetnacl";
 import bs58 from "bs58";
 function deriveWalletForUser(userId) {
   const masterSeed = process.env.MASTER_SEED;
-  const seed = bip39.mnemonicToSeedSync(masterSeed);
-  const path2 = `m/44'/501'/${userId}'/0'`;
-  const derived = derivePath(path2, seed.toString("hex"));
-  const keypair = nacl.sign.keyPair.fromSeed(derived.key);
-  const address = bs58.encode(keypair.publicKey);
-  const privateKey = bs58.encode(keypair.secretKey);
-  return { address, privateKey };
+  if (!masterSeed) {
+    logger.warn("MASTER_SEED not set \u2014 returning placeholder wallet");
+    return { address: "WALLET_NOT_CONFIGURED", privateKey: "" };
+  }
+  try {
+    const seed = bip39.mnemonicToSeedSync(masterSeed);
+    const path2 = `m/44'/501'/${userId}'/0'`;
+    const derived = derivePath(path2, seed.toString("hex"));
+    const keypair = nacl.sign.keyPair.fromSeed(derived.key);
+    const address = bs58.encode(keypair.publicKey);
+    const privateKey = bs58.encode(keypair.secretKey);
+    return { address, privateKey };
+  } catch (err) {
+    logger.error({ err }, "Failed to derive wallet for user");
+    return { address: "WALLET_ERROR", privateKey: "" };
+  }
 }
 
 // src/bot/tokenInfo.ts
+function fmt(n) {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(2)}K`;
+  return n.toFixed(2);
+}
 async function fetchTokenInfo(ca) {
   try {
-    const resp = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${ca}`, {
-      headers: { "User-Agent": "Mozilla/5.0" }
-    });
+    const resp = await fetch(
+      `https://api.dexscreener.com/latest/dex/tokens/${ca}`,
+      { headers: { "User-Agent": "Mozilla/5.0" } }
+    );
     if (resp.ok) {
       const data = await resp.json();
       if (data.pairs && data.pairs.length > 0) {
@@ -80,43 +100,42 @@ async function fetchTokenInfo(ca) {
         return {
           name: pair.baseToken?.name ?? "Unknown",
           symbol: pair.baseToken?.symbol ?? "???",
-          price: pair.priceUsd ? `$${Number(pair.priceUsd).toFixed(8)}` : "0.00e+0",
-          marketCap: pair.fdv ? `$${fmt(pair.fdv)}` : "0.00",
-          liquidity: pair.liquidity?.usd ? `$${fmt(pair.liquidity.usd)}` : "0.00",
-          volume24h: pair.volume?.h24 ? `$${fmt(pair.volume.h24)}` : "0.00",
-          change24h: pair.priceChange?.h24 ? String(Number(pair.priceChange.h24).toFixed(2)) : "0.00",
+          price: pair.priceUsd ? `$${Number(pair.priceUsd).toFixed(8)}` : "N/A",
+          marketCap: pair.fdv ? `$${fmt(pair.fdv)}` : "N/A",
+          liquidity: pair.liquidity?.usd ? `$${fmt(pair.liquidity.usd)}` : "N/A",
+          volume24h: pair.volume?.h24 ? `$${fmt(pair.volume.h24)}` : "N/A",
+          change24h: pair.priceChange?.h24 ? `${Number(pair.priceChange.h24).toFixed(2)}` : "0.00",
           dex: pair.dexId ?? "pumpfun",
           imageUrl: pair.info?.imageUrl ?? pair.baseToken?.logoURI
         };
       }
     }
-  } catch {
+  } catch (err) {
+    logger.debug({ err }, "DexScreener fetch failed");
   }
   try {
-    const resp = await fetch(`https://frontend-api.pump.fun/coins/${ca}`);
+    const resp = await fetch(
+      `https://frontend-api.pump.fun/coins/${ca}`,
+      { headers: { "User-Agent": "Mozilla/5.0" } }
+    );
     if (resp.ok) {
       const data = await resp.json();
       return {
         name: data.name ?? "Unknown",
         symbol: data.symbol ?? "???",
-        price: "0.00e+0",
-        marketCap: data.usd_market_cap ? `$${fmt(data.usd_market_cap)}` : "0.00",
-        liquidity: "0.00",
-        volume24h: "0.00",
+        price: "N/A",
+        marketCap: data.usd_market_cap ? `$${fmt(data.usd_market_cap)}` : "N/A",
+        liquidity: "N/A",
+        volume24h: "N/A",
         change24h: "0.00",
         dex: "pumpfun",
         imageUrl: data.image_uri
       };
     }
-  } catch {
+  } catch (err) {
+    logger.debug({ err }, "Pump.fun fetch failed");
   }
   return null;
-}
-function fmt(n) {
-  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
-  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(2)}K`;
-  return n.toFixed(2);
 }
 
 // src/bot/keyboards.ts
@@ -328,9 +347,9 @@ var DEX_PACKAGES = {
   dex_32hr: { label: "TOP 6 \u2014 32 hr", sol: 22, service: "DexScreener TOP6 32hr" }
 };
 function createBot() {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) throw new Error("TELEGRAM_BOT_TOKEN not set");
-  const bot = new Telegraf(token);
+  const token2 = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token2) throw new Error("TELEGRAM_BOT_TOKEN not set");
+  const bot = new Telegraf(token2);
   setBot(bot);
   bot.start(async (ctx) => {
     const u = ctx.from;
@@ -1107,40 +1126,33 @@ Your User ID: <code>${ctx.from.id}</code>`,
 
 // src/index.ts
 var rawPort = process.env["PORT"];
-if (!rawPort) {
-  throw new Error("PORT environment variable is required but was not provided.");
-}
+if (!rawPort) throw new Error("PORT environment variable is required");
 var port = Number(rawPort);
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-function launchBot(retryCount = 0) {
-  try {
-    const bot = createBot();
-    process.once("SIGINT", () => bot.stop("SIGINT"));
-    process.once("SIGTERM", () => bot.stop("SIGTERM"));
-    bot.launch({ dropPendingUpdates: true }).then(() => {
-      logger.info("Telegram bot started successfully");
-    }).catch((err) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes("409") && retryCount < 5) {
-        const delay = (retryCount + 1) * 5e3;
-        logger.warn({ retryCount, delay }, "Bot 409 conflict \u2014 another instance running, retrying...");
-        setTimeout(() => launchBot(retryCount + 1), delay);
-      } else {
-        logger.error({ err }, "Telegram bot launch failed permanently");
-      }
+if (Number.isNaN(port) || port <= 0) throw new Error(`Invalid PORT: "${rawPort}"`);
+var token = process.env["TELEGRAM_BOT_TOKEN"];
+if (!token) {
+  logger.warn("TELEGRAM_BOT_TOKEN not set \u2014 starting HTTP server only");
+  app_default.listen(port, () => logger.info({ port }, "Server listening (no bot)"));
+} else {
+  const bot = createBot();
+  const renderHostname = process.env["RENDER_EXTERNAL_HOSTNAME"];
+  const webhookDomain = renderHostname ? `https://${renderHostname}` : process.env["WEBHOOK_DOMAIN"] ?? null;
+  if (webhookDomain) {
+    const secretPath = `/telegraf/${bot.secretPathComponent()}`;
+    app_default.use(bot.webhookCallback(secretPath));
+    app_default.listen(port, () => {
+      logger.info({ port, mode: "webhook", webhookDomain }, "Server listening");
+      bot.telegram.setWebhook(`${webhookDomain}${secretPath}`).then(() => logger.info({ webhookDomain }, "Webhook registered")).catch((err) => logger.error({ err }, "Failed to set webhook"));
     });
-  } catch (err) {
-    logger.error({ err }, "Failed to create bot");
+  } else {
+    bot.telegram.deleteWebhook({ drop_pending_updates: true }).catch(() => {
+    });
+    app_default.listen(port, () => {
+      logger.info({ port, mode: "long-poll" }, "Server listening");
+      bot.launch({ dropPendingUpdates: true }).then(() => logger.info("Bot launched (long-poll)")).catch((err) => logger.error({ err }, "Bot launch failed"));
+    });
   }
+  process.once("SIGINT", () => bot.stop("SIGINT"));
+  process.once("SIGTERM", () => bot.stop("SIGTERM"));
 }
-launchBot();
-app_default.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
-  logger.info({ port }, "Server listening");
-});
 //# sourceMappingURL=index.mjs.map

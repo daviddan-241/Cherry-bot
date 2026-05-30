@@ -1,4 +1,5 @@
 import type { Telegraf } from "telegraf";
+import { logger } from "../lib/logger.js";
 
 let botRef: Telegraf | null = null;
 
@@ -11,7 +12,7 @@ export async function notifyAdmin(message: string) {
   if (!adminId || !botRef) return;
   try {
     await botRef.telegram.sendMessage(adminId, message, { parse_mode: "HTML" });
-  } catch (e) {
-    // silent
+  } catch (err) {
+    logger.warn({ err }, "Failed to notify admin");
   }
 }
