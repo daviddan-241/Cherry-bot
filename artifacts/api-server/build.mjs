@@ -1,4 +1,5 @@
 import { build } from "esbuild";
+import { cpSync, mkdirSync } from "fs";
 
 await build({
   entryPoints: ["src/index.ts"],
@@ -24,12 +25,10 @@ await build({
     "drizzle-orm",
     "pino-http",
   ],
-  loader: {
-    ".jpeg": "copy",
-    ".jpg": "copy",
-    ".png": "copy",
-  },
-  assetNames: "images/[name]",
 });
 
-console.log("Build complete: dist/index.mjs");
+// Copy bot images into dist so __dirname resolution works at runtime
+mkdirSync("dist/images", { recursive: true });
+cpSync("src/bot/images", "dist/images", { recursive: true });
+
+console.log("Build complete: dist/index.mjs (images copied)");
