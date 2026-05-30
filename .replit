@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "python-3.12"]
+modules = ["nodejs-20", "web", "python-3.12"]
 [agent]
 expertMode = true
 stack = "BEST_EFFORT_FALLBACK"
@@ -38,3 +38,8 @@ externalPort = 80
 deploymentTarget = "vm"
 run = ["sh", "-c", "cd artifacts/api-server && PORT=5000 pnpm run start"]
 build = ["sh", "-c", "npm install -g pnpm && pnpm install --no-frozen-lockfile && pnpm --filter @workspace/api-server run build"]
+
+[userenv]
+
+[userenv.shared]
+PORT = "5000"

