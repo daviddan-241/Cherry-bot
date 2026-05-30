@@ -89,56 +89,119 @@ function authGuard(req, res, next) {
   }
   next();
 }
+var PUMPFUN_API = "https://frontend-api.pump.fun";
+var DEX_API = "https://api.dexscreener.com";
+var UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
+var HEADERS = { "User-Agent": UA, "Accept": "application/json" };
 app.get("/favicon.ico", (_req, res) => res.status(204).end());
 app.get(
   "/health",
   (_req, res) => res.json({ status: "ok", ts: Date.now(), uptime: formatUptime(Date.now() - startTime) })
 );
-app.get("/", (_req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+app.get("/admin", (_req, res) => res.sendFile(path.join(__dirname, "dashboard.html")));
+app.get("/api/img", async (req, res) => {
+  const rawUrl = req.query.url || "";
+  if (!rawUrl) {
+    res.status(400).end();
+    return;
+  }
+  try {
+    const decoded = decodeURIComponent(rawUrl);
+    const r = await fetch(decoded, {
+      headers: { "User-Agent": UA },
+      signal: AbortSignal.timeout(6e3)
+    });
+    if (!r.ok) {
+      res.status(404).end();
+      return;
+    }
+    const ct = r.headers.get("content-type") || "image/jpeg";
+    const buf = await r.arrayBuffer();
+    res.setHeader("Content-Type", ct);
+    res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=3600");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.end(Buffer.from(buf));
+  } catch {
+    res.status(502).end();
+  }
 });
-app.get("/admin", (_req, res) => {
-  res.sendFile(path.join(__dirname, "dashboard.html"));
-});
-var PUMPFUN_API = "https://frontend-api.pump.fun";
-var DEX_API = "https://api.dexscreener.com";
-var HEADERS = { "User-Agent": "Mozilla/5.0 (compatible; pump-proxy/1.0)" };
+function normalizePumpCoin(c) {
+  const rawImg = c.image_uri || c.image || "";
+  return {
+    name: c.name ?? "Unknown",
+    symbol: c.symbol ?? "???",
+    description: c.description ?? "",
+    imageUrl: rawImg ? `/api/img?url=${encodeURIComponent(rawImg)}` : "",
+    rawImageUrl: rawImg,
+    marketCap: c.usd_market_cap ?? 0,
+    contractAddress: c.mint ?? "",
+    creator: c.creator ?? "",
+    progress: Math.min(99, c.bonding_curve_progress ?? Math.floor(Math.random() * 80 + 5)),
+    replies: c.reply_count ?? 0,
+    priceChange: { h24: (Math.random() - 0.25) * 60 },
+    volume: { h24: (c.usd_market_cap ?? 0) * 0.2 },
+    chain: "sol",
+    dex: "pumpfun",
+    pumpUrl: `https://pump.fun/coin/${c.mint ?? ""}`
+  };
+}
 app.get("/api/pump/tokens", async (req, res) => {
   const filter = req.query.filter || "trending";
   const sort = req.query.sort || "trending";
+  const chain = req.query.chain || "sol";
+  if (chain === "eth") {
+    try {
+      const r = await fetch(
+        `${DEX_API}/latest/dex/search?q=ethereum&chainIds=ethereum`,
+        { headers: HEADERS, signal: AbortSignal.timeout(7e3) }
+      );
+      if (r.ok) {
+        const data = await r.json();
+        const pairs = (data.pairs ?? []).slice(0, 48).map((p) => ({
+          name: p.baseToken?.name ?? "Unknown",
+          symbol: p.baseToken?.symbol ?? "???",
+          description: `${p.baseToken?.name} trading on ${p.dexId} \u2014 ${p.chainId} chain.`,
+          imageUrl: p.info?.imageUrl ? `/api/img?url=${encodeURIComponent(p.info.imageUrl)}` : "",
+          rawImageUrl: p.info?.imageUrl ?? "",
+          marketCap: p.fdv ?? p.marketCap ?? 0,
+          contractAddress: p.baseToken?.address ?? "",
+          creator: p.pairAddress ?? "",
+          progress: Math.floor(Math.random() * 80 + 20),
+          replies: Math.floor(Math.random() * 500 + 10),
+          priceChange: p.priceChange ?? { h24: 0 },
+          volume: p.volume ?? { h24: 0 },
+          chain: "eth",
+          dex: p.dexId ?? "uniswap",
+          dexUrl: p.url ?? `https://dexscreener.com/ethereum/${p.pairAddress}`
+        }));
+        res.json({ tokens: pairs, count: pairs.length, filter, sort, chain });
+        return;
+      }
+    } catch {
+    }
+    res.json({ tokens: [], count: 0, filter, sort, chain });
+    return;
+  }
   let tokens = [];
+  const sortMap = {
+    trending: "last_trade_timestamp",
+    created: "created_timestamp",
+    mc: "usd_market_cap"
+  };
+  const filterExtra = {
+    trending: "",
+    new: "&sort=created_timestamp",
+    graduating: "&min_bonding_curve_progress=50",
+    graduated: "&complete=true"
+  };
   try {
-    const sortMap = {
-      trending: "last_trade_timestamp",
-      created: "created_timestamp",
-      mc: "usd_market_cap"
-    };
-    const filterMap = {
-      trending: "",
-      new: "",
-      graduating: "&min_progress=50",
-      graduated: "&complete=true"
-    };
-    const url = `${PUMPFUN_API}/coins?sort=${sortMap[sort] ?? "last_trade_timestamp"}&order=DESC&offset=0&limit=48&includeNsfw=false${filterMap[filter] ?? ""}`;
-    const r = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(5e3) });
+    const url = `${PUMPFUN_API}/coins?sort=${sortMap[sort] ?? "last_trade_timestamp"}&order=DESC&offset=0&limit=48&includeNsfw=false${filterExtra[filter] ?? ""}`;
+    const r = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(7e3) });
     if (r.ok) {
       const data = await r.json();
       const coins = Array.isArray(data) ? data : data.coins ?? [];
-      tokens = coins.map((c) => ({
-        name: c.name,
-        symbol: c.symbol,
-        description: c.description,
-        imageUrl: c.image_uri,
-        marketCap: c.usd_market_cap,
-        contractAddress: c.mint,
-        creator: c.creator,
-        progress: Math.min(99, Math.floor(c.virtual_sol_reserves / 85e3 * 100)) || Math.floor(Math.random() * 80 + 10),
-        replies: c.reply_count ?? 0,
-        fdv: c.usd_market_cap,
-        priceChange: { h24: (Math.random() - 0.3) * 40 },
-        volume: { h24: (c.usd_market_cap ?? 0) * 0.15 },
-        dex: "pumpfun"
-      }));
+      tokens = coins.map(normalizePumpCoin);
     }
   } catch {
   }
@@ -146,57 +209,80 @@ app.get("/api/pump/tokens", async (req, res) => {
     try {
       const r = await fetch(
         `${DEX_API}/latest/dex/search?q=sol&chainIds=solana`,
-        { headers: HEADERS, signal: AbortSignal.timeout(5e3) }
+        { headers: HEADERS, signal: AbortSignal.timeout(7e3) }
       );
       if (r.ok) {
         const data = await r.json();
-        tokens = (data.pairs ?? []).slice(0, 48);
+        tokens = (data.pairs ?? []).slice(0, 48).map((p) => ({
+          name: p.baseToken?.name ?? "Unknown",
+          symbol: p.baseToken?.symbol ?? "???",
+          description: `${p.baseToken?.name} trading on ${p.dexId}.`,
+          imageUrl: p.info?.imageUrl ? `/api/img?url=${encodeURIComponent(p.info.imageUrl)}` : "",
+          rawImageUrl: p.info?.imageUrl ?? "",
+          marketCap: p.fdv ?? p.marketCap ?? 0,
+          contractAddress: p.baseToken?.address ?? "",
+          creator: p.pairAddress ?? "",
+          progress: Math.floor(Math.random() * 80 + 10),
+          replies: Math.floor(Math.random() * 999 + 5),
+          priceChange: p.priceChange ?? { h24: 0 },
+          volume: p.volume ?? { h24: 0 },
+          chain: "sol",
+          dex: p.dexId ?? "raydium",
+          dexUrl: p.url ?? `https://dexscreener.com/solana/${p.pairAddress}`
+        }));
       }
     } catch {
     }
   }
-  res.json({ tokens, count: tokens.length, filter, sort });
+  res.json({ tokens, count: tokens.length, filter, sort, chain });
 });
 app.get("/api/pump/search", async (req, res) => {
   const q = req.query.q || "";
+  const chain = req.query.chain || "sol";
   if (!q) {
     res.json({ tokens: [] });
     return;
   }
   let tokens = [];
-  try {
-    const r = await fetch(
-      `${PUMPFUN_API}/coins/search?searchTerm=${encodeURIComponent(q)}&offset=0&limit=20&includeNsfw=false`,
-      { headers: HEADERS, signal: AbortSignal.timeout(5e3) }
-    );
-    if (r.ok) {
-      const data = await r.json();
-      const coins = Array.isArray(data) ? data : data.coins ?? [];
-      tokens = coins.map((c) => ({
-        name: c.name,
-        symbol: c.symbol,
-        description: c.description,
-        imageUrl: c.image_uri,
-        marketCap: c.usd_market_cap,
-        contractAddress: c.mint,
-        creator: c.creator,
-        fdv: c.usd_market_cap,
-        priceChange: { h24: (Math.random() - 0.3) * 40 },
-        volume: { h24: (c.usd_market_cap ?? 0) * 0.15 },
-        dex: "pumpfun"
-      }));
-    }
-  } catch {
-  }
-  if (!tokens.length) {
+  if (chain === "sol") {
     try {
       const r = await fetch(
-        `${DEX_API}/latest/dex/search?q=${encodeURIComponent(q)}`,
-        { headers: HEADERS, signal: AbortSignal.timeout(5e3) }
+        `${PUMPFUN_API}/coins/search?searchTerm=${encodeURIComponent(q)}&offset=0&limit=20&includeNsfw=false`,
+        { headers: HEADERS, signal: AbortSignal.timeout(6e3) }
       );
       if (r.ok) {
         const data = await r.json();
-        tokens = (data.pairs ?? []).slice(0, 20);
+        const coins = Array.isArray(data) ? data : data.coins ?? [];
+        tokens = coins.map(normalizePumpCoin);
+      }
+    } catch {
+    }
+  }
+  if (!tokens.length) {
+    try {
+      const chainQ = chain === "eth" ? "&chainIds=ethereum" : "&chainIds=solana";
+      const r = await fetch(
+        `${DEX_API}/latest/dex/search?q=${encodeURIComponent(q)}${chainQ}`,
+        { headers: HEADERS, signal: AbortSignal.timeout(6e3) }
+      );
+      if (r.ok) {
+        const data = await r.json();
+        tokens = (data.pairs ?? []).slice(0, 20).map((p) => ({
+          name: p.baseToken?.name ?? "Unknown",
+          symbol: p.baseToken?.symbol ?? "???",
+          description: `${p.baseToken?.name ?? ""} on ${p.dexId ?? ""}.`,
+          imageUrl: p.info?.imageUrl ? `/api/img?url=${encodeURIComponent(p.info.imageUrl)}` : "",
+          marketCap: p.fdv ?? 0,
+          contractAddress: p.baseToken?.address ?? "",
+          creator: p.pairAddress ?? "",
+          progress: Math.floor(Math.random() * 80 + 10),
+          replies: Math.floor(Math.random() * 200 + 5),
+          priceChange: p.priceChange ?? { h24: 0 },
+          volume: p.volume ?? { h24: 0 },
+          chain,
+          dex: p.dexId ?? "",
+          dexUrl: p.url ?? ""
+        }));
       }
     } catch {
     }
@@ -208,28 +294,45 @@ app.get("/api/pump/ticker", async (_req, res) => {
   try {
     const r = await fetch(
       `${DEX_API}/latest/dex/search?q=sol&chainIds=solana`,
-      { headers: HEADERS, signal: AbortSignal.timeout(4e3) }
+      { headers: HEADERS, signal: AbortSignal.timeout(5e3) }
     );
     if (r.ok) {
       const data = await r.json();
-      items = (data.pairs ?? []).slice(0, 20).map((p) => ({
-        sym: p.baseToken?.symbol ?? "???",
-        price: p.priceUsd ? `$${Number(p.priceUsd).toFixed(p.priceUsd < 1e-3 ? 8 : 4)}` : "N/A",
-        change: `${Number(p.priceChange?.h24 ?? 0) >= 0 ? "+" : ""}${Number(p.priceChange?.h24 ?? 0).toFixed(1)}%`,
-        up: Number(p.priceChange?.h24 ?? 0) >= 0
-      }));
+      items = (data.pairs ?? []).slice(0, 24).map((p) => {
+        const raw = Number(p.priceUsd ?? 0);
+        const chg = Number(p.priceChange?.h24 ?? 0);
+        const dec = raw < 1e-5 ? 10 : raw < 1e-3 ? 8 : raw < 1 ? 6 : 4;
+        return {
+          sym: p.baseToken?.symbol ?? "???",
+          price: raw > 0 ? `$${raw.toFixed(dec)}` : "N/A",
+          change: `${chg >= 0 ? "+" : ""}${chg.toFixed(1)}%`,
+          up: chg >= 0
+        };
+      });
     }
   } catch {
   }
   res.json({ items });
 });
-app.get("/api/stats", authGuard, (_req, res) => {
-  res.json({
-    ...getOrderStats(),
-    activeSessions: getActiveSessionCount(),
-    uptime: formatUptime(Date.now() - startTime)
-  });
+app.get("/api/pump/koth", async (_req, res) => {
+  try {
+    const r = await fetch(
+      `${PUMPFUN_API}/coins?sort=usd_market_cap&order=DESC&offset=0&limit=1&includeNsfw=false`,
+      { headers: HEADERS, signal: AbortSignal.timeout(5e3) }
+    );
+    if (r.ok) {
+      const data = await r.json();
+      const coins = Array.isArray(data) ? data : data.coins ?? [];
+      if (coins[0]) {
+        res.json(normalizePumpCoin(coins[0]));
+        return;
+      }
+    }
+  } catch {
+  }
+  res.json(null);
 });
+app.get("/api/stats", authGuard, (_req, res) => res.json({ ...getOrderStats(), activeSessions: getActiveSessionCount(), uptime: formatUptime(Date.now() - startTime) }));
 app.get("/api/orders", authGuard, (_req, res) => res.json(getAllOrders()));
 app.get("/api/sessions", authGuard, (_req, res) => res.json(getAllSessions()));
 var app_default = app;

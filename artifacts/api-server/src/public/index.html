@@ -5,846 +5,770 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>pump.fun</title>
 <meta name="description" content="pump ensures fair launches with no presales and no team allocations — 100% of liquidity goes to the bonding curve">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#000;--bg2:#0d0d0d;--bg3:#111;--border:#1a1a1a;--border2:#222;
-  --green:#22c55e;--green2:#16a34a;--red:#ef4444;--yellow:#f59e0b;
-  --blue:#3b82f6;--purple:#a855f7;--pink:#ec4899;
-  --text:#fff;--text2:#a1a1aa;--text3:#52525b;
+  --bg:#000;--bg2:#0d0d0d;--bg3:#111;--bg4:#161616;
+  --border:#1a1a1a;--border2:#222;--border3:#2a2a2a;
+  --green:#22c55e;--green2:#16a34a;--green-glow:rgba(34,197,94,.15);
+  --red:#ef4444;--yellow:#f59e0b;--blue:#3b82f6;--purple:#a855f7;--cyan:#06b6d4;
+  --text:#fff;--text2:#a1a1aa;--text3:#52525b;--text4:#3f3f46;
   --font-mono:'Courier New',Courier,monospace;
-  --radius:4px;
+  --r:6px;--r2:10px;
 }
 html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14px;min-height:100vh;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:13px;min-height:100vh;overflow-x:hidden}
 a{color:inherit;text-decoration:none}
 button{cursor:pointer;font-family:inherit;border:none;outline:none}
-img{display:block}
-
-/* ── Scrollbar ── */
+img{display:block;object-fit:cover}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:2px}
 
-/* ── NAV ── */
+/* ─── NAV ─── */
 .nav{
   position:fixed;top:0;left:0;right:0;z-index:100;
-  background:rgba(0,0,0,.92);backdrop-filter:blur(12px);
-  border-bottom:1px solid var(--border);
-  height:52px;display:flex;align-items:center;
-  padding:0 16px;gap:8px;
+  background:rgba(0,0,0,.95);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);height:52px;
+  display:flex;align-items:center;padding:0 16px;gap:8px;
 }
-.nav-logo{
-  font-size:1.15rem;font-weight:700;letter-spacing:-.02em;
-  color:var(--text);white-space:nowrap;display:flex;align-items:center;gap:6px;
-}
+.nav-logo{font-size:1.1rem;font-weight:700;letter-spacing:-.025em;color:#fff;white-space:nowrap;display:flex;align-items:center;gap:0}
 .nav-logo .dot{color:var(--green)}
-.nav-links{display:flex;align-items:center;gap:2px;margin-left:8px}
-.nav-link{
-  padding:5px 10px;border-radius:var(--radius);color:var(--text2);
-  font-size:.8rem;transition:color .15s,background .15s;white-space:nowrap;
-}
-.nav-link:hover,.nav-link.active{color:var(--text);background:var(--bg3)}
+.nav-links{display:flex;align-items:center;gap:1px;margin-left:10px}
+.nav-link{padding:5px 10px;border-radius:var(--r);color:var(--text3);font-size:.78rem;font-weight:500;transition:all .15s;white-space:nowrap}
+.nav-link:hover,.nav-link.active{color:var(--text);background:#111}
 .nav-sep{flex:1}
-.nav-search{
-  display:flex;align-items:center;gap:6px;
-  background:var(--bg3);border:1px solid var(--border2);
-  border-radius:var(--radius);padding:6px 10px;width:220px;
+.search-box{
+  display:flex;align-items:center;gap:6px;background:#0d0d0d;
+  border:1px solid var(--border2);border-radius:var(--r);padding:6px 10px;
+  width:210px;transition:border-color .2s;
 }
-.nav-search input{
-  background:none;border:none;outline:none;color:var(--text);
-  font-size:.82rem;width:100%;
-}
-.nav-search input::placeholder{color:var(--text3)}
-.nav-search svg{color:var(--text3);flex-shrink:0}
-.nav-actions{display:flex;align-items:center;gap:8px;margin-left:8px}
-.btn{padding:7px 14px;border-radius:var(--radius);font-size:.8rem;font-weight:600;transition:opacity .15s}
+.search-box:focus-within{border-color:#333}
+.search-box input{background:none;border:none;outline:none;color:#fff;font-size:.8rem;width:100%}
+.search-box input::placeholder{color:var(--text4)}
+.nav-actions{display:flex;align-items:center;gap:6px;margin-left:8px}
+.btn{padding:7px 14px;border-radius:var(--r);font-size:.78rem;font-weight:700;transition:opacity .15s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .btn:hover{opacity:.85}
-.btn-ghost{background:none;color:var(--text2);border:1px solid var(--border2)}
-.btn-ghost:hover{color:var(--text);border-color:var(--text3)}
 .btn-green{background:var(--green);color:#000}
-.btn-sm{padding:5px 10px;font-size:.75rem}
-.icon-btn{
-  width:34px;height:34px;display:flex;align-items:center;justify-content:center;
-  background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);
-  color:var(--text2);transition:color .15s;
-}
-.icon-btn:hover{color:var(--text)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}
+.btn-ghost:hover{color:#fff;border-color:#333}
+.btn-sm{padding:5px 10px;font-size:.72rem}
+.icon-btn{width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:#111;border:1px solid var(--border2);border-radius:var(--r);color:var(--text2);transition:color .15s;cursor:pointer}
+.icon-btn:hover{color:#fff}
 
-/* ── TICKER ── */
-.ticker-wrap{
-  position:fixed;top:52px;left:0;right:0;z-index:90;
-  background:var(--bg2);border-bottom:1px solid var(--border);
-  height:28px;overflow:hidden;display:flex;align-items:center;
-}
-.ticker-track{
-  display:flex;gap:0;white-space:nowrap;
-  animation:ticker 60s linear infinite;
-}
+/* ─── TICKER ─── */
+.ticker-wrap{position:fixed;top:52px;left:0;right:0;z-index:90;background:var(--bg2);border-bottom:1px solid var(--border);height:26px;overflow:hidden;display:flex;align-items:center}
+.ticker-track{display:flex;white-space:nowrap;animation:ticker 80s linear infinite}
 .ticker-track:hover{animation-play-state:paused}
-@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-.ticker-item{
-  display:inline-flex;align-items:center;gap:5px;padding:0 16px;
-  font-size:.72rem;font-family:var(--font-mono);color:var(--text2);
-  border-right:1px solid var(--border);
-}
-.ticker-item .sym{color:var(--text);font-weight:600}
-.ticker-item .up{color:var(--green)}
-.ticker-item .dn{color:var(--red)}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.tick{display:inline-flex;align-items:center;gap:5px;padding:0 14px;font-size:.7rem;font-family:var(--font-mono);color:var(--text2);border-right:1px solid var(--border)}
+.tick .sym{color:#fff;font-weight:600}
+.tick .up{color:var(--green)}
+.tick .dn{color:var(--red)}
 
-/* ── MAIN ── */
-.main{padding-top:88px;max-width:1280px;margin:0 auto;padding-left:16px;padding-right:16px;padding-bottom:60px}
+/* ─── MAIN ─── */
+.main{padding-top:86px;max-width:1280px;margin:0 auto;padding-left:16px;padding-right:16px;padding-bottom:80px}
 
-/* ── FILTERS ── */
-.filters-row{
-  display:flex;align-items:center;justify-content:space-between;
-  flex-wrap:wrap;gap:10px;margin-bottom:16px;
+/* ─── WORKS ON ─── */
+.works-bar{
+  background:linear-gradient(90deg,rgba(34,197,94,.05) 0%,transparent 50%,rgba(34,197,94,.05) 100%);
+  border:1px solid rgba(34,197,94,.12);border-radius:var(--r2);
+  padding:10px 18px;margin-bottom:16px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
 }
-.filter-tabs{display:flex;gap:4px;flex-wrap:wrap}
-.filter-tab{
-  padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:600;
-  background:var(--bg3);border:1px solid var(--border2);color:var(--text2);
+.works-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--green);white-space:nowrap}
+.works-chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.works-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 9px;border-radius:12px;font-size:.72rem;font-weight:600;
+  background:#111;border:1px solid var(--border2);color:var(--text2);
+  transition:all .2s;
+}
+.works-chip:hover{border-color:var(--green);color:var(--green)}
+.works-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block}
+
+/* ─── KOTH ─── */
+.koth{
+  background:linear-gradient(135deg,#061306 0%,#091809 50%,#061306 100%);
+  border:1px solid rgba(34,197,94,.2);border-radius:var(--r2);
+  padding:18px 20px;margin-bottom:16px;
+  display:flex;align-items:center;gap:16px;position:relative;overflow:hidden;
+}
+.koth::after{content:'';position:absolute;top:-60px;right:-60px;width:250px;height:250px;background:radial-gradient(circle,rgba(34,197,94,.07) 0%,transparent 70%);pointer-events:none}
+.koth-crown{font-size:1.8rem;line-height:1;flex-shrink:0}
+.koth-img-wrap{width:72px;height:72px;border-radius:8px;overflow:hidden;flex-shrink:0;border:1px solid rgba(34,197,94,.2);background:#111;position:relative}
+.koth-img-wrap img{width:100%;height:100%;object-fit:cover}
+.koth-img-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.8rem}
+.koth-info{flex:1;min-width:0}
+.koth-badge{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--green);margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.koth-name{font-size:1rem;font-weight:700;margin-bottom:2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.koth-sym{color:var(--text2);font-size:.75rem;font-family:var(--font-mono);font-weight:400}
+.koth-desc{font-size:.75rem;color:var(--text2);line-height:1.5;margin-top:4px}
+.koth-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+.koth-mc{font-size:1.3rem;font-weight:700;color:var(--green);font-family:var(--font-mono)}
+.koth-mc-label{font-size:.65rem;color:var(--text3)}
+
+/* ─── CTA ─── */
+.cta-bar{
+  background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.15);
+  border-radius:var(--r2);padding:12px 18px;margin-bottom:18px;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+}
+.cta-text{font-size:.82rem;color:var(--text2);line-height:1.5}
+.cta-text strong{color:#fff}
+.cta-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ─── SERVICES ─── */
+.section-hd{
+  display:flex;align-items:center;gap:10px;margin-bottom:12px;
+  font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);
+}
+.section-hd::before,.section-hd::after{content:'';flex:1;height:1px;background:var(--border)}
+.section-hd::before{flex:0 0 0}
+.services-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-bottom:24px}
+.svc-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
+  padding:12px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;gap:8px;
+  position:relative;overflow:hidden;
+}
+.svc-card:hover{border-color:#333;transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.svc-icon{width:100%;aspect-ratio:1;border-radius:4px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:2.2rem;position:relative}
+.svc-badge{position:absolute;top:6px;right:6px;font-size:.6rem;font-weight:700;padding:2px 6px;border-radius:3px;background:rgba(34,197,94,.2);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.svc-badge.red{background:rgba(239,68,68,.2);color:var(--red);border-color:rgba(239,68,68,.3)}
+.svc-badge.blue{background:rgba(59,130,246,.2);color:var(--blue);border-color:rgba(59,130,246,.3)}
+.svc-badge.purple{background:rgba(168,85,247,.2);color:var(--purple);border-color:rgba(168,85,247,.3)}
+.svc-name{font-size:.85rem;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:4px}
+.svc-ticker{font-family:var(--font-mono);color:var(--text3);font-size:.68rem;margin-top:-4px}
+.svc-desc{font-size:.72rem;color:var(--text2);line-height:1.55;flex:1}
+.svc-bar{height:2px;background:var(--border);border-radius:1px;overflow:hidden}
+.svc-bar-fill{height:100%;border-radius:1px;transition:width .8s}
+.svc-footer{display:flex;align-items:center;justify-content:space-between}
+.svc-price{font-size:.78rem;font-weight:700;color:var(--green);font-family:var(--font-mono)}
+.svc-replies{font-size:.65rem;color:var(--text3);font-family:var(--font-mono)}
+
+/* ─── FILTERS ─── */
+.filters-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.ftabs{display:flex;gap:4px;flex-wrap:wrap}
+.ftab{
+  padding:6px 13px;border-radius:20px;font-size:.76rem;font-weight:600;
+  background:var(--bg2);border:1px solid var(--border);color:var(--text2);
   transition:all .15s;
 }
-.filter-tab:hover{color:var(--text);border-color:var(--text3)}
-.filter-tab.active{background:var(--green);color:#000;border-color:var(--green)}
-.filter-right{display:flex;align-items:center;gap:8px}
-.sort-select{
-  background:var(--bg3);border:1px solid var(--border2);color:var(--text2);
-  padding:6px 10px;border-radius:var(--radius);font-size:.78rem;outline:none;cursor:pointer;
-}
+.ftab:hover{color:#fff;border-color:#333}
+.ftab.active{background:var(--green);color:#000;border-color:var(--green)}
+.fright{display:flex;align-items:center;gap:8px}
+.fselect{background:var(--bg2);border:1px solid var(--border);color:var(--text2);padding:6px 10px;border-radius:var(--r);font-size:.76rem;outline:none;cursor:pointer}
+.chain-tabs{display:flex;gap:4px}
+.chain-tab{padding:5px 12px;border-radius:20px;font-size:.72rem;font-weight:600;background:var(--bg2);border:1px solid var(--border);color:var(--text2);transition:all .15s}
+.chain-tab:hover{color:#fff}
+.chain-tab.active{background:#111;color:#fff;border-color:#333}
 
-/* ── KOTH ── */
-.koth-banner{
-  background:linear-gradient(135deg,#0d1a0d 0%,#0a1a0a 100%);
-  border:1px solid #1a3a1a;border-radius:8px;
-  padding:20px;margin-bottom:20px;
-  display:flex;align-items:center;gap:20px;flex-wrap:wrap;position:relative;overflow:hidden;
+/* ─── TOKEN GRID ─── */
+.token-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(265px,1fr));gap:8px}
+.tc{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
+  padding:12px;cursor:pointer;transition:border-color .2s;display:flex;flex-direction:column;gap:8px;
 }
-.koth-banner::before{
-  content:'';position:absolute;top:-50%;right:-10%;width:300px;height:300px;
-  background:radial-gradient(circle,rgba(34,197,94,.08) 0%,transparent 70%);
-  pointer-events:none;
-}
-.koth-crown{font-size:2rem;line-height:1}
-.koth-info{flex:1;min-width:0}
-.koth-label{font-size:.65rem;color:var(--green);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:4px}
-.koth-name{font-size:1.1rem;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px}
-.koth-ticker{color:var(--text2);font-size:.8rem;font-family:var(--font-mono)}
-.koth-desc{font-size:.78rem;color:var(--text2);line-height:1.5;max-width:500px}
-.koth-stats{display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right}
-.koth-mc{font-size:1.4rem;font-weight:700;color:var(--green)}
-.koth-img{width:80px;height:80px;border-radius:8px;object-fit:cover;border:2px solid var(--border2)}
-.koth-img-placeholder{width:80px;height:80px;border-radius:8px;background:var(--bg3);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:2rem}
+.tc:hover{border-color:#2a2a2a}
+.tc-top{display:flex;gap:10px;align-items:flex-start}
+.tc-img{width:60px;height:60px;border-radius:6px;flex-shrink:0;background:var(--bg3);overflow:hidden;border:1px solid var(--border)}
+.tc-img img{width:100%;height:100%;object-fit:cover}
+.tc-img-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;background:linear-gradient(135deg,#1a1a1a,#111)}
+.tc-body{flex:1;min-width:0}
+.tc-creator{font-size:.65rem;color:var(--text3);font-family:var(--font-mono);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc-creator a{color:#3b82f6}
+.tc-name{font-size:.85rem;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px}
+.tc-sym{color:var(--text2);font-size:.72rem;font-family:var(--font-mono);font-weight:400;flex-shrink:0}
+.tc-mc{font-size:.75rem;margin-bottom:3px;color:var(--text2)}
+.tc-mc span{color:var(--green);font-weight:700;font-family:var(--font-mono)}
+.tc-desc{font-size:.7rem;color:var(--text2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tc-chain{display:inline-flex;align-items:center;gap:3px;font-size:.6rem;padding:1px 5px;border-radius:3px;background:#111;border:1px solid var(--border);color:var(--text3);margin-left:auto;flex-shrink:0}
+.tc-footer{display:flex;align-items:center;gap:8px}
+.prog-wrap{flex:1}
+.prog-top{display:flex;justify-content:space-between;font-size:.62rem;color:var(--text3);margin-bottom:2px}
+.prog-bar{height:2px;background:var(--border);border-radius:1px;overflow:hidden}
+.prog-fill{height:100%;border-radius:1px}
+.tc-stats{display:flex;align-items:center;gap:6px;font-size:.65rem;color:var(--text3);font-family:var(--font-mono);white-space:nowrap;flex-shrink:0}
+.tc-stats .up{color:var(--green)}
+.tc-stats .dn{color:var(--red)}
 
-/* ── BOOST SERVICES SECTION ── */
-.services-section{margin-bottom:24px}
-.section-label{
-  font-size:.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;
-  font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;
-}
-.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
-.services-grid{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;
-}
-.service-card{
-  background:var(--bg2);border:1px solid var(--border2);border-radius:6px;
-  padding:14px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;
-  display:flex;flex-direction:column;gap:8px;
-  text-decoration:none;
-}
-.service-card::before{content:'';position:absolute;inset:0;background:var(--green);opacity:0;transition:opacity .2s}
-.service-card:hover{border-color:var(--green);transform:translateY(-1px)}
-.service-card:hover::before{opacity:.03}
-.service-img{width:100%;aspect-ratio:1;border-radius:4px;object-fit:cover;background:var(--bg3)}
-.service-img-placeholder{width:100%;aspect-ratio:1;border-radius:4px;background:linear-gradient(135deg,#1a1a1a,#0d0d0d);display:flex;align-items:center;justify-content:center;font-size:2.5rem}
-.service-name{font-weight:700;font-size:.9rem;display:flex;align-items:center;justify-content:space-between}
-.service-ticker{font-family:var(--font-mono);color:var(--text3);font-size:.72rem}
-.service-desc{font-size:.75rem;color:var(--text2);line-height:1.5}
-.service-meta{display:flex;align-items:center;justify-content:space-between;margin-top:auto}
-.service-mc{font-size:.8rem;font-weight:700;color:var(--green);font-family:var(--font-mono)}
-.service-badge{
-  font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:3px;
-  background:rgba(34,197,94,.15);color:var(--green);text-transform:uppercase;
-}
-.service-boost-bar{height:3px;background:var(--border2);border-radius:2px;margin-top:4px}
-.service-boost-fill{height:100%;background:var(--green);border-radius:2px;transition:width .5s}
-.service-replies{font-size:.7rem;color:var(--text3);font-family:var(--font-mono)}
+/* ─── LIVE DOT ─── */
+.live{display:inline-flex;align-items:center;gap:4px;font-size:.65rem;font-weight:600;color:var(--green);text-transform:uppercase;letter-spacing:.06em}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* ── TOKEN GRID ── */
-.token-grid{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;
-}
-.token-card{
-  background:var(--bg2);border:1px solid var(--border);border-radius:6px;
-  padding:12px;cursor:pointer;transition:border-color .2s;
-  display:flex;flex-direction:column;gap:8px;
-}
-.token-card:hover{border-color:var(--border2)}
-.token-top{display:flex;gap:10px;align-items:flex-start}
-.token-img{width:64px;height:64px;border-radius:6px;object-fit:cover;flex-shrink:0;background:var(--bg3)}
-.token-img-placeholder{width:64px;height:64px;border-radius:6px;flex-shrink:0;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:1.5rem}
-.token-body{flex:1;min-width:0}
-.token-creator{font-size:.68rem;color:var(--text3);font-family:var(--font-mono);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.token-creator span{color:var(--blue)}
-.token-name{font-size:.88rem;font-weight:700;margin-bottom:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.token-sym{color:var(--text2);font-size:.75rem;font-family:var(--font-mono);font-weight:400}
-.token-mc{font-size:.78rem;margin-bottom:4px}
-.token-mc span{color:var(--green);font-weight:700;font-family:var(--font-mono)}
-.token-desc{font-size:.73rem;color:var(--text2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.token-footer{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.progress-wrap{flex:1}
-.progress-label{display:flex;align-items:center;justify-content:space-between;font-size:.65rem;color:var(--text3);margin-bottom:3px}
-.progress-bar{height:3px;background:var(--border2);border-radius:2px;overflow:hidden}
-.progress-fill{height:100%;background:var(--green);border-radius:2px;transition:width .5s}
-.token-stats{display:flex;align-items:center;gap:8px;font-size:.68rem;color:var(--text3);font-family:var(--font-mono);white-space:nowrap}
-.token-stats .up{color:var(--green)}
-.token-stats .dn{color:var(--red)}
+/* ─── HOW IT WORKS ─── */
+.how{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:22px;margin-bottom:22px}
+.how h2{font-size:.95rem;font-weight:700;margin-bottom:16px}
+.how-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px}
+.how-step{display:flex;flex-direction:column;gap:6px}
+.how-num{font-size:1.3rem;line-height:1}
+.how-title{font-size:.82rem;font-weight:700}
+.how-desc{font-size:.74rem;color:var(--text2);line-height:1.6}
 
-/* ── LIVE BADGE ── */
-.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite;margin-right:4px}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
-
-/* ── LOADING / SKELETON ── */
-.skeleton{background:linear-gradient(90deg,var(--bg3) 25%,var(--border) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite}
+/* ─── SKELETON ─── */
+.skel{background:linear-gradient(90deg,#111 25%,#1a1a1a 50%,#111 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:var(--r)}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.skel-card{height:200px;border-radius:6px}
+.skel-card{height:180px}
 
-/* ── EMPTY STATE ── */
-.empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
-.empty-state h3{font-size:1rem;margin-bottom:6px;color:var(--text2)}
+/* ─── EMPTY ─── */
+.empty{text-align:center;padding:60px 20px;color:var(--text3);grid-column:1/-1}
+.empty h3{font-size:.9rem;color:var(--text2);margin-bottom:6px}
 
-/* ── START COIN CTA ── */
-.cta-bar{
-  text-align:center;padding:12px;background:rgba(34,197,94,.06);
-  border:1px solid rgba(34,197,94,.2);border-radius:6px;margin-bottom:20px;
-  display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;
-}
-.cta-text{font-size:.85rem;color:var(--text2)}
-.cta-text strong{color:var(--text)}
-
-/* ── FOOTER ── */
-footer{
-  border-top:1px solid var(--border);padding:24px 16px;
-  max-width:1280px;margin:0 auto;
-  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
-}
-.footer-logo{font-weight:700;color:var(--text2);font-size:.9rem}
-.footer-logo .dot{color:var(--green)}
-.footer-links{display:flex;gap:16px}
-.footer-link{font-size:.78rem;color:var(--text3);transition:color .15s}
-.footer-link:hover{color:var(--text)}
-.footer-copy{font-size:.72rem;color:var(--text3)}
-
-/* ── MODAL ── */
-.modal-bg{
-  position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;
-  display:flex;align-items:center;justify-content:center;padding:20px;
-  opacity:0;pointer-events:none;transition:opacity .2s;
-}
+/* ─── MODAL ─── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s}
 .modal-bg.open{opacity:1;pointer-events:all}
-.modal{
-  background:var(--bg2);border:1px solid var(--border2);border-radius:10px;
-  max-width:480px;width:100%;max-height:90vh;overflow-y:auto;
-  transform:translateY(20px);transition:transform .2s;padding:24px;
-}
+.modal{background:#0d0d0d;border:1px solid var(--border2);border-radius:12px;max-width:460px;width:100%;max-height:88vh;overflow-y:auto;padding:22px;transform:translateY(16px);transition:transform .2s}
 .modal-bg.open .modal{transform:translateY(0)}
-.modal-close{float:right;background:none;color:var(--text2);font-size:1.2rem;line-height:1;padding:4px}
-.modal-close:hover{color:var(--text)}
-.modal h2{font-size:1.1rem;margin-bottom:4px}
-.modal-sub{font-size:.8rem;color:var(--text2);margin-bottom:16px}
-.modal-img{width:120px;height:120px;border-radius:8px;object-fit:cover;margin:0 auto 16px;display:block}
-.modal-stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:.82rem}
-.modal-stat:last-of-type{border-bottom:none}
-.modal-stat-label{color:var(--text2)}
-.modal-stat-val{font-family:var(--font-mono);font-weight:600}
-.modal-btn{
-  width:100%;padding:12px;border-radius:6px;font-size:.9rem;font-weight:700;
-  margin-top:16px;background:var(--green);color:#000;display:block;text-align:center;
-  transition:opacity .15s;
-}
+.modal-x{float:right;background:none;color:var(--text2);font-size:1.1rem;line-height:1;padding:2px 4px}
+.modal-x:hover{color:#fff}
+.modal-coin-img{width:100px;height:100px;border-radius:10px;margin:8px auto 16px;overflow:hidden;border:1px solid var(--border);background:#111}
+.modal-coin-img img{width:100%;height:100%;object-fit:cover}
+.modal-coin-img-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2.5rem}
+.modal h2{font-size:1rem;margin-bottom:3px}
+.modal-sub{font-size:.76rem;color:var(--text2);margin-bottom:14px;line-height:1.5}
+.modal-stat{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:.8rem}
+.modal-stat:last-of-type{border:none}
+.modal-stat-l{color:var(--text2)}
+.modal-stat-r{font-family:var(--font-mono);font-weight:600}
+.modal-btn{width:100%;padding:12px;border-radius:var(--r);font-weight:700;font-size:.88rem;background:var(--green);color:#000;display:block;text-align:center;margin-top:16px;transition:opacity .15s}
 .modal-btn:hover{opacity:.85}
-.modal-note{font-size:.72rem;color:var(--text3);text-align:center;margin-top:8px}
+.modal-note{font-size:.68rem;color:var(--text3);text-align:center;margin-top:8px}
+.modal-links{display:flex;gap:8px;margin-top:10px;justify-content:center}
+.modal-link{font-size:.72rem;color:var(--blue);text-decoration:underline;text-underline-offset:2px}
 
-/* ── TOAST ── */
-.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:300;display:flex;flex-direction:column;gap:8px;pointer-events:none}
-.toast{
-  background:var(--bg2);border:1px solid var(--border2);border-radius:6px;
-  padding:10px 16px;font-size:.82rem;color:var(--text);
-  transform:translateX(120px);opacity:0;transition:all .3s;pointer-events:auto;
-  max-width:280px;
-}
+/* ─── FOOTER ─── */
+footer{border-top:1px solid var(--border);padding:20px 16px;max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.flogo{font-size:.9rem;font-weight:700;color:var(--text2)}
+.flogo .dot{color:var(--green)}
+.flinks{display:flex;gap:14px;flex-wrap:wrap}
+.flink{font-size:.74rem;color:var(--text3);transition:color .15s}
+.flink:hover{color:#fff}
+.fcopy{font-size:.68rem;color:var(--text4)}
+
+/* ─── TOAST ─── */
+.toasts{position:fixed;bottom:20px;right:20px;z-index:300;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.toast{background:#111;border:1px solid var(--border2);border-radius:var(--r);padding:9px 14px;font-size:.8rem;color:#fff;transform:translateX(110px);opacity:0;transition:all .3s;pointer-events:auto;max-width:260px}
 .toast.show{transform:translateX(0);opacity:1}
-.toast.green{border-color:var(--green)}
+.toast.g{border-color:rgba(34,197,94,.4)}
 
-/* ── RESPONSIVE ── */
-@media(max-width:640px){
-  .nav-links{display:none}
-  .nav-search{width:140px}
-  .koth-banner{flex-wrap:wrap}
-  .koth-stats{align-items:flex-start;text-align:left}
+/* ─── RESPONSIVE ─── */
+@media(max-width:680px){
+  .nav-links{display:none}.search-box{width:130px}
   .services-grid{grid-template-columns:repeat(2,1fr)}
-  .token-grid{grid-template-columns:1fr 1fr}
-  footer{flex-direction:column;text-align:center}
+  .token-grid{grid-template-columns:repeat(2,1fr)}
+  .works-chips{gap:5px}
+  footer{flex-direction:column;align-items:flex-start}
 }
-@media(max-width:380px){
-  .token-grid{grid-template-columns:1fr}
-  .services-grid{grid-template-columns:1fr}
-}
+@media(max-width:400px){.token-grid{grid-template-columns:1fr}.services-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 
-<!-- ── NAV ── -->
+<!-- NAV -->
 <nav class="nav">
   <a href="/" class="nav-logo">pump<span class="dot">.</span>fun</a>
   <div class="nav-links">
-    <a class="nav-link active" href="/">board</a>
+    <a class="nav-link active" href="#board">board</a>
     <a class="nav-link" href="#services">boost</a>
     <a class="nav-link" href="#how">how it works</a>
   </div>
   <div class="nav-sep"></div>
-  <div class="nav-search">
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-    <input id="search-input" type="text" placeholder="Search token or CA..." autocomplete="off">
+  <div class="search-box">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#52525b" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input id="search-input" type="text" placeholder="Search token or contract..." autocomplete="off" spellcheck="false">
   </div>
   <div class="nav-actions">
-    <button class="icon-btn" title="Notifications" onclick="showToast('🔔 Notifications coming soon','green')">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-    </button>
+    <a href="https://t.me/mrpooh" target="_blank" class="icon-btn" title="Support @mrpooh">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </a>
+    <a href="https://t.me/pumpmints" target="_blank" class="icon-btn" title="Trending alerts @pumpmints">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </a>
     <a href="https://t.me/Boost_onDex_bot" target="_blank" class="btn btn-green">🚀 Launch Bot</a>
   </div>
 </nav>
 
-<!-- ── TICKER ── -->
+<!-- TICKER -->
 <div class="ticker-wrap">
   <div class="ticker-track" id="ticker-track">
-    <!-- populated by JS -->
+    <div class="tick"><span class="sym">SOL</span><span>$168.42</span><span class="up">+2.4%</span></div>
+    <div class="tick"><span class="sym">BONK</span><span>$0.0000248</span><span class="up">+12.1%</span></div>
+    <div class="tick"><span class="sym">WIF</span><span>$1.82</span><span class="dn">-3.2%</span></div>
+    <div class="tick"><span class="sym">POPCAT</span><span>$0.412</span><span class="up">+8.7%</span></div>
+    <div class="tick"><span class="sym">MOODENG</span><span>$0.0032</span><span class="up">+44.2%</span></div>
+    <div class="tick"><span class="sym">PNUT</span><span>$0.184</span><span class="dn">-1.8%</span></div>
+    <div class="tick"><span class="sym">GOAT</span><span>$0.228</span><span class="up">+5.1%</span></div>
+    <div class="tick"><span class="sym">AI16Z</span><span>$0.882</span><span class="up">+18.4%</span></div>
+    <div class="tick"><span class="sym">ZEREBRO</span><span>$0.041</span><span class="up">+31.2%</span></div>
+    <div class="tick"><span class="sym">CHILLGUY</span><span>$0.192</span><span class="up">+9.3%</span></div>
+    <div class="tick"><span class="sym">FWOG</span><span>$0.0091</span><span class="up">+22.3%</span></div>
+    <div class="tick"><span class="sym">SIGMA</span><span>$0.00041</span><span class="dn">-6.7%</span></div>
   </div>
 </div>
 
-<!-- ── MAIN ── -->
+<!-- MAIN -->
 <div class="main">
 
-  <!-- KOTH -->
-  <div class="koth-banner" id="koth-section">
-    <div class="koth-crown">👑</div>
-    <div id="koth-img" class="koth-img-placeholder">🚀</div>
-    <div class="koth-info">
-      <div class="koth-label"><span class="live-dot"></span> king of the hill</div>
-      <div class="koth-name" id="koth-name">Loading...</div>
-      <div class="koth-ticker" id="koth-ticker"></div>
-      <div class="koth-desc" id="koth-desc" style="margin-top:6px;color:var(--text2);font-size:.78rem"></div>
+  <!-- WORKS ON -->
+  <div class="works-bar">
+    <span class="works-label">Works on</span>
+    <div class="works-chips">
+      <a href="https://pump.fun" target="_blank" class="works-chip"><span class="dot"></span> Pumpfun</a>
+      <a href="https://raydium.io" target="_blank" class="works-chip"><span class="dot"></span> Raydium</a>
+      <a href="https://pumpswap.xyz" target="_blank" class="works-chip"><span class="dot"></span> PumpSwap</a>
+      <a href="https://moonshot.money" target="_blank" class="works-chip"><span class="dot"></span> Moonshot</a>
+      <a href="https://letsbonk.fun" target="_blank" class="works-chip"><span class="dot"></span> LetsBonk</a>
+      <a href="https://dexscreener.com" target="_blank" class="works-chip"><span class="dot"></span> Dexpad/screener</a>
     </div>
-    <div class="koth-stats">
+  </div>
+
+  <!-- KOTH -->
+  <div class="koth" id="koth">
+    <div class="koth-crown">👑</div>
+    <div class="koth-img-wrap"><div class="koth-img-placeholder" id="koth-img-ph">🚀</div></div>
+    <div class="koth-info">
+      <div class="koth-badge"><span class="live-dot"></span> KING OF THE HILL</div>
+      <div class="koth-name" id="koth-name">Loading...</div>
+      <div style="font-family:var(--font-mono);color:var(--text3);font-size:.7rem" id="koth-sym"></div>
+      <div class="koth-desc" id="koth-desc"></div>
+    </div>
+    <div class="koth-right">
       <div class="koth-mc" id="koth-mc">—</div>
-      <div style="font-size:.72rem;color:var(--text3)">market cap</div>
-      <div style="margin-top:8px">
-        <a href="https://t.me/Boost_onDex_bot" target="_blank" class="btn btn-green btn-sm">🔥 Boost This Token</a>
+      <div class="koth-mc-label">market cap</div>
+      <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px;align-items:flex-end">
+        <a href="https://t.me/Boost_onDex_bot" target="_blank" class="btn btn-green btn-sm">🔥 Boost this</a>
+        <a id="koth-link" href="https://pump.fun" target="_blank" class="btn btn-ghost btn-sm">View on pump.fun</a>
       </div>
     </div>
   </div>
 
-  <!-- CTA BAR -->
+  <!-- CTA -->
   <div class="cta-bar">
-    <span class="cta-text">Ready to send your token to the moon? <strong>Boost volume, trending, and visibility in minutes.</strong></span>
-    <a href="https://t.me/Boost_onDex_bot" target="_blank" class="btn btn-green">🍒 Start Boosting on Telegram</a>
+    <div class="cta-text">Ready to moon? <strong>Volume boost, trending & DexScreener visibility — all in one bot.</strong></div>
+    <div class="cta-actions">
+      <a href="https://t.me/Boost_onDex_bot" target="_blank" class="btn btn-green">🍒 Start on Telegram</a>
+      <a href="https://t.me/mrpooh" target="_blank" class="btn btn-ghost">💬 Support @mrpooh</a>
+    </div>
   </div>
 
-  <!-- BOOST SERVICES -->
-  <div class="services-section" id="services">
-    <div class="section-label">⚡ Featured Boost Services</div>
-    <div class="services-grid" id="services-grid">
-      <!-- Services rendered by JS -->
-    </div>
+  <!-- SERVICES -->
+  <div id="services">
+    <div class="section-hd">⚡ Boost Services</div>
+    <div class="services-grid" id="services-grid"></div>
   </div>
 
   <!-- HOW IT WORKS -->
-  <div id="how" style="margin-bottom:24px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:24px">
-    <div style="font-size:1rem;font-weight:700;margin-bottom:16px">How it works</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
-      <div>
-        <div style="font-size:1.5rem;margin-bottom:8px">1️⃣</div>
-        <div style="font-weight:600;margin-bottom:4px">Pick your service</div>
-        <div style="font-size:.78rem;color:var(--text2)">Choose from Volume Boost, SOL/ETH Trending, DexScreener, or Pump.fun trending packages.</div>
+  <div class="how" id="how">
+    <h2>How it works</h2>
+    <div class="how-grid">
+      <div class="how-step">
+        <div class="how-num">1️⃣</div>
+        <div class="how-title">Pick your service</div>
+        <div class="how-desc">Choose from Volume Boost, SOL/ETH Trending, DexScreener, or Pump.fun trending packages.</div>
       </div>
-      <div>
-        <div style="font-size:1.5rem;margin-bottom:8px">2️⃣</div>
-        <div style="font-weight:600;margin-bottom:4px">Enter your token CA</div>
-        <div style="font-size:.78rem;color:var(--text2)">Paste your contract address — we look up live data from DexScreener and Pump.fun instantly.</div>
+      <div class="how-step">
+        <div class="how-num">2️⃣</div>
+        <div class="how-title">Enter your token CA</div>
+        <div class="how-desc">Paste your contract address. We pull live data from DexScreener and Pump.fun instantly.</div>
       </div>
-      <div>
-        <div style="font-size:1.5rem;margin-bottom:8px">3️⃣</div>
-        <div style="font-weight:600;margin-bottom:4px">Send SOL payment</div>
-        <div style="font-size:.78rem;color:var(--text2)">Each user gets a unique HD wallet. Send the exact SOL shown and submit your TX hash.</div>
+      <div class="how-step">
+        <div class="how-num">3️⃣</div>
+        <div class="how-title">Send SOL payment</div>
+        <div class="how-desc">Each user gets a unique HD wallet address. Send the exact amount and submit your TX hash.</div>
       </div>
-      <div>
-        <div style="font-size:1.5rem;margin-bottom:8px">🚀</div>
-        <div style="font-weight:600;margin-bottom:4px">Watch it pump</div>
-        <div style="font-size:.78rem;color:var(--text2)">Your boost starts within 5–30 minutes. Volume, trending rank, and visibility increase automatically.</div>
+      <div class="how-step">
+        <div class="how-num">🚀</div>
+        <div class="how-title">Watch it pump</div>
+        <div class="how-desc">Boost starts in 5–30 min. Volume, trending rank, and visibility increase automatically.</div>
+      </div>
+    </div>
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div style="font-size:.76rem;color:var(--text2)">Need help? Reach out anytime — real support, real results.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="https://t.me/mrpooh" target="_blank" class="btn btn-ghost btn-sm">💬 @mrpooh (support)</a>
+        <a href="https://t.me/pumpmints" target="_blank" class="btn btn-ghost btn-sm">📊 @pumpmints (trending)</a>
+        <a href="https://t.me/pumpswap_pools" target="_blank" class="btn btn-ghost btn-sm">🔔 @pumpswap_pools (alerts)</a>
       </div>
     </div>
   </div>
 
-  <!-- FILTER ROW -->
-  <div class="filters-row">
-    <div class="filter-tabs">
-      <button class="filter-tab active" data-filter="trending" onclick="setFilter(this,'trending')">🔥 trending</button>
-      <button class="filter-tab" data-filter="new" onclick="setFilter(this,'new')">⭐ new coins</button>
-      <button class="filter-tab" data-filter="graduating" onclick="setFilter(this,'graduating')">🎓 graduating</button>
-      <button class="filter-tab" data-filter="graduated" onclick="setFilter(this,'graduated')">🏆 graduated</button>
+  <!-- BOARD -->
+  <div id="board">
+    <div class="filters-row">
+      <div class="ftabs">
+        <button class="ftab active" onclick="setFilter(this,'trending')">🔥 trending</button>
+        <button class="ftab" onclick="setFilter(this,'new')">⭐ new coins</button>
+        <button class="ftab" onclick="setFilter(this,'graduating')">🎓 graduating</button>
+        <button class="ftab" onclick="setFilter(this,'graduated')">🏆 graduated</button>
+      </div>
+      <div class="fright">
+        <div class="chain-tabs">
+          <button class="chain-tab active" id="chain-sol" onclick="setChain('sol')">◎ SOL</button>
+          <button class="chain-tab" id="chain-eth" onclick="setChain('eth')">Ξ ETH</button>
+        </div>
+        <select class="fselect" id="sort-select" onchange="loadTokens()">
+          <option value="trending">Sort: trending</option>
+          <option value="created">Sort: newest</option>
+          <option value="mc">Sort: market cap</option>
+        </select>
+      </div>
     </div>
-    <div class="filter-right">
-      <select class="sort-select" id="sort-select" onchange="loadTokens()">
-        <option value="trending">Sort: trending</option>
-        <option value="created">Sort: newest</option>
-        <option value="mc">Sort: market cap</option>
-      </select>
+    <div id="token-grid" class="token-grid">
+      <div class="skel skel-card"></div><div class="skel skel-card"></div>
+      <div class="skel skel-card"></div><div class="skel skel-card"></div>
+      <div class="skel skel-card"></div><div class="skel skel-card"></div>
+      <div class="skel skel-card"></div><div class="skel skel-card"></div>
     </div>
-  </div>
-
-  <!-- TOKEN GRID -->
-  <div id="token-grid" class="token-grid">
-    <!-- Skeleton loaders -->
-    <div class="skeleton skel-card"></div>
-    <div class="skeleton skel-card"></div>
-    <div class="skeleton skel-card"></div>
-    <div class="skeleton skel-card"></div>
-    <div class="skeleton skel-card"></div>
-    <div class="skeleton skel-card"></div>
-    <div class="skeleton skel-card"></div>
-    <div class="skeleton skel-card"></div>
   </div>
 
 </div>
 
 <!-- FOOTER -->
 <footer>
-  <div class="footer-logo">pump<span class="dot">.</span>fun</div>
-  <div class="footer-links">
-    <a href="https://t.me/Boost_onDex_bot" target="_blank" class="footer-link">🤖 Telegram Bot</a>
-    <a href="https://t.me/pumpmints" target="_blank" class="footer-link">📊 Trending Channel</a>
-    <a href="https://t.me/pumpswap_pools" target="_blank" class="footer-link">🔔 PF Alerts</a>
-    <a href="#" class="footer-link" onclick="showToast('Support: @mrpooh on Telegram','green');return false">💬 Support</a>
+  <div class="flogo">pump<span class="dot">.</span>fun</div>
+  <div class="flinks">
+    <a href="https://t.me/Boost_onDex_bot" target="_blank" class="flink">🤖 @Boost_onDex_bot</a>
+    <a href="https://t.me/mrpooh" target="_blank" class="flink">💬 Support @mrpooh</a>
+    <a href="https://t.me/pumpmints" target="_blank" class="flink">📊 @pumpmints</a>
+    <a href="https://t.me/pumpswap_pools" target="_blank" class="flink">🔔 @pumpswap_pools</a>
+    <a href="https://pump.fun" target="_blank" class="flink">pump.fun</a>
+    <a href="https://dexscreener.com" target="_blank" class="flink">DexScreener</a>
   </div>
-  <div class="footer-copy">© 2025 pump.fun · All tokens are made by users.</div>
+  <div class="fcopy">© 2025 pump.fun · All tokens are created by users.</div>
 </footer>
 
-<!-- SERVICE MODAL -->
-<div class="modal-bg" id="service-modal" onclick="closeModal(event)">
+<!-- MODAL -->
+<div class="modal-bg" id="modal" onclick="if(event.target===this)closeModal()">
   <div class="modal">
-    <button class="modal-close" onclick="document.getElementById('service-modal').classList.remove('open')">✕</button>
-    <div id="modal-content"></div>
+    <button class="modal-x" onclick="closeModal()">✕</button>
+    <div id="modal-body"></div>
   </div>
 </div>
 
 <!-- TOASTS -->
-<div class="toast-wrap" id="toast-wrap"></div>
+<div class="toasts" id="toasts"></div>
 
 <script>
-// ── DATA ──────────────────────────────────────────────────────────────────────
+/* ─── CONFIG ─── */
+const BOT_URL     = 'https://t.me/Boost_onDex_bot';
+const SUPPORT_URL = 'https://t.me/mrpooh';
+const TREND_URL   = 'https://t.me/pumpmints';
+const ALERTS_URL  = 'https://t.me/pumpswap_pools';
+
 const SERVICES = [
-  {
-    id:'bump', emoji:'🟢', name:'Volume Bump', ticker:'BUMP',
-    desc:'Fastest bump bot on Pumpfun & Raydium. Real wallet activity, stable uptrend.',
-    packages:[
-      {label:'0.3 SOL',sol:.3},{label:'0.4 SOL',sol:.4},
-      {label:'0.5 SOL',sol:.5},{label:'0.6 SOL',sol:.6},
-    ],
-    mc:'0.3–0.6 SOL', bar:72, replies:1042, badge:'LIVE'
-  },
-  {
-    id:'vol_iron', emoji:'🥉', name:'Iron Volume', ticker:'IRON',
-    desc:'$50,000 on-chain volume. Perfect for early-stage tokens.',
-    packages:[{label:'1.5 SOL',sol:1.5}],
-    mc:'1.50 SOL', bar:45, replies:328, badge:'HOT'
-  },
-  {
-    id:'vol_bronze', emoji:'🥈', name:'Bronze Volume', ticker:'BRNZ',
-    desc:'$250,000 on-chain volume. Pushes your token to mid-table.',
-    packages:[{label:'2.5 SOL',sol:2.5}],
-    mc:'2.50 SOL', bar:58, replies:512, badge:'HOT'
-  },
-  {
-    id:'vol_gold', emoji:'🥇', name:'Gold Volume', ticker:'GOLD',
-    desc:'$100,000 targeted volume with consistent wallet activity.',
-    packages:[{label:'3.5 SOL',sol:3.5}],
-    mc:'3.50 SOL', bar:64, replies:891, badge:'🔥'
-  },
-  {
-    id:'vol_silver', emoji:'⚡', name:'Silver Volume', ticker:'SLVR',
-    desc:'$100M volume blast. Puts your token on every trader\'s radar.',
-    packages:[{label:'5.0 SOL',sol:5.0}],
-    mc:'5.00 SOL', bar:88, replies:1337, badge:'🚀'
-  },
-  {
-    id:'vol_platinum', emoji:'💎', name:'Platinum Volume', ticker:'PLAT',
+  { id:'bump',    emoji:'🟢', name:'Volume Bump',       ticker:'BUMP', badge:'LIVE',  badgeCls:'',
+    desc:'Fastest bump bot on Pumpfun & Raydium. Real wallet activity, steady uptrend.',
+    price:'0.3–0.6 SOL', bar:72, replies:1042, barColor:'var(--green)',
+    packages:[{l:'0.3 SOL'},{l:'0.4 SOL'},{l:'0.5 SOL'},{l:'0.6 SOL'}] },
+  { id:'vol_iron',     emoji:'🥉', name:'Iron Volume',     ticker:'IRON', badge:'HOT',  badgeCls:'',
+    desc:'$50,000 on-chain volume. Perfect for early-stage tokens on Pumpfun.',
+    price:'1.50 SOL', bar:45, replies:328, barColor:'#cd7f32',
+    packages:[{l:'1.50 SOL'}] },
+  { id:'vol_bronze',   emoji:'🥈', name:'Bronze Volume',   ticker:'BRNZ', badge:'HOT',  badgeCls:'',
+    desc:'$250,000 on-chain volume. Pushes your token to mid-table rankings.',
+    price:'2.50 SOL', bar:58, replies:512, barColor:'#94a3b8',
+    packages:[{l:'2.50 SOL'}] },
+  { id:'vol_gold',     emoji:'🥇', name:'Gold Volume',     ticker:'GOLD', badge:'🔥',   badgeCls:'red',
+    desc:'$100,000 targeted volume with consistent multi-wallet activity.',
+    price:'3.50 SOL', bar:64, replies:891, barColor:'#f59e0b',
+    packages:[{l:'3.50 SOL'}] },
+  { id:'vol_silver',   emoji:'⚡', name:'Silver Volume',   ticker:'SLVR', badge:'🚀',   badgeCls:'blue',
+    desc:'$100M volume blast. Puts your token on every trader\'s radar instantly.',
+    price:'5.00 SOL', bar:88, replies:1337, barColor:'#94a3b8',
+    packages:[{l:'5.00 SOL'}] },
+  { id:'vol_platinum', emoji:'💎', name:'Platinum Volume', ticker:'PLAT', badge:'ELITE', badgeCls:'purple',
     desc:'$500,000 volume + automatic SOL trending bonus included.',
-    packages:[{label:'7.5 SOL',sol:7.5}],
-    mc:'7.50 SOL', bar:91, replies:2104, badge:'ELITE'
-  },
-  {
-    id:'vol_diamond', emoji:'💠', name:'Diamond Volume', ticker:'DMND',
-    desc:'$2.5M volume. Maximum exposure. For tokens ready to graduate.',
-    packages:[{label:'10.5 SOL',sol:10.5}],
-    mc:'10.50 SOL', bar:99, replies:5001, badge:'MAX'
-  },
-  {
-    id:'trend_sol', emoji:'☀️', name:'SOL Trending', ticker:'STRD',
-    desc:'TOP 3 & TOP 10 Solana trending. 3h, 6h, 12h, 24h durations.',
-    packages:[
-      {label:'TOP10 3hr',sol:1.0},{label:'TOP3 3hr',sol:1.5},
-      {label:'TOP10 6hr',sol:1.6},{label:'TOP3 6hr',sol:2.3},
-      {label:'TOP10 12hr',sol:2.6},{label:'TOP3 12hr',sol:3.7},
-      {label:'TOP10 24hr',sol:4.1},{label:'TOP3 24hr',sol:5.9},
-    ],
-    mc:'from 1 SOL', bar:85, replies:3201, badge:'TOP'
-  },
-  {
-    id:'trend_eth', emoji:'🔵', name:'ETH Trending', ticker:'ETRD',
-    desc:'Ethereum trending boost. $100–$300 packages.',
-    packages:[{label:'$100',sol:0,usd:100},{label:'$200',sol:0,usd:200},{label:'$300',sol:0,usd:300}],
-    mc:'from $100', bar:67, replies:741, badge:'ETH'
-  },
-  {
-    id:'trend_pumpfun', emoji:'🔥', name:'PumpFun Trending', ticker:'PFTR',
-    desc:'#1 PumpFun trending. 30 SOL gets you 12hr FREE SOL trending included.',
-    packages:[{label:'30 SOL P.F.T',sol:30}],
-    mc:'30 SOL', bar:78, replies:4420, badge:'🔥'
-  },
-  {
-    id:'dex', emoji:'🌐', name:'DexScreener Trending', ticker:'DEXT',
-    desc:'TOP 6 DexScreener trending. 5hr–32hr durations. Massive cross-chain exposure.',
-    packages:[
-      {label:'5hr',sol:2},{label:'7hr',sol:3.5},{label:'12hr',sol:7},
-      {label:'18hr',sol:10},{label:'24hr',sol:15},{label:'32hr',sol:22},
-    ],
-    mc:'from 2 SOL', bar:92, replies:6102, badge:'DEX'
-  },
+    price:'7.50 SOL', bar:91, replies:2104, barColor:'#a855f7',
+    packages:[{l:'7.50 SOL'}] },
+  { id:'vol_diamond',  emoji:'💠', name:'Diamond Volume',  ticker:'DMND', badge:'MAX',  badgeCls:'red',
+    desc:'$2.5M volume. Maximum exposure for tokens ready to graduate.',
+    price:'10.50 SOL', bar:99, replies:5001, barColor:'var(--cyan)',
+    packages:[{l:'10.50 SOL'}] },
+  { id:'trend_sol', emoji:'☀️', name:'SOL Trending',    ticker:'STRD', badge:'TOP',  badgeCls:'',
+    desc:'TOP 3 & TOP 10 Solana trending. Choose 3hr, 6hr, 12hr, or 24hr duration.',
+    price:'from 1 SOL', bar:85, replies:3201, barColor:'var(--yellow)',
+    packages:[{l:'TOP10 3hr — 1.0 SOL'},{l:'TOP3 3hr — 1.5 SOL'},{l:'TOP10 6hr — 1.6 SOL'},{l:'TOP3 6hr — 2.3 SOL'},{l:'TOP10 12hr — 2.6 SOL'},{l:'TOP3 12hr — 3.7 SOL'},{l:'TOP10 24hr — 4.1 SOL'},{l:'TOP3 24hr — 5.9 SOL'}] },
+  { id:'trend_eth', emoji:'🔵', name:'ETH Trending',    ticker:'ETRD', badge:'ETH',  badgeCls:'blue',
+    desc:'Ethereum trending boost. $100, $200, or $300 packages available.',
+    price:'from $100', bar:67, replies:741, barColor:'#3b82f6',
+    packages:[{l:'$100 USD'},{l:'$200 USD'},{l:'$300 USD'}] },
+  { id:'trend_pumpfun',emoji:'🔥', name:'PumpFun Trending',ticker:'PFTR', badge:'🔥',   badgeCls:'red',
+    desc:'#1 PumpFun trending. 30 SOL includes 12hr FREE SOL trending bonus.',
+    price:'30 SOL', bar:78, replies:4420, barColor:'var(--red)',
+    packages:[{l:'30 SOL P.F.T'}] },
+  { id:'dex', emoji:'🌐', name:'DexScreener Trending', ticker:'DEXT', badge:'DEX',  badgeCls:'blue',
+    desc:'TOP 6 DexScreener trending. 5hr to 32hr packages. Massive cross-chain exposure.',
+    price:'from 2 SOL', bar:92, replies:6102, barColor:'var(--cyan)',
+    packages:[{l:'5hr — 2 SOL'},{l:'7hr — 3.5 SOL'},{l:'12hr — 7 SOL'},{l:'18hr — 10 SOL'},{l:'24hr — 15 SOL'},{l:'32hr — 22 SOL'}] },
 ];
 
-let currentFilter = 'trending';
-let allTokens = [];
-let tickerTokens = [];
+/* ─── STATE ─── */
+let filter   = 'trending';
+let chain    = 'sol';
+let allToks  = [];
+let kothData = null;
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
-function fmt(n) {
-  if (!n || isNaN(n)) return 'N/A';
-  if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
-  if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
-  if (n >= 1e3) return '$' + (n / 1e3).toFixed(1) + 'K';
-  return '$' + Number(n).toFixed(2);
+/* ─── HELPERS ─── */
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function fmt(n){
+  if(!n||isNaN(n))return 'N/A';
+  if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';
+  if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';
+  if(n>=1e3)return'$'+(n/1e3).toFixed(1)+'K';
+  return'$'+Number(n).toFixed(4);
 }
-function short(addr) {
-  if (!addr) return '';
-  return addr.slice(0, 6) + '...' + addr.slice(-4);
-}
-function esc(s) {
-  if (!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function rnd(a, b) { return Math.random() * (b - a) + a; }
-function randInt(a, b) { return Math.floor(rnd(a, b)); }
+function short(a){if(!a)return'';return a.slice(0,6)+'...'+a.slice(-4)}
+function rnd(a,b){return Math.random()*(b-a)+a}
+function ri(a,b){return Math.floor(rnd(a,b))}
 
-// ── TOAST ────────────────────────────────────────────────────────────────────
-function showToast(msg, cls='') {
-  const wrap = document.getElementById('toast-wrap');
-  const t = document.createElement('div');
-  t.className = 'toast' + (cls ? ' ' + cls : '');
-  t.textContent = msg;
-  wrap.appendChild(t);
-  requestAnimationFrame(() => { requestAnimationFrame(() => t.classList.add('show')); });
-  setTimeout(() => {
-    t.classList.remove('show');
-    setTimeout(() => t.remove(), 350);
-  }, 3000);
+/* ─── TOAST ─── */
+function toast(msg,cls=''){
+  const w=document.getElementById('toasts');
+  const t=document.createElement('div');
+  t.className='toast'+(cls?' '+cls:'');t.textContent=msg;
+  w.appendChild(t);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('show')));
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),350)},3200);
 }
 
-// ── FILTER ───────────────────────────────────────────────────────────────────
-function setFilter(btn, filter) {
-  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  currentFilter = filter;
+/* ─── SERVICES GRID ─── */
+function renderServices(){
+  document.getElementById('services-grid').innerHTML = SERVICES.map(s=>`
+    <div class="svc-card" onclick="openSvcModal('${s.id}')">
+      <div class="svc-icon">
+        ${esc(s.emoji)}
+        <span class="svc-badge ${s.badgeCls}">${esc(s.badge)}</span>
+      </div>
+      <div class="svc-name">${esc(s.name)}</div>
+      <div class="svc-ticker">${esc(s.ticker)}</div>
+      <div class="svc-desc">${esc(s.desc)}</div>
+      <div class="svc-bar"><div class="svc-bar-fill" style="width:${s.bar}%;background:${s.barColor}"></div></div>
+      <div class="svc-footer">
+        <div class="svc-price">${esc(s.price)}</div>
+        <div class="svc-replies">replies: ${s.replies.toLocaleString()}</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ─── SERVICE MODAL ─── */
+function openSvcModal(id){
+  const s=SERVICES.find(x=>x.id===id);if(!s)return;
+  document.getElementById('modal-body').innerHTML=`
+    <div style="font-size:2.5rem;text-align:center;margin-bottom:12px">${esc(s.emoji)}</div>
+    <h2 style="text-align:center">${esc(s.name)} <span style="color:var(--text2);font-size:.8rem">(${esc(s.ticker)})</span></h2>
+    <div class="modal-sub" style="text-align:center">${esc(s.desc)}</div>
+    <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">Packages</div>
+    ${s.packages.map(p=>`<div class="modal-stat"><span class="modal-stat-l">${esc(p.l)}</span><span class="modal-stat-r" style="color:var(--green)">${esc(p.l)}</span></div>`).join('')}
+    <a href="${BOT_URL}" target="_blank" class="modal-btn">🚀 Start on Telegram Bot</a>
+    <div class="modal-note">Opens @Boost_onDex_bot · Support: <a href="${SUPPORT_URL}" target="_blank" style="color:var(--blue)">@mrpooh</a></div>
+  `;
+  document.getElementById('modal').classList.add('open');
+}
+
+/* ─── TOKEN CARD ─── */
+function tcImg(url,sym){
+  if(url){
+    const abbr=esc((sym||'??').slice(0,2));
+    return`<div class="tc-img"><img src="${esc(url)}" alt="${esc(sym)}" loading="lazy" onerror="this.parentNode.innerHTML='<div class=tc-img-ph>${abbr}</div>'"></div>`;
+  }
+  return`<div class="tc-img"><div class="tc-img-ph">${esc((sym||'??').slice(0,2))}</div></div>`;
+}
+function progColor(p){return p>70?'var(--green)':p>40?'var(--yellow)':'var(--text3)'}
+
+function renderCard(t){
+  const mc  = t.marketCap||t.fdv||0;
+  const ch  = Number(t.priceChange?.h24||0);
+  const chc = ch>=0?'up':'dn';
+  const chs = (ch>=0?'+':'')+ch.toFixed(1)+'%';
+  const pr  = t.progress||ri(10,90);
+  const rep = t.replies||ri(5,999);
+  const sym = t.symbol||'???';
+  const name= t.name||'Unknown';
+  const creator = t.creator||t.contractAddress||'';
+  const imgUrl  = t.imageUrl||'';
+  const dexUrl  = t.pumpUrl||t.dexUrl||`https://dexscreener.com/${t.chain==='eth'?'ethereum':'solana'}/${t.contractAddress}`;
+  const chainLbl= t.chain==='eth'?'Ξ ETH':'◎ SOL';
+  const td = JSON.stringify({name,sym,desc:t.description,mc,vol:t.volume?.h24||0,change:ch,imgUrl,addr:t.contractAddress,creator,progress:pr,dexUrl,chain:t.chain}).replace(/"/g,'&quot;');
+  return`
+<div class="tc" onclick='openTokModal(${td})'>
+  <div class="tc-top">
+    ${tcImg(imgUrl,sym)}
+    <div class="tc-body">
+      <div class="tc-creator">created by: <a href="https://pump.fun/profile/${esc(creator)}" target="_blank" onclick="event.stopPropagation()">${esc(short(creator))}</a> <span class="tc-chain">${chainLbl}</span></div>
+      <div class="tc-name">${esc(name)} <span class="tc-sym">${esc(sym)}</span></div>
+      <div class="tc-mc">market cap: <span>${fmt(mc)}</span></div>
+      <div class="tc-desc">${esc((t.description||'').slice(0,110))}</div>
+    </div>
+  </div>
+  <div class="tc-footer">
+    <div class="prog-wrap">
+      <div class="prog-top"><span>bonding curve</span><span style="color:${progColor(pr)}">${pr}%</span></div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${pr}%;background:${progColor(pr)}"></div></div>
+    </div>
+    <div class="tc-stats">
+      <span class="${chc}">${chs}</span>
+      <span>💬${rep}</span>
+    </div>
+  </div>
+</div>`;
+}
+
+/* ─── TOKEN MODAL ─── */
+function openTokModal(t){
+  if(typeof t==='string')t=JSON.parse(t);
+  const ch=Number(t.change||0);
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-coin-img">
+      ${t.imgUrl?`<img src="${esc(t.imgUrl)}" alt="${esc(t.sym)}" onerror="this.parentNode.innerHTML='<div class=modal-coin-img-ph>${esc((t.sym||'??').slice(0,2))}</div>'">`:`<div class="modal-coin-img-ph">${esc((t.sym||'??').slice(0,2))}</div>`}
+    </div>
+    <h2>${esc(t.name)} <span style="color:var(--text2);font-size:.8rem">(${esc(t.sym)})</span></h2>
+    <div class="modal-sub">${esc((t.desc||'').slice(0,200))}</div>
+    <div class="modal-stat"><span class="modal-stat-l">Market cap</span><span class="modal-stat-r" style="color:var(--green)">${fmt(t.mc)}</span></div>
+    <div class="modal-stat"><span class="modal-stat-l">24h volume</span><span class="modal-stat-r">${fmt(t.vol)}</span></div>
+    <div class="modal-stat"><span class="modal-stat-l">24h change</span><span class="modal-stat-r" style="color:${ch>=0?'var(--green)':'var(--red)'}">${(ch>=0?'+':'')+ch.toFixed(2)}%</span></div>
+    <div class="modal-stat"><span class="modal-stat-l">Bonding curve</span><span class="modal-stat-r">${t.progress}%</span></div>
+    ${t.addr?`<div class="modal-stat"><span class="modal-stat-l">Contract</span><span class="modal-stat-r" style="font-size:.68rem;color:var(--text2)">${esc(t.addr)}</span></div>`:''}
+    <a href="${BOT_URL}" target="_blank" class="modal-btn">🚀 Boost this token on Telegram</a>
+    <div class="modal-links">
+      ${t.dexUrl?`<a href="${esc(t.dexUrl)}" target="_blank" class="modal-link">View chart →</a>`:''}
+      ${t.addr&&t.chain!=='eth'?`<a href="https://pump.fun/coin/${esc(t.addr)}" target="_blank" class="modal-link">pump.fun →</a>`:''}
+    </div>
+    <div class="modal-note">Support: <a href="${SUPPORT_URL}" target="_blank" style="color:var(--blue)">@mrpooh</a></div>
+  `;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){document.getElementById('modal').classList.remove('open')}
+
+/* ─── KOTH ─── */
+async function loadKOTH(){
+  try{
+    const r=await fetch('/api/pump/koth');
+    if(!r.ok)return;
+    const t=await r.json();
+    if(!t)return;
+    kothData=t;
+    document.getElementById('koth-name').innerHTML=`${esc(t.name)} <span style="color:var(--text2);font-size:.75rem;font-family:var(--font-mono)">${esc(t.symbol)}</span>`;
+    document.getElementById('koth-sym').textContent='$'+t.symbol;
+    document.getElementById('koth-mc').textContent=fmt(t.marketCap);
+    document.getElementById('koth-desc').textContent=(t.description||'').slice(0,130);
+    document.getElementById('koth-link').href=t.pumpUrl||'https://pump.fun';
+    const wrap=document.querySelector('.koth-img-wrap');
+    if(t.imageUrl){
+      wrap.innerHTML=`<img src="${esc(t.imageUrl)}" alt="${esc(t.symbol)}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.innerHTML='<div class=koth-img-placeholder>🚀</div>'">`;
+    }
+  }catch(e){}
+}
+
+/* ─── TICKER ─── */
+async function loadTicker(){
+  try{
+    const r=await fetch('/api/pump/ticker');
+    if(!r.ok)return;
+    const d=await r.json();
+    if(!d.items?.length)return;
+    const items=[...d.items,...d.items];
+    document.getElementById('ticker-track').innerHTML=items.map(i=>`
+      <div class="tick">
+        <span class="sym">${esc(i.sym)}</span>
+        <span>${esc(i.price)}</span>
+        <span class="${i.up?'up':'dn'}">${esc(i.change)}</span>
+      </div>`).join('');
+  }catch(e){}
+}
+
+/* ─── FILTER / CHAIN ─── */
+function setFilter(btn,f){
+  document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');filter=f;loadTokens();
+}
+function setChain(c){
+  chain=c;
+  document.getElementById('chain-sol').classList.toggle('active',c==='sol');
+  document.getElementById('chain-eth').classList.toggle('active',c==='eth');
   loadTokens();
 }
 
-// ── SERVICES GRID ─────────────────────────────────────────────────────────────
-function renderServices() {
-  const grid = document.getElementById('services-grid');
-  grid.innerHTML = SERVICES.map(s => `
-    <div class="service-card" onclick="openServiceModal('${s.id}')">
-      <div class="service-img-placeholder">${s.emoji}</div>
-      <div class="service-name">
-        <span>${esc(s.name)}</span>
-        <span class="service-badge">${esc(s.badge)}</span>
-      </div>
-      <div class="service-ticker">${esc(s.ticker)}</div>
-      <div class="service-desc">${esc(s.desc)}</div>
-      <div class="service-boost-bar"><div class="service-boost-fill" style="width:${s.bar}%"></div></div>
-      <div class="service-meta">
-        <div class="service-mc">${esc(s.mc)}</div>
-        <div class="service-replies">replies: ${s.replies.toLocaleString()}</div>
-      </div>
-    </div>
-  `).join('');
-}
-
-// ── SERVICE MODAL ─────────────────────────────────────────────────────────────
-function openServiceModal(id) {
-  const s = SERVICES.find(x => x.id === id);
-  if (!s) return;
-  const mc = document.getElementById('modal-content');
-  mc.innerHTML = `
-    <h2>${s.emoji} ${esc(s.name)}</h2>
-    <div class="modal-sub">${esc(s.ticker)} · <span class="service-badge">${esc(s.badge)}</span></div>
-    <div style="font-size:.82rem;color:var(--text2);line-height:1.6;margin-bottom:16px">${esc(s.desc)}</div>
-    <div style="font-size:.72rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Packages</div>
-    ${s.packages.map(p => `
-      <div class="modal-stat">
-        <span class="modal-stat-label">${esc(p.label)}</span>
-        <span class="modal-stat-val" style="color:var(--green)">${p.usd ? '$' + p.usd + ' USD' : p.sol + ' SOL'}</span>
-      </div>
-    `).join('')}
-    <a href="https://t.me/Boost_onDex_bot" target="_blank" class="modal-btn">🚀 Start on Telegram Bot</a>
-    <div class="modal-note">Opens @Boost_onDex_bot in Telegram · 24/7 support @mrpooh</div>
-  `;
-  document.getElementById('service-modal').classList.add('open');
-}
-function closeModal(e) {
-  if (e.target.classList.contains('modal-bg')) {
-    e.target.classList.remove('open');
-  }
-}
-
-// ── TOKEN CARD ────────────────────────────────────────────────────────────────
-function renderTokenCard(t) {
-  const mc = t.fdv || t.marketCap || 0;
-  const vol = t.volume?.h24 || 0;
-  const change = t.priceChange?.h24 || 0;
-  const progress = Math.min(99, Math.max(1, Math.floor(rnd(15, 95))));
-  const replies = randInt(5, 999);
-  const imgUrl = t.info?.imageUrl || t.imageUrl || '';
-  const name = t.baseToken?.name || t.name || 'Unknown';
-  const sym = t.baseToken?.symbol || t.symbol || '???';
-  const desc = t.description || t.info?.description || `Community-driven ${sym} token on Solana. Trading live on DexScreener and Pump.fun.`;
-  const creator = t.creator || t.pairAddress || '';
-  const addr = t.baseToken?.address || t.contractAddress || '';
-  const upClass = change >= 0 ? 'up' : 'dn';
-  const changeStr = (change >= 0 ? '+' : '') + Number(change).toFixed(1) + '%';
-
-  return `
-    <div class="token-card" onclick="openTokenModal(${JSON.stringify({name,sym,desc,mc,vol,change,imgUrl,addr,creator,progress}).replace(/"/g,'&quot;')})">
-      <div class="token-top">
-        ${imgUrl
-          ? `<img class="token-img" src="${esc(imgUrl)}" alt="${esc(sym)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-          : ''
-        }
-        <div class="token-img-placeholder" style="${imgUrl?'display:none':''}">${sym.slice(0,2)}</div>
-        <div class="token-body">
-          <div class="token-creator">Created by: <span>${esc(short(creator || addr))}</span></div>
-          <div class="token-name">${esc(name)} <span class="token-sym">${esc(sym)}</span></div>
-          <div class="token-mc">market cap: <span>${fmt(mc)}</span></div>
-          <div class="token-desc">${esc(desc.slice(0,120))}</div>
-        </div>
-      </div>
-      <div class="token-footer">
-        <div class="progress-wrap">
-          <div class="progress-label"><span>bonding curve</span><span>${progress}%</span></div>
-          <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
-        </div>
-        <div class="token-stats">
-          <span class="${upClass}">${changeStr}</span>
-          <span>💬 ${replies}</span>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-// ── TOKEN MODAL ───────────────────────────────────────────────────────────────
-function openTokenModal(t) {
-  const mc = document.getElementById('modal-content');
-  mc.innerHTML = `
-    ${t.imgUrl ? `<img class="modal-img" src="${esc(t.imgUrl)}" alt="${esc(t.sym)}" onerror="this.style.display='none'">` : `<div style="font-size:3rem;text-align:center;margin-bottom:16px">${t.sym.slice(0,2)}</div>`}
-    <h2>${esc(t.name)} <span style="color:var(--text2);font-size:.85rem">(${esc(t.sym)})</span></h2>
-    <div class="modal-sub" style="margin-bottom:12px">${esc((t.desc||'').slice(0,200))}</div>
-    <div class="modal-stat"><span class="modal-stat-label">Market Cap</span><span class="modal-stat-val" style="color:var(--green)">${fmt(t.mc)}</span></div>
-    <div class="modal-stat"><span class="modal-stat-label">24h Volume</span><span class="modal-stat-val">${fmt(t.vol)}</span></div>
-    <div class="modal-stat"><span class="modal-stat-label">24h Change</span><span class="modal-stat-val" style="color:${t.change>=0?'var(--green)':'var(--red)'}">${(t.change>=0?'+':'')+Number(t.change).toFixed(2)}%</span></div>
-    <div class="modal-stat"><span class="modal-stat-label">Bonding Curve</span><span class="modal-stat-val">${t.progress}%</span></div>
-    ${t.addr ? `<div class="modal-stat"><span class="modal-stat-label">Contract</span><span class="modal-stat-val" style="font-size:.72rem">${esc(short(t.addr))}</span></div>` : ''}
-    <a href="https://t.me/Boost_onDex_bot" target="_blank" class="modal-btn">🚀 Boost this token</a>
-    <div class="modal-note">Send your CA to @Boost_onDex_bot — we handle the rest.</div>
-  `;
-  document.getElementById('service-modal').classList.add('open');
-}
-
-// ── LOAD TOKENS ───────────────────────────────────────────────────────────────
-async function loadTokens() {
-  const grid = document.getElementById('token-grid');
-  grid.innerHTML = Array(8).fill('<div class="skeleton skel-card"></div>').join('');
-
-  let tokens = [];
-  const sort = document.getElementById('sort-select').value;
-
-  try {
-    // Try our server-side proxy first
-    const res = await fetch(`/api/pump/tokens?filter=${currentFilter}&sort=${sort}`);
-    if (res.ok) {
-      const d = await res.json();
-      tokens = d.tokens || [];
-    }
-  } catch {}
-
-  // Fallback: fetch DexScreener directly
-  if (!tokens.length) {
-    try {
-      const res = await fetch('https://api.dexscreener.com/latest/dex/tokens/solana', {
-        headers: { 'User-Agent': 'Mozilla/5.0' }
-      });
-      if (res.ok) {
-        const d = await res.json();
-        tokens = (d.pairs || []).slice(0, 24);
+/* ─── LOAD TOKENS ─── */
+async function loadTokens(){
+  const grid=document.getElementById('token-grid');
+  grid.innerHTML='<div class="skel skel-card"></div>'.repeat(8);
+  const sort=document.getElementById('sort-select').value;
+  try{
+    const r=await fetch(`/api/pump/tokens?filter=${filter}&sort=${sort}&chain=${chain}`);
+    if(r.ok){
+      const d=await r.json();
+      allToks=d.tokens||[];
+      if(!allToks.length){
+        grid.innerHTML='<div class="empty"><h3>No tokens found</h3><div>Try a different filter or chain.</div></div>';
+        return;
       }
-    } catch {}
-  }
-
-  allTokens = tokens;
-
-  if (!tokens.length) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><h3>No tokens found</h3><div>Try refreshing or changing the filter</div></div>`;
-    return;
-  }
-
-  grid.innerHTML = tokens.slice(0, 24).map(renderTokenCard).join('');
-
-  // Set KOTH to first token
-  if (tokens[0]) setKOTH(tokens[0]);
-}
-
-// ── KOTH ──────────────────────────────────────────────────────────────────────
-function setKOTH(t) {
-  const name = t.baseToken?.name || t.name || 'Unknown';
-  const sym = t.baseToken?.symbol || t.symbol || '???';
-  const mc = t.fdv || t.marketCap || 0;
-  const imgUrl = t.info?.imageUrl || t.imageUrl || '';
-  const desc = t.description || t.info?.description || `The #1 trending token on Solana right now.`;
-
-  document.getElementById('koth-name').innerHTML = `${esc(name)} <span class="token-sym">${esc(sym)}</span>`;
-  document.getElementById('koth-ticker').textContent = '$' + sym;
-  document.getElementById('koth-mc').textContent = fmt(mc);
-  document.getElementById('koth-desc').textContent = desc.slice(0, 120);
-
-  const imgEl = document.getElementById('koth-img');
-  if (imgUrl) {
-    imgEl.outerHTML = `<img id="koth-img" class="koth-img" src="${esc(imgUrl)}" alt="${esc(sym)}" onerror="this.outerHTML='<div id=koth-img class=koth-img-placeholder>🚀</div>'">`;
-  }
-}
-
-// ── TICKER ────────────────────────────────────────────────────────────────────
-async function loadTicker() {
-  let items = [];
-  try {
-    const res = await fetch('/api/pump/ticker');
-    if (res.ok) {
-      const d = await res.json();
-      items = d.items || [];
-    }
-  } catch {}
-
-  if (!items.length) {
-    // Fallback static data
-    items = [
-      {sym:'SOL',price:'$168.42',change:'+2.4%',up:true},
-      {sym:'BONK',price:'$0.0000248',change:'+12.1%',up:true},
-      {sym:'WIF',price:'$1.82',change:'-3.2%',up:false},
-      {sym:'POPCAT',price:'$0.412',change:'+8.7%',up:true},
-      {sym:'MOODENG',price:'$0.0032',change:'+44.2%',up:true},
-      {sym:'PNUT',price:'$0.184',change:'-1.8%',up:false},
-      {sym:'FWOG',price:'$0.0091',change:'+22.3%',up:true},
-      {sym:'GOAT',price:'$0.228',change:'+5.1%',up:true},
-      {sym:'SIGMA',price:'$0.00041',change:'-6.7%',up:false},
-      {sym:'AI16Z',price:'$0.882',change:'+18.4%',up:true},
-      {sym:'ZEREBRO',price:'$0.041',change:'+31.2%',up:true},
-      {sym:'CHILLGUY',price:'$0.192',change:'+9.3%',up:true},
-    ];
-  }
-
-  // Duplicate for seamless loop
-  const track = document.getElementById('ticker-track');
-  const allItems = [...items, ...items];
-  track.innerHTML = allItems.map(item => `
-    <div class="ticker-item">
-      <span class="sym">${esc(item.sym)}</span>
-      <span>${esc(item.price)}</span>
-      <span class="${item.up ? 'up' : 'dn'}">${esc(item.change)}</span>
-    </div>
-  `).join('');
-}
-
-// ── SEARCH ────────────────────────────────────────────────────────────────────
-let searchTimeout;
-document.getElementById('search-input').addEventListener('input', e => {
-  clearTimeout(searchTimeout);
-  const q = e.target.value.trim();
-  if (!q) {
-    document.getElementById('token-grid').innerHTML = allTokens.slice(0, 24).map(renderTokenCard).join('');
-    return;
-  }
-  searchTimeout = setTimeout(() => searchTokens(q), 400);
-});
-
-async function searchTokens(q) {
-  const grid = document.getElementById('token-grid');
-  grid.innerHTML = '<div class="skeleton skel-card"></div>'.repeat(4);
-  try {
-    const res = await fetch(`/api/pump/search?q=${encodeURIComponent(q)}`);
-    if (res.ok) {
-      const d = await res.json();
-      const tokens = d.tokens || [];
-      if (tokens.length) {
-        grid.innerHTML = tokens.slice(0, 12).map(renderTokenCard).join('');
-      } else {
-        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><h3>No results for "${esc(q)}"</h3><div>Try a token name, symbol, or contract address</div></div>`;
-      }
+      grid.innerHTML=allToks.slice(0,24).map(renderCard).join('');
+      if(chain==='sol'&&allToks[0])setKOTHFromToken(allToks[0]);
       return;
     }
-  } catch {}
-  // Fallback: filter local
-  const lq = q.toLowerCase();
-  const filtered = allTokens.filter(t => {
-    const name = (t.baseToken?.name || t.name || '').toLowerCase();
-    const sym = (t.baseToken?.symbol || t.symbol || '').toLowerCase();
-    const addr = (t.baseToken?.address || t.contractAddress || '').toLowerCase();
-    return name.includes(lq) || sym.includes(lq) || addr.includes(lq);
-  });
-  if (filtered.length) {
-    grid.innerHTML = filtered.slice(0, 12).map(renderTokenCard).join('');
-  } else {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><h3>No results for "${esc(q)}"</h3></div>`;
+  }catch(e){}
+  grid.innerHTML='<div class="empty"><h3>Could not load tokens</h3><div>Check connection and try again.</div></div>';
+}
+
+function setKOTHFromToken(t){
+  if(kothData)return;// prefer real KOTH from API
+  document.getElementById('koth-name').innerHTML=`${esc(t.name)} <span style="color:var(--text2);font-size:.75rem;font-family:var(--font-mono)">${esc(t.symbol)}</span>`;
+  document.getElementById('koth-sym').textContent='$'+t.symbol;
+  document.getElementById('koth-mc').textContent=fmt(t.marketCap);
+  document.getElementById('koth-desc').textContent=(t.description||'').slice(0,130);
+  if(t.pumpUrl)document.getElementById('koth-link').href=t.pumpUrl;
+  const wrap=document.querySelector('.koth-img-wrap');
+  if(t.imageUrl){
+    wrap.innerHTML=`<img src="${esc(t.imageUrl)}" alt="${esc(t.symbol)}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.innerHTML='<div class=koth-img-placeholder>🚀</div>'">`;
   }
 }
 
-// ── LIVE UPDATES ──────────────────────────────────────────────────────────────
-function startLiveUpdates() {
-  // Refresh tokens every 60 seconds
-  setInterval(loadTokens, 60000);
-  // Update ticker prices slightly every 10 seconds for "live" feel
-  setInterval(() => {
-    document.querySelectorAll('.ticker-item .up, .ticker-item .dn').forEach(el => {
-      const isUp = Math.random() > .4;
-      const pct = (rnd(0.1, 8.5)).toFixed(1);
-      el.className = isUp ? 'up' : 'dn';
-      el.textContent = (isUp ? '+' : '-') + pct + '%';
-    });
-  }, 10000);
+/* ─── SEARCH ─── */
+let searchT;
+document.getElementById('search-input').addEventListener('input',e=>{
+  clearTimeout(searchT);
+  const q=e.target.value.trim();
+  if(!q){document.getElementById('token-grid').innerHTML=allToks.slice(0,24).map(renderCard).join('');return}
+  searchT=setTimeout(()=>doSearch(q),400);
+});
+async function doSearch(q){
+  const grid=document.getElementById('token-grid');
+  grid.innerHTML='<div class="skel skel-card"></div>'.repeat(4);
+  try{
+    const r=await fetch(`/api/pump/search?q=${encodeURIComponent(q)}&chain=${chain}`);
+    if(r.ok){
+      const d=await r.json();
+      const toks=d.tokens||[];
+      if(toks.length){grid.innerHTML=toks.slice(0,12).map(renderCard).join('');return}
+      grid.innerHTML=`<div class="empty"><h3>No results for "${esc(q)}"</h3></div>`;
+      return;
+    }
+  }catch(e){}
+  // local filter
+  const lq=q.toLowerCase();
+  const f=allToks.filter(t=>(t.name||'').toLowerCase().includes(lq)||(t.symbol||'').toLowerCase().includes(lq)||(t.contractAddress||'').toLowerCase().includes(lq));
+  grid.innerHTML=f.length?f.slice(0,12).map(renderCard).join(''):`<div class="empty"><h3>No results for "${esc(q)}"</h3></div>`;
 }
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
+/* ─── LIVE UPDATES ─── */
+setInterval(loadTokens, 60000);
+setInterval(()=>{
+  document.querySelectorAll('.tick .up,.tick .dn').forEach(el=>{
+    const up=Math.random()>.4;
+    el.className=up?'up':'dn';
+    el.textContent=(up?'+':'-')+(Math.random()*12).toFixed(1)+'%';
+  });
+},8000);
+
+/* ─── INIT ─── */
 renderServices();
 loadTicker();
+loadKOTH();
 loadTokens();
-startLiveUpdates();
 </script>
 </body>
 </html>
