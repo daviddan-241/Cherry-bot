@@ -24,3 +24,5 @@ services:
         sync: false
       - key: SUPPORT_USERNAME
         sync: false
+      - key: BOT_DISPLAY_NAME
+        sync: false

