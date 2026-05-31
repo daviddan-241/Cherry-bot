@@ -4,6 +4,12 @@ const _supportHandle = (process.env.SUPPORT_USERNAME ?? "").replace(/^@/, "");
 const _supportUrl    = _supportHandle ? `https://t.me/${_supportHandle}` : "";
 
 // ── Main menu ────────────────────────────────────────────────────────────────
+// Support row only shown when SUPPORT_USERNAME env var is set.
+// When set, it's a URL button — tapping opens the Telegram chat directly.
+const _supportRow = _supportUrl
+  ? [[Markup.button.url("💬 Contact Support ↗", _supportUrl)]]
+  : [];
+
 export const mainMenuKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("🟢 Start Bumping", "menu_bump")],
   [
@@ -15,11 +21,7 @@ export const mainMenuKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("💰 Deposit",     "menu_deposit"),
   ],
   [Markup.button.callback("🔗 Connect Wallet", "menu_wallet")],
-  [
-    _supportUrl
-      ? Markup.button.url("💬 Contact Support ↗", _supportUrl)
-      : Markup.button.callback("💬 Contact Support", "menu_support"),
-  ],
+  ..._supportRow,
 ]);
 
 // ── SOL bump amount picker ────────────────────────────────────────────────────

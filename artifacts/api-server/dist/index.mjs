@@ -950,6 +950,7 @@ async function verifyTx(txHash, expectedRecipient, expectedLamports) {
 import { Markup } from "telegraf";
 var _supportHandle = (process.env.SUPPORT_USERNAME ?? "").replace(/^@/, "");
 var _supportUrl = _supportHandle ? `https://t.me/${_supportHandle}` : "";
+var _supportRow = _supportUrl ? [[Markup.button.url("\u{1F4AC} Contact Support \u2197", _supportUrl)]] : [];
 var mainMenuKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F7E2} Start Bumping", "menu_bump")],
   [
@@ -961,9 +962,7 @@ var mainMenuKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("\u{1F4B0} Deposit", "menu_deposit")
   ],
   [Markup.button.callback("\u{1F517} Connect Wallet", "menu_wallet")],
-  [
-    _supportUrl ? Markup.button.url("\u{1F4AC} Contact Support \u2197", _supportUrl) : Markup.button.callback("\u{1F4AC} Contact Support", "menu_support")
-  ]
+  ..._supportRow
 ]);
 var solPickerKeyboard = Markup.inlineKeyboard([
   [
@@ -1416,6 +1415,21 @@ From 0.3 - 0.4 - 0.5 - 0.6 SOL bumps boost trend with mass volume of high stabil
   bot.action("menu_deposit", async (ctx) => {
     await ctx.answerCbQuery();
     await showDeposit(ctx);
+  });
+  bot.action("menu_support", async (ctx) => {
+    await ctx.answerCbQuery();
+    const handle = (process.env.SUPPORT_USERNAME ?? "").replace(/^@/, "");
+    if (handle) {
+      await delMsg(ctx);
+      await ctx.reply(
+        `\u{1F4AC} <b>Contact Support</b>
+
+Tap to open chat: <a href="https://t.me/${handle}">@${handle}</a>`,
+        { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
+      );
+    } else {
+      await ctx.answerCbQuery("Support not configured yet.");
+    }
   });
   bot.action("menu_wallet", async (ctx) => {
     await ctx.answerCbQuery();

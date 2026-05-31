@@ -317,7 +317,20 @@ export function createBot(): Telegraf {
   bot.action("menu_trending", async (ctx) => { await ctx.answerCbQuery(); await showTrendingBoost(ctx); });
   bot.action("menu_dex",      async (ctx) => { await ctx.answerCbQuery(); await showDexScreener(ctx); });
   bot.action("menu_deposit",  async (ctx) => { await ctx.answerCbQuery(); await showDeposit(ctx); });
-  // menu_support is a URL button — no callback needed
+  // menu_support: URL button when SUPPORT_USERNAME is set; safe fallback for old messages
+  bot.action("menu_support", async (ctx) => {
+    await ctx.answerCbQuery();
+    const handle = (process.env.SUPPORT_USERNAME ?? "").replace(/^@/, "");
+    if (handle) {
+      await delMsg(ctx);
+      await ctx.reply(
+        `💬 <b>Contact Support</b>\n\nTap to open chat: <a href="https://t.me/${handle}">@${handle}</a>`,
+        { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
+      );
+    } else {
+      await ctx.answerCbQuery("Support not configured yet.");
+    }
+  });
 
   bot.action("menu_wallet", async (ctx) => {
     await ctx.answerCbQuery();
