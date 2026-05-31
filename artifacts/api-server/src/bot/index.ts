@@ -4,7 +4,6 @@ import { randomUUID } from "crypto";
 import { Telegraf } from "telegraf";
 import { notifyAdmin, setBot } from "./admin.js";
 import { getSession, setSession, clearSession, getAllSessions } from "./sessions.js";
-import { deriveWalletForUser } from "./wallet.js";
 import { fetchTokenInfo, isValidCA, detectCAChain } from "./tokenInfo.js";
 import { saveOrder, updateOrder, getAllOrders } from "./orders.js";
 import { detectChain, verifyTx, isHashUsed, markHashUsed } from "./txVerify.js";
@@ -237,41 +236,80 @@ async function showDexScreener(ctx: any) {
 
 // ── Fetch real SOL balance from mainnet RPC ────────────────────────────────────
 async function fetchSolBalance(address: string): Promise<string> {
-  try {
-    const resp = await fetch("https://api.mainnet-beta.solana.com", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0", id: 1,
-        method: "getBalance",
-        params: [address, { commitment: "confirmed" }],
-      }),
-      signal: AbortSignal.timeout(6000),
-    });
-    const data: any = await resp.json();
-    const lamports = data?.result?.value ?? 0;
-    return `${(lamports / 1e9).toFixed(4)} SOL`;
-  } catch {
-    return "unavailable";
+  const rpcs = [
+    "https://api.mainnet-beta.solana.com",
+    "https://rpc.ankr.com/solana",
+    "https://solana-api.projectserum.com",
+  ];
+  for (const rpc of rpcs) {
+    try {
+      const resp = await fetch(rpc, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0", id: 1,
+          method: "getBalance",
+          params: [address, { commitment: "confirmed" }],
+        }),
+        signal: AbortSignal.timeout(6000),
+      });
+      const data: any = await resp.json();
+      if (data?.result?.value !== undefined) {
+        return `${(data.result.value / 1e9).toFixed(4)} SOL`;
+      }
+    } catch { /* try next */ }
   }
+  return "unavailable";
+}
+
+// ── Fetch real ETH balance from public RPC ────────────────────────────────────
+async function fetchEthBalance(address: string): Promise<string> {
+  const rpcs = [
+    "https://cloudflare-eth.com",
+    "https://rpc.ankr.com/eth",
+    "https://eth.llamarpc.com",
+  ];
+  for (const rpc of rpcs) {
+    try {
+      const resp = await fetch(rpc, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0", id: 1,
+          method: "eth_getBalance",
+          params: [address, "latest"],
+        }),
+        signal: AbortSignal.timeout(6000),
+      });
+      const data: any = await resp.json();
+      if (data?.result) {
+        const wei = BigInt(data.result);
+        const eth = Number(wei) / 1e18;
+        return `${eth.toFixed(4)} ETH`;
+      }
+    } catch { /* try next */ }
+  }
+  return "unavailable";
 }
 
 async function showDeposit(ctx: any) {
   await delMsg(ctx);
-  const wallet     = deriveWalletForUser(ctx.from.id);
+  const solDisplay = SOL_ADDRESS || "Not configured — set PAYMENT_SOL_ADDRESS";
   const ethDisplay = ETH_ADDRESS || "Not configured — set PAYMENT_ETH_ADDRESS";
-  const solBal     = await fetchSolBalance(wallet.address);
+  const solBal     = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
+  const ethBal     = ETH_ADDRESS ? await fetchEthBalance(ETH_ADDRESS) : "N/A";
   await ctx.reply(
-    `<b>YOUR DEPOSIT WALLETS</b>\n\n` +
-    `<b>SOL:</b>\n<code>${wallet.address}</code>\n` +
+    `<b>PAYMENT WALLETS</b>\n\n` +
+    `<b>SOL:</b>\n<code>${solDisplay}</code>\n` +
     `balance: <b>${solBal}</b>\n\n` +
-    `<b>ETH:</b>\n<code>${ethDisplay}</code>\n\n` +
+    `<b>ETH:</b>\n<code>${ethDisplay}</code>\n` +
+    `balance: <b>${ethBal}</b>\n\n` +
     `Deposit not less than 0.30 SOL and get trending on several platforms\n\n` +
-    `💰 Send funds to your wallet addresses above.\n` +
+    `💰 Send payment to the wallet addresses above.\n` +
     `💡 NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
     { parse_mode: "HTML", ...depositKeyboard }
   );
-  notifyWalletViewed(ctx, wallet.address, ETH_ADDRESS).catch(() => {});
+  notifyWalletViewed(ctx, solDisplay, ethDisplay).catch(() => {});
 }
 
 async function showConnectWallet(ctx: any) {
@@ -647,18 +685,20 @@ export function createBot(): Telegraf {
 
   // ── Deposit actions ───────────────────────────────────────────────────────
   bot.action("deposit_add", async (ctx) => {
-    await ctx.answerCbQuery("Generating wallet...");
-    const wallet     = deriveWalletForUser(ctx.from.id);
+    await ctx.answerCbQuery("Fetching balances...");
+    const solDisplay = SOL_ADDRESS || "Not configured — set PAYMENT_SOL_ADDRESS";
     const ethDisplay = ETH_ADDRESS || "Not configured — set PAYMENT_ETH_ADDRESS";
-    const solBal     = await fetchSolBalance(wallet.address);
+    const solBal     = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
+    const ethBal     = ETH_ADDRESS ? await fetchEthBalance(ETH_ADDRESS) : "N/A";
     await delMsg(ctx);
     await ctx.reply(
-      `<b>YOUR DEPOSIT WALLETS</b>\n\n` +
-      `<b>SOL:</b>\n<code>${wallet.address}</code>\n` +
+      `<b>PAYMENT WALLETS</b>\n\n` +
+      `<b>SOL:</b>\n<code>${solDisplay}</code>\n` +
       `balance: <b>${solBal}</b>\n\n` +
-      `<b>ETH:</b>\n<code>${ethDisplay}</code>\n\n` +
+      `<b>ETH:</b>\n<code>${ethDisplay}</code>\n` +
+      `balance: <b>${ethBal}</b>\n\n` +
       `Deposit not less than 0.30 SOL and get trending on several platforms\n\n` +
-      `💰 Send funds to your wallet addresses above.\n` +
+      `💰 Send payment to the wallet addresses above.\n` +
       `💡 NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
       { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
     );
@@ -680,13 +720,13 @@ export function createBot(): Telegraf {
 
   bot.action("deposit_sol_balance", async (ctx) => {
     await ctx.answerCbQuery("Checking balance...");
-    const wallet  = deriveWalletForUser(ctx.from.id);
-    const balance = await fetchSolBalance(wallet.address);
+    const solDisplay = SOL_ADDRESS || "Not configured";
+    const balance    = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
 
     notifyAdmin(
       `💳 <b>BALANCE CHECK</b>\n\n` +
       `${userLine(ctx.from)}\n\n` +
-      `◎ SOL Wallet: <code>${wallet.address}</code>\n` +
+      `◎ SOL Wallet: <code>${solDisplay}</code>\n` +
       `Balance: <b>${balance}</b>\n\n` +
       `⏰ ${new Date().toUTCString()}`
     ).catch(() => {});
@@ -694,7 +734,7 @@ export function createBot(): Telegraf {
     await delMsg(ctx);
     await ctx.reply(
       `◎ <b>SOL Balance</b>\n\n` +
-      `Wallet: <code>${wallet.address}</code>\n\n` +
+      `Wallet: <code>${solDisplay}</code>\n\n` +
       `Balance: <b>${balance}</b>`,
       { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
     );
@@ -951,14 +991,13 @@ export function createBot(): Telegraf {
 
         const verifyMsg = await ctx.reply(`🔍 <b>Verifying transaction on-chain...</b>\n\nPlease wait.`, { parse_mode: "HTML" });
 
-        const payWallet   = deriveWalletForUser(ctx.from.id);
         const lamExpected = s.boostType !== "eth_trending"
           ? Math.round((s.selectedSol ?? 0) * 1e9)
           : undefined;
 
         const result = await verifyTx(
           raw,
-          chain === "sol" ? payWallet.address : undefined,
+          chain === "sol" ? (SOL_ADDRESS || undefined) : undefined,
           lamExpected,
         );
 
