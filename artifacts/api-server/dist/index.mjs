@@ -973,7 +973,10 @@ var solPickerKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("\u{1F7E0} 0.5 SOL", "sol_0.5"),
     Markup.button.callback("\u{1F534} 0.6 SOL", "sol_0.6")
   ],
-  [Markup.button.callback("\u{1F519} Back to Menu", "back_main")]
+  [
+    Markup.button.callback("\u{1F519} Back", "back_main"),
+    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+  ]
 ]);
 var confirmOrderKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u2705 Confirm Order", "confirm_bump")],
@@ -999,7 +1002,10 @@ var volumeBoostKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("5.00 SOL - Silver", "vol_silver"),
     Markup.button.callback("10.50 SOL - Dia...", "vol_diamond")
   ],
-  [Markup.button.callback("\u{1F519} Back to Menu", "back_main")]
+  [
+    Markup.button.callback("\u{1F519} Back", "back_main"),
+    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+  ]
 ]);
 var trendingMenuKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("SOL TRENDING", "trend_sol")],
@@ -1007,7 +1013,10 @@ var trendingMenuKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("ETH TRENDING", "trend_eth"),
     Markup.button.callback("PUMPFUN TREN...", "trend_pumpfun")
   ],
-  [Markup.button.callback("\u{1F519} Back to Menu", "back_main")]
+  [
+    Markup.button.callback("\u{1F519} Back", "back_main"),
+    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+  ]
 ]);
 var solTrendingKeyboard = Markup.inlineKeyboard([
   [
@@ -1030,7 +1039,10 @@ var solTrendingKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("\u23F3 24 hr | 5.90...", "st_top3_24hr"),
     Markup.button.callback("\u23F3 24 hr | 4.10 S...", "st_top10_24hr")
   ],
-  [Markup.button.callback("\u{1F519} Back to Menu", "trend_back")]
+  [
+    Markup.button.callback("\u{1F519} Back", "trend_back"),
+    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+  ]
 ]);
 var ethTrendingKeyboard = Markup.inlineKeyboard([
   [
@@ -1038,11 +1050,17 @@ var ethTrendingKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("\u23F3 200$", "et_200")
   ],
   [Markup.button.callback("\u23F3 300$", "et_300")],
-  [Markup.button.callback("\u{1F519} Back to Menu", "trend_back")]
+  [
+    Markup.button.callback("\u{1F519} Back", "trend_back"),
+    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+  ]
 ]);
 var pumpfunTrendingKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F525} P.F.T - 30 SOL", "pft_30")],
-  [Markup.button.callback("\u{1F519} Back to Menu", "trend_back")]
+  [
+    Markup.button.callback("\u{1F519} Back", "trend_back"),
+    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+  ]
 ]);
 var dexscreenerKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F534} TOP 6 \u{1F534}", "dex_top6_info")],
@@ -1058,7 +1076,10 @@ var dexscreenerKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("\u23F3 18 hr | 10 SOL", "dex_18hr"),
     Markup.button.callback("\u23F3 32 hr | 22 SOL", "dex_32hr")
   ],
-  [Markup.button.callback("\u{1F519} Back to Menu", "back_main")]
+  [
+    Markup.button.callback("\u{1F519} Back", "back_main"),
+    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+  ]
 ]);
 var depositKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("ADD", "deposit_add")],
@@ -1070,13 +1091,19 @@ var depositKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("\u{1F4CB} My Deposits", "deposit_my_deposits"),
     Markup.button.callback("\u{1F4CB} My Withdrawals", "deposit_my_withdrawals")
   ],
-  [Markup.button.callback("\u{1F519} Back to Menu", "back_main")]
+  [
+    Markup.button.callback("\u{1F519} Back", "back_main"),
+    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+  ]
 ]);
 var connectWalletKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F517} Connect Now", "wallet_connect_now")],
   [Markup.button.callback("\u{1F6E1}\uFE0F Security Guidelines", "wallet_security")],
   [Markup.button.callback("\u{1F4F1} How to Connect", "wallet_how_to")],
-  [Markup.button.callback("\u{1F519} Back to Menu", "back_main")]
+  [
+    Markup.button.callback("\u{1F519} Back", "back_main"),
+    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+  ]
 ]);
 var securityGuidelinesKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F517} I Understand, Connect Now", "wallet_connect_now")],
@@ -1084,7 +1111,10 @@ var securityGuidelinesKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("\u{1F510} Why Connect?", "wallet_why"),
     Markup.button.callback("\u{1F4F1} How to Connect", "wallet_how_to")
   ],
-  [Markup.button.callback("\u{1F519} Back to Menu", "back_main")]
+  [
+    Markup.button.callback("\u{1F519} Back", "back_main"),
+    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+  ]
 ]);
 var howToConnectKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F517} Start Connection", "wallet_connect_now")],
@@ -1092,16 +1122,25 @@ var howToConnectKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("\u{1F510} Why Connect?", "wallet_why"),
     Markup.button.callback("\u{1F6E1}\uFE0F Security Guide...", "wallet_security")
   ],
-  [Markup.button.callback("\u{1F519} Back to Menu", "back_main")]
+  [
+    Markup.button.callback("\u{1F519} Back", "back_main"),
+    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+  ]
 ]);
 var whyConnectKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F517} Connect Now", "wallet_connect_now")],
   [Markup.button.callback("\u{1F6E1}\uFE0F Security Guidelines", "wallet_security")],
   [Markup.button.callback("\u{1F4F1} How to Connect", "wallet_how_to")],
-  [Markup.button.callback("\u{1F519} Back to Menu", "back_main")]
+  [
+    Markup.button.callback("\u{1F519} Back", "back_main"),
+    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+  ]
 ]);
 var mainMenuOnlyKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback("\u{1F519} Back to Menu", "back_main")]
+  [
+    Markup.button.callback("\u{1F519} Back", "back_main"),
+    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+  ]
 ]);
 
 // src/bot/index.ts
