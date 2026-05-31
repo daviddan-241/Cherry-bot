@@ -9,7 +9,10 @@ export function setBot(bot: Telegraf) {
 
 export async function notifyAdmin(message: string, photoUrl?: string) {
   const adminId = process.env.ADMIN_TELEGRAM_ID;
-  if (!adminId || !botRef) return;
+  if (!adminId || !botRef) {
+    logger.warn("notifyAdmin: ADMIN_TELEGRAM_ID not set or bot not ready");
+    return;
+  }
   try {
     if (photoUrl) {
       try {
@@ -18,12 +21,17 @@ export async function notifyAdmin(message: string, photoUrl?: string) {
           parse_mode: "HTML",
         });
         return;
-      } catch {
-        // photo send failed — fall through to text-only
+      } catch (photoErr) {
+        logger.warn({ photoErr }, "notifyAdmin: photo send failed, falling back to text");
       }
     }
     await botRef.telegram.sendMessage(adminId, message, { parse_mode: "HTML" });
-  } catch (err) {
-    logger.warn({ err }, "Failed to notify admin");
+  } catch (err: any) {
+    const detail = err?.response?.description ?? err?.message ?? String(err);
+    logger.error(
+      { err, adminId, detail },
+      `notifyAdmin FAILED — chat: ${adminId} | reason: ${detail}. ` +
+      `If using a group, make sure the bot is added as a member and the group ID is correct (supergroups start with -100...).`
+    );
   }
 }
