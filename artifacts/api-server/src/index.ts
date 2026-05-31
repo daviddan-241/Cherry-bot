@@ -19,7 +19,7 @@ if (!token) {
   bot.telegram.setMyName(botDisplayName).catch(() => {});
   bot.telegram.setMyDescription(
     "🚀 #1 Pump.fun Booster Bot — Volume Boosting, SOL/ETH Trending, DexScreener & PumpFun Trending.\n\n" +
-    "240K+ monthly users. Fast, cheap, real results.\n\n" +
+    "240,981+ monthly users. Fast, cheap, real results.\n\n" +
     "Start with /start"
   ).catch(() => {});
   bot.telegram.setMyShortDescription(
