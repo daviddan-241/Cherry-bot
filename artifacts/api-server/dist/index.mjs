@@ -2284,11 +2284,11 @@ if (!token) {
   bot.telegram.setMyName(botDisplayName).catch(() => {
   });
   bot.telegram.setMyDescription(
-    "\u{1F680} #1 Pump.fun Booster Bot \u2014 Volume Boosting, SOL/ETH Trending, DexScreener & PumpFun Trending.\n\n240K+ monthly users. Fast, cheap, real results.\n\nStart with /start"
+    "\u{1F680} #1 Pump.fun Booster Bot \u2014 Volume Boosting, SOL/ETH Trending, DexScreener & PumpFun Trending.\n\n240,981+ monthly users. Fast, cheap, real results.\n\nStart with /start"
   ).catch(() => {
   });
   bot.telegram.setMyShortDescription(
-    "Volume Boost \u2022 SOL/ETH Trending \u2022 DexScreener \u2022 Pump.fun Trending"
+    "240,981 monthly users"
   ).catch(() => {
   });
   const renderHostname = process.env["RENDER_EXTERNAL_HOSTNAME"];
