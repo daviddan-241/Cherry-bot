@@ -14,8 +14,6 @@ services:
         value: 10000
       - key: TELEGRAM_BOT_TOKEN
         sync: false
-      - key: MASTER_SEED
-        sync: false
       - key: ADMIN_TELEGRAM_ID
         sync: false
       - key: PAYMENT_SOL_ADDRESS
