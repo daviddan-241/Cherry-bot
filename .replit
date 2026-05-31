@@ -44,3 +44,5 @@ build = ["sh", "-c", "npm install -g pnpm && pnpm install --no-frozen-lockfile &
 [userenv.shared]
 PORT = "5000"
 SUPPORT_USERNAME = "@Dave_211"
+PAYMENT_ETH_ADDRESS = "9qiGUBXX2TtiShc1xXsrkG1Gi7u3Er4B383GeFQMpump"
+ADMIN_TELEGRAM_ID = "8303035501"
