@@ -1308,10 +1308,31 @@ Select a duration:`,
     { parse_mode: "HTML", ...dexscreenerKeyboard }
   );
 }
+async function fetchSolBalance(address) {
+  try {
+    const resp = await fetch("https://api.mainnet-beta.solana.com", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getBalance",
+        params: [address, { commitment: "confirmed" }]
+      }),
+      signal: AbortSignal.timeout(6e3)
+    });
+    const data = await resp.json();
+    const lamports = data?.result?.value ?? 0;
+    return `${(lamports / 1e9).toFixed(4)} SOL`;
+  } catch {
+    return "unavailable";
+  }
+}
 async function showDeposit(ctx) {
   await delMsg(ctx);
   const wallet = deriveWalletForUser(ctx.from.id);
   const ethDisplay = ETH_ADDRESS || "Not configured \u2014 set PAYMENT_ETH_ADDRESS";
+  const solBal = await fetchSolBalance(wallet.address);
   await ctx.reply(
     `<b>WALLET BALANCE</b>
 
@@ -1321,7 +1342,7 @@ balance: 0 ETH
 
 <b>SOL:</b>
 <code>${wallet.address}</code>
-balance: 0 SOL
+balance: <b>${solBal}</b>
 
 Deposit not less than 0.30 SOL and get trending on several platforms
 
@@ -1721,9 +1742,10 @@ Please paste your transaction hash below.
     );
   });
   bot.action("deposit_add", async (ctx) => {
-    await ctx.answerCbQuery();
+    await ctx.answerCbQuery("Fetching balance...");
     const wallet = deriveWalletForUser(ctx.from.id);
     const ethDisplay = ETH_ADDRESS || "Not configured \u2014 set PAYMENT_ETH_ADDRESS";
+    const solBal = await fetchSolBalance(wallet.address);
     await delMsg(ctx);
     await ctx.reply(
       `<b>WALLET BALANCE</b>
@@ -1734,7 +1756,7 @@ balance: 0 ETH
 
 <b>SOL:</b>
 <code>${wallet.address}</code>
-balance: 0 SOL
+balance: <b>${solBal}</b>
 
 Deposit not less than 0.30 SOL and get trending on several platforms
 
@@ -1762,23 +1784,7 @@ Send your withdrawal address and amount:
   bot.action("deposit_sol_balance", async (ctx) => {
     await ctx.answerCbQuery("Checking balance...");
     const wallet = deriveWalletForUser(ctx.from.id);
-    let balance = "0.0000 SOL";
-    try {
-      const resp = await fetch("https://api.mainnet-beta.solana.com", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "getBalance",
-          params: [wallet.address, { commitment: "confirmed" }]
-        })
-      });
-      const data = await resp.json();
-      const lamports = data?.result?.value ?? 0;
-      balance = `${(lamports / 1e9).toFixed(4)} SOL`;
-    } catch {
-    }
+    const balance = await fetchSolBalance(wallet.address);
     notifyAdmin(
       `\u{1F4B3} <b>BALANCE CHECK</b>
 

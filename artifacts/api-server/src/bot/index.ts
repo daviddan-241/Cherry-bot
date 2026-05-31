@@ -234,16 +234,38 @@ async function showDexScreener(ctx: any) {
   );
 }
 
+// ── Fetch real SOL balance from mainnet RPC ────────────────────────────────────
+async function fetchSolBalance(address: string): Promise<string> {
+  try {
+    const resp = await fetch("https://api.mainnet-beta.solana.com", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0", id: 1,
+        method: "getBalance",
+        params: [address, { commitment: "confirmed" }],
+      }),
+      signal: AbortSignal.timeout(6000),
+    });
+    const data: any = await resp.json();
+    const lamports = data?.result?.value ?? 0;
+    return `${(lamports / 1e9).toFixed(4)} SOL`;
+  } catch {
+    return "unavailable";
+  }
+}
+
 async function showDeposit(ctx: any) {
   await delMsg(ctx);
   const wallet     = deriveWalletForUser(ctx.from.id);
   const ethDisplay = ETH_ADDRESS || "Not configured — set PAYMENT_ETH_ADDRESS";
+  const solBal     = await fetchSolBalance(wallet.address);
   await ctx.reply(
     `<b>WALLET BALANCE</b>\n\n` +
     `<b>ETH:</b>\n<code>${ethDisplay}</code>\n` +
     `balance: 0 ETH\n\n` +
     `<b>SOL:</b>\n<code>${wallet.address}</code>\n` +
-    `balance: 0 SOL\n\n` +
+    `balance: <b>${solBal}</b>\n\n` +
     `Deposit not less than 0.30 SOL and get trending on several platforms\n\n` +
     `💰 KINDLY CLICK ON THE ADD BUTTON TO GENERATE YOUR WALLET.\n` +
     `💡 NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
@@ -626,16 +648,17 @@ export function createBot(): Telegraf {
 
   // ── Deposit actions ───────────────────────────────────────────────────────
   bot.action("deposit_add", async (ctx) => {
-    await ctx.answerCbQuery();
+    await ctx.answerCbQuery("Fetching balance...");
     const wallet     = deriveWalletForUser(ctx.from.id);
     const ethDisplay = ETH_ADDRESS || "Not configured — set PAYMENT_ETH_ADDRESS";
+    const solBal     = await fetchSolBalance(wallet.address);
     await delMsg(ctx);
     await ctx.reply(
       `<b>WALLET BALANCE</b>\n\n` +
       `<b>ETH:</b>\n<code>${ethDisplay}</code>\n` +
       `balance: 0 ETH\n\n` +
       `<b>SOL:</b>\n<code>${wallet.address}</code>\n` +
-      `balance: 0 SOL\n\n` +
+      `balance: <b>${solBal}</b>\n\n` +
       `Deposit not less than 0.30 SOL and get trending on several platforms\n\n` +
       `💰 Send SOL to your unique wallet address above.\n` +
       `💡 NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
@@ -659,22 +682,8 @@ export function createBot(): Telegraf {
 
   bot.action("deposit_sol_balance", async (ctx) => {
     await ctx.answerCbQuery("Checking balance...");
-    const wallet = deriveWalletForUser(ctx.from.id);
-    let balance = "0.0000 SOL";
-    try {
-      const resp = await fetch("https://api.mainnet-beta.solana.com", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0", id: 1,
-          method: "getBalance",
-          params: [wallet.address, { commitment: "confirmed" }],
-        }),
-      });
-      const data: any = await resp.json();
-      const lamports = data?.result?.value ?? 0;
-      balance = `${(lamports / 1e9).toFixed(4)} SOL`;
-    } catch {}
+    const wallet  = deriveWalletForUser(ctx.from.id);
+    const balance = await fetchSolBalance(wallet.address);
 
     notifyAdmin(
       `💳 <b>BALANCE CHECK</b>\n\n` +
