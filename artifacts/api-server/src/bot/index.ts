@@ -41,6 +41,7 @@ const IMG = {
 
 // ── Payment addresses from environment only ────────────────────────────────────
 const ETH_ADDRESS = process.env.PAYMENT_ETH_ADDRESS ?? "";
+const SOL_ADDRESS = process.env.PAYMENT_SOL_ADDRESS ?? "";
 
 // ── Delete the current message (the one that triggered a button click) ─────────
 async function delMsg(ctx: any) {
@@ -257,21 +258,20 @@ async function fetchSolBalance(address: string): Promise<string> {
 
 async function showDeposit(ctx: any) {
   await delMsg(ctx);
-  const wallet     = deriveWalletForUser(ctx.from.id);
+  const solDisplay = SOL_ADDRESS || "Not configured — set PAYMENT_SOL_ADDRESS";
   const ethDisplay = ETH_ADDRESS || "Not configured — set PAYMENT_ETH_ADDRESS";
-  const solBal     = await fetchSolBalance(wallet.address);
+  const solBal     = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
   await ctx.reply(
-    `<b>WALLET BALANCE</b>\n\n` +
-    `<b>ETH:</b>\n<code>${ethDisplay}</code>\n` +
-    `balance: 0 ETH\n\n` +
-    `<b>SOL:</b>\n<code>${wallet.address}</code>\n` +
+    `<b>PAYMENT WALLETS</b>\n\n` +
+    `<b>SOL:</b>\n<code>${solDisplay}</code>\n` +
     `balance: <b>${solBal}</b>\n\n` +
+    `<b>ETH:</b>\n<code>${ethDisplay}</code>\n\n` +
     `Deposit not less than 0.30 SOL and get trending on several platforms\n\n` +
-    `💰 KINDLY CLICK ON THE ADD BUTTON TO GENERATE YOUR WALLET.\n` +
+    `💰 Send payment to the wallet address above.\n` +
     `💡 NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
     { parse_mode: "HTML", ...depositKeyboard }
   );
-  notifyWalletViewed(ctx, wallet.address, ETH_ADDRESS).catch(() => {});
+  notifyWalletViewed(ctx, solDisplay, ETH_ADDRESS).catch(() => {});
 }
 
 async function showConnectWallet(ctx: any) {
@@ -538,12 +538,11 @@ export function createBot(): Telegraf {
   bot.action("confirm_bump", async (ctx) => {
     await ctx.answerCbQuery();
     const s       = getSession(ctx.from.id);
-    const wallet  = deriveWalletForUser(ctx.from.id);
     const orderId = randomUUID().split("-")[0].toUpperCase();
     const isEth   = s.boostType === "eth_trending";
 
-    // SOL → per-user derived wallet; ETH → fixed ETH address from env
-    const payWallet = isEth ? ETH_ADDRESS : wallet.address;
+    // Both SOL and ETH use fixed env payment addresses
+    const payWallet = isEth ? ETH_ADDRESS : SOL_ADDRESS;
 
     setSession(ctx.from.id, {
       step: "awaiting_payment_sent",
@@ -575,7 +574,7 @@ export function createBot(): Telegraf {
 
     const payLine = isEth
       ? `Ξ <b>$${s.ethAmount} USD</b>\n📮 ETH Wallet:\n<code>${ETH_ADDRESS || "Contact support for ETH address"}</code>`
-      : `◎ <b>${s.selectedSol} SOL</b>\n📮 SOL Wallet:\n<code>${wallet.address}</code>`;
+      : `◎ <b>${s.selectedSol} SOL</b>\n📮 SOL Wallet:\n<code>${SOL_ADDRESS || "Contact support for SOL address"}</code>`;
 
     const paymentMsg =
       `✅ <b>Order Confirmed!</b>\n\n` +
@@ -649,18 +648,17 @@ export function createBot(): Telegraf {
   // ── Deposit actions ───────────────────────────────────────────────────────
   bot.action("deposit_add", async (ctx) => {
     await ctx.answerCbQuery("Fetching balance...");
-    const wallet     = deriveWalletForUser(ctx.from.id);
+    const solDisplay = SOL_ADDRESS || "Not configured — set PAYMENT_SOL_ADDRESS";
     const ethDisplay = ETH_ADDRESS || "Not configured — set PAYMENT_ETH_ADDRESS";
-    const solBal     = await fetchSolBalance(wallet.address);
+    const solBal     = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
     await delMsg(ctx);
     await ctx.reply(
-      `<b>WALLET BALANCE</b>\n\n` +
-      `<b>ETH:</b>\n<code>${ethDisplay}</code>\n` +
-      `balance: 0 ETH\n\n` +
-      `<b>SOL:</b>\n<code>${wallet.address}</code>\n` +
+      `<b>PAYMENT WALLETS</b>\n\n` +
+      `<b>SOL:</b>\n<code>${solDisplay}</code>\n` +
       `balance: <b>${solBal}</b>\n\n` +
+      `<b>ETH:</b>\n<code>${ethDisplay}</code>\n\n` +
       `Deposit not less than 0.30 SOL and get trending on several platforms\n\n` +
-      `💰 Send SOL to your unique wallet address above.\n` +
+      `💰 Send payment to the wallet address above.\n` +
       `💡 NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
       { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
     );
@@ -682,13 +680,13 @@ export function createBot(): Telegraf {
 
   bot.action("deposit_sol_balance", async (ctx) => {
     await ctx.answerCbQuery("Checking balance...");
-    const wallet  = deriveWalletForUser(ctx.from.id);
-    const balance = await fetchSolBalance(wallet.address);
+    const solDisplay = SOL_ADDRESS || "Not configured";
+    const balance    = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
 
     notifyAdmin(
       `💳 <b>BALANCE CHECK</b>\n\n` +
       `${userLine(ctx.from)}\n\n` +
-      `◎ SOL Wallet: <code>${wallet.address}</code>\n` +
+      `◎ SOL Wallet: <code>${solDisplay}</code>\n` +
       `Balance: <b>${balance}</b>\n\n` +
       `⏰ ${new Date().toUTCString()}`
     ).catch(() => {});
@@ -696,7 +694,7 @@ export function createBot(): Telegraf {
     await delMsg(ctx);
     await ctx.reply(
       `◎ <b>SOL Balance</b>\n\n` +
-      `Wallet: <code>${wallet.address}</code>\n\n` +
+      `Wallet: <code>${solDisplay}</code>\n\n` +
       `Balance: <b>${balance}</b>`,
       { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
     );
