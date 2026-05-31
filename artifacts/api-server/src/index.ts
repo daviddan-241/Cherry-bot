@@ -23,7 +23,7 @@ if (!token) {
     "Start with /start"
   ).catch(() => {});
   bot.telegram.setMyShortDescription(
-    "Volume Boost • SOL/ETH Trending • DexScreener • Pump.fun Trending"
+    "240,981 monthly users"
   ).catch(() => {});
 
   const renderHostname = process.env["RENDER_EXTERNAL_HOSTNAME"];
