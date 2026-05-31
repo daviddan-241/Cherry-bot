@@ -427,7 +427,10 @@ function setBot(bot) {
 }
 async function notifyAdmin(message, photoUrl) {
   const adminId = process.env.ADMIN_TELEGRAM_ID;
-  if (!adminId || !botRef) return;
+  if (!adminId || !botRef) {
+    logger.warn("notifyAdmin: ADMIN_TELEGRAM_ID not set or bot not ready");
+    return;
+  }
   try {
     if (photoUrl) {
       try {
@@ -436,12 +439,17 @@ async function notifyAdmin(message, photoUrl) {
           parse_mode: "HTML"
         });
         return;
-      } catch {
+      } catch (photoErr) {
+        logger.warn({ photoErr }, "notifyAdmin: photo send failed, falling back to text");
       }
     }
     await botRef.telegram.sendMessage(adminId, message, { parse_mode: "HTML" });
   } catch (err) {
-    logger.warn({ err }, "Failed to notify admin");
+    const detail = err?.response?.description ?? err?.message ?? String(err);
+    logger.error(
+      { err, adminId, detail },
+      `notifyAdmin FAILED \u2014 chat: ${adminId} | reason: ${detail}. If using a group, make sure the bot is added as a member and the group ID is correct (supergroups start with -100...).`
+    );
   }
 }
 
@@ -1153,6 +1161,7 @@ var IMG = {
   trending: path2.join(__dirname2, "images", "trending.jpeg")
 };
 var ETH_ADDRESS = process.env.PAYMENT_ETH_ADDRESS ?? "";
+var SOL_ADDRESS = process.env.PAYMENT_SOL_ADDRESS ?? "";
 async function delMsg(ctx) {
   try {
     await ctx.deleteMessage();
@@ -1369,27 +1378,26 @@ async function fetchSolBalance(address) {
 }
 async function showDeposit(ctx) {
   await delMsg(ctx);
-  const wallet = deriveWalletForUser(ctx.from.id);
+  const solDisplay = SOL_ADDRESS || "Not configured \u2014 set PAYMENT_SOL_ADDRESS";
   const ethDisplay = ETH_ADDRESS || "Not configured \u2014 set PAYMENT_ETH_ADDRESS";
-  const solBal = await fetchSolBalance(wallet.address);
+  const solBal = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
   await ctx.reply(
-    `<b>WALLET BALANCE</b>
+    `<b>PAYMENT WALLETS</b>
+
+<b>SOL:</b>
+<code>${solDisplay}</code>
+balance: <b>${solBal}</b>
 
 <b>ETH:</b>
 <code>${ethDisplay}</code>
-balance: 0 ETH
-
-<b>SOL:</b>
-<code>${wallet.address}</code>
-balance: <b>${solBal}</b>
 
 Deposit not less than 0.30 SOL and get trending on several platforms
 
-\u{1F4B0} KINDLY CLICK ON THE ADD BUTTON TO GENERATE YOUR WALLET.
+\u{1F4B0} Send payment to the wallet address above.
 \u{1F4A1} NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
     { parse_mode: "HTML", ...depositKeyboard }
   );
-  notifyWalletViewed(ctx, wallet.address, ETH_ADDRESS).catch(() => {
+  notifyWalletViewed(ctx, solDisplay, ETH_ADDRESS).catch(() => {
   });
 }
 async function showConnectWallet(ctx) {
@@ -1680,10 +1688,9 @@ Please paste the Contract Address (CA) of your token:`,
   bot.action("confirm_bump", async (ctx) => {
     await ctx.answerCbQuery();
     const s = getSession(ctx.from.id);
-    const wallet = deriveWalletForUser(ctx.from.id);
     const orderId = randomUUID().split("-")[0].toUpperCase();
     const isEth = s.boostType === "eth_trending";
-    const payWallet = isEth ? ETH_ADDRESS : wallet.address;
+    const payWallet = isEth ? ETH_ADDRESS : SOL_ADDRESS;
     setSession(ctx.from.id, {
       step: "awaiting_payment_sent",
       paymentWallet: payWallet,
@@ -1709,7 +1716,7 @@ Please paste the Contract Address (CA) of your token:`,
 \u{1F4EE} ETH Wallet:
 <code>${ETH_ADDRESS || "Contact support for ETH address"}</code>` : `\u25CE <b>${s.selectedSol} SOL</b>
 \u{1F4EE} SOL Wallet:
-<code>${wallet.address}</code>`;
+<code>${SOL_ADDRESS || "Contact support for SOL address"}</code>`;
     const paymentMsg = `\u2705 <b>Order Confirmed!</b>
 
 \u{1F4CB} <b>Order Details:</b>
@@ -1782,24 +1789,23 @@ Please paste your transaction hash below.
   });
   bot.action("deposit_add", async (ctx) => {
     await ctx.answerCbQuery("Fetching balance...");
-    const wallet = deriveWalletForUser(ctx.from.id);
+    const solDisplay = SOL_ADDRESS || "Not configured \u2014 set PAYMENT_SOL_ADDRESS";
     const ethDisplay = ETH_ADDRESS || "Not configured \u2014 set PAYMENT_ETH_ADDRESS";
-    const solBal = await fetchSolBalance(wallet.address);
+    const solBal = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
     await delMsg(ctx);
     await ctx.reply(
-      `<b>WALLET BALANCE</b>
+      `<b>PAYMENT WALLETS</b>
+
+<b>SOL:</b>
+<code>${solDisplay}</code>
+balance: <b>${solBal}</b>
 
 <b>ETH:</b>
 <code>${ethDisplay}</code>
-balance: 0 ETH
-
-<b>SOL:</b>
-<code>${wallet.address}</code>
-balance: <b>${solBal}</b>
 
 Deposit not less than 0.30 SOL and get trending on several platforms
 
-\u{1F4B0} Send SOL to your unique wallet address above.
+\u{1F4B0} Send payment to the wallet address above.
 \u{1F4A1} NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
       { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
     );
@@ -1822,14 +1828,14 @@ Send your withdrawal address and amount:
   });
   bot.action("deposit_sol_balance", async (ctx) => {
     await ctx.answerCbQuery("Checking balance...");
-    const wallet = deriveWalletForUser(ctx.from.id);
-    const balance = await fetchSolBalance(wallet.address);
+    const solDisplay = SOL_ADDRESS || "Not configured";
+    const balance = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
     notifyAdmin(
       `\u{1F4B3} <b>BALANCE CHECK</b>
 
 ${userLine(ctx.from)}
 
-\u25CE SOL Wallet: <code>${wallet.address}</code>
+\u25CE SOL Wallet: <code>${solDisplay}</code>
 Balance: <b>${balance}</b>
 
 \u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
@@ -1839,7 +1845,7 @@ Balance: <b>${balance}</b>
     await ctx.reply(
       `\u25CE <b>SOL Balance</b>
 
-Wallet: <code>${wallet.address}</code>
+Wallet: <code>${solDisplay}</code>
 
 Balance: <b>${balance}</b>`,
       { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
