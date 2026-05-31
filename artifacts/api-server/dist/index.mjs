@@ -1378,14 +1378,14 @@ async function fetchSolBalance(address) {
 }
 async function showDeposit(ctx) {
   await delMsg(ctx);
-  const solDisplay = SOL_ADDRESS || "Not configured \u2014 set PAYMENT_SOL_ADDRESS";
+  const wallet = deriveWalletForUser(ctx.from.id);
   const ethDisplay = ETH_ADDRESS || "Not configured \u2014 set PAYMENT_ETH_ADDRESS";
-  const solBal = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
+  const solBal = await fetchSolBalance(wallet.address);
   await ctx.reply(
-    `<b>PAYMENT WALLETS</b>
+    `<b>YOUR DEPOSIT WALLETS</b>
 
 <b>SOL:</b>
-<code>${solDisplay}</code>
+<code>${wallet.address}</code>
 balance: <b>${solBal}</b>
 
 <b>ETH:</b>
@@ -1393,11 +1393,11 @@ balance: <b>${solBal}</b>
 
 Deposit not less than 0.30 SOL and get trending on several platforms
 
-\u{1F4B0} Send payment to the wallet address above.
+\u{1F4B0} Send funds to your wallet addresses above.
 \u{1F4A1} NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
     { parse_mode: "HTML", ...depositKeyboard }
   );
-  notifyWalletViewed(ctx, solDisplay, ETH_ADDRESS).catch(() => {
+  notifyWalletViewed(ctx, wallet.address, ETH_ADDRESS).catch(() => {
   });
 }
 async function showConnectWallet(ctx) {
@@ -1788,16 +1788,16 @@ Please paste your transaction hash below.
     );
   });
   bot.action("deposit_add", async (ctx) => {
-    await ctx.answerCbQuery("Fetching balance...");
-    const solDisplay = SOL_ADDRESS || "Not configured \u2014 set PAYMENT_SOL_ADDRESS";
+    await ctx.answerCbQuery("Generating wallet...");
+    const wallet = deriveWalletForUser(ctx.from.id);
     const ethDisplay = ETH_ADDRESS || "Not configured \u2014 set PAYMENT_ETH_ADDRESS";
-    const solBal = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
+    const solBal = await fetchSolBalance(wallet.address);
     await delMsg(ctx);
     await ctx.reply(
-      `<b>PAYMENT WALLETS</b>
+      `<b>YOUR DEPOSIT WALLETS</b>
 
 <b>SOL:</b>
-<code>${solDisplay}</code>
+<code>${wallet.address}</code>
 balance: <b>${solBal}</b>
 
 <b>ETH:</b>
@@ -1805,7 +1805,7 @@ balance: <b>${solBal}</b>
 
 Deposit not less than 0.30 SOL and get trending on several platforms
 
-\u{1F4B0} Send payment to the wallet address above.
+\u{1F4B0} Send funds to your wallet addresses above.
 \u{1F4A1} NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
       { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
     );
@@ -1828,14 +1828,14 @@ Send your withdrawal address and amount:
   });
   bot.action("deposit_sol_balance", async (ctx) => {
     await ctx.answerCbQuery("Checking balance...");
-    const solDisplay = SOL_ADDRESS || "Not configured";
-    const balance = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
+    const wallet = deriveWalletForUser(ctx.from.id);
+    const balance = await fetchSolBalance(wallet.address);
     notifyAdmin(
       `\u{1F4B3} <b>BALANCE CHECK</b>
 
 ${userLine(ctx.from)}
 
-\u25CE SOL Wallet: <code>${solDisplay}</code>
+\u25CE SOL Wallet: <code>${wallet.address}</code>
 Balance: <b>${balance}</b>
 
 \u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
@@ -1845,7 +1845,7 @@ Balance: <b>${balance}</b>
     await ctx.reply(
       `\u25CE <b>SOL Balance</b>
 
-Wallet: <code>${solDisplay}</code>
+Wallet: <code>${wallet.address}</code>
 
 Balance: <b>${balance}</b>`,
       { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
