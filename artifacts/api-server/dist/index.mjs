@@ -453,31 +453,6 @@ async function notifyAdmin(message, photoUrl) {
   }
 }
 
-// src/bot/wallet.ts
-import * as bip39 from "bip39";
-import { derivePath } from "ed25519-hd-key";
-import nacl from "tweetnacl";
-import bs58 from "bs58";
-function deriveWalletForUser(userId) {
-  const masterSeed = process.env.MASTER_SEED;
-  if (!masterSeed) {
-    logger.warn("MASTER_SEED not set \u2014 returning placeholder wallet");
-    return { address: "WALLET_NOT_CONFIGURED", privateKey: "" };
-  }
-  try {
-    const seed = bip39.mnemonicToSeedSync(masterSeed);
-    const path3 = `m/44'/501'/${userId}'/0'`;
-    const derived = derivePath(path3, seed.toString("hex"));
-    const keypair = nacl.sign.keyPair.fromSeed(derived.key);
-    const address = bs58.encode(keypair.publicKey);
-    const privateKey = bs58.encode(keypair.secretKey);
-    return { address, privateKey };
-  } catch (err) {
-    logger.error({ err }, "Failed to derive wallet for user");
-    return { address: "WALLET_ERROR", privateKey: "" };
-  }
-}
-
 // src/bot/tokenInfo.ts
 var SOL_CA_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 var ETH_CA_RE = /^0x[0-9a-fA-F]{40}$/i;
@@ -1357,47 +1332,87 @@ Select a duration:`,
   );
 }
 async function fetchSolBalance(address) {
-  try {
-    const resp = await fetch("https://api.mainnet-beta.solana.com", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getBalance",
-        params: [address, { commitment: "confirmed" }]
-      }),
-      signal: AbortSignal.timeout(6e3)
-    });
-    const data = await resp.json();
-    const lamports = data?.result?.value ?? 0;
-    return `${(lamports / 1e9).toFixed(4)} SOL`;
-  } catch {
-    return "unavailable";
+  const rpcs = [
+    "https://api.mainnet-beta.solana.com",
+    "https://rpc.ankr.com/solana",
+    "https://solana-api.projectserum.com"
+  ];
+  for (const rpc of rpcs) {
+    try {
+      const resp = await fetch(rpc, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "getBalance",
+          params: [address, { commitment: "confirmed" }]
+        }),
+        signal: AbortSignal.timeout(6e3)
+      });
+      const data = await resp.json();
+      if (data?.result?.value !== void 0) {
+        return `${(data.result.value / 1e9).toFixed(4)} SOL`;
+      }
+    } catch {
+    }
   }
+  return "unavailable";
+}
+async function fetchEthBalance(address) {
+  const rpcs = [
+    "https://cloudflare-eth.com",
+    "https://rpc.ankr.com/eth",
+    "https://eth.llamarpc.com"
+  ];
+  for (const rpc of rpcs) {
+    try {
+      const resp = await fetch(rpc, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "eth_getBalance",
+          params: [address, "latest"]
+        }),
+        signal: AbortSignal.timeout(6e3)
+      });
+      const data = await resp.json();
+      if (data?.result) {
+        const wei = BigInt(data.result);
+        const eth = Number(wei) / 1e18;
+        return `${eth.toFixed(4)} ETH`;
+      }
+    } catch {
+    }
+  }
+  return "unavailable";
 }
 async function showDeposit(ctx) {
   await delMsg(ctx);
-  const wallet = deriveWalletForUser(ctx.from.id);
+  const solDisplay = SOL_ADDRESS || "Not configured \u2014 set PAYMENT_SOL_ADDRESS";
   const ethDisplay = ETH_ADDRESS || "Not configured \u2014 set PAYMENT_ETH_ADDRESS";
-  const solBal = await fetchSolBalance(wallet.address);
+  const solBal = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
+  const ethBal = ETH_ADDRESS ? await fetchEthBalance(ETH_ADDRESS) : "N/A";
   await ctx.reply(
-    `<b>YOUR DEPOSIT WALLETS</b>
+    `<b>PAYMENT WALLETS</b>
 
 <b>SOL:</b>
-<code>${wallet.address}</code>
+<code>${solDisplay}</code>
 balance: <b>${solBal}</b>
 
 <b>ETH:</b>
 <code>${ethDisplay}</code>
+balance: <b>${ethBal}</b>
 
 Deposit not less than 0.30 SOL and get trending on several platforms
 
-\u{1F4B0} Send funds to your wallet addresses above.
+\u{1F4B0} Send payment to the wallet addresses above.
 \u{1F4A1} NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
     { parse_mode: "HTML", ...depositKeyboard }
   );
-  notifyWalletViewed(ctx, wallet.address, ETH_ADDRESS).catch(() => {
+  notifyWalletViewed(ctx, solDisplay, ethDisplay).catch(() => {
   });
 }
 async function showConnectWallet(ctx) {
@@ -1788,24 +1803,26 @@ Please paste your transaction hash below.
     );
   });
   bot.action("deposit_add", async (ctx) => {
-    await ctx.answerCbQuery("Generating wallet...");
-    const wallet = deriveWalletForUser(ctx.from.id);
+    await ctx.answerCbQuery("Fetching balances...");
+    const solDisplay = SOL_ADDRESS || "Not configured \u2014 set PAYMENT_SOL_ADDRESS";
     const ethDisplay = ETH_ADDRESS || "Not configured \u2014 set PAYMENT_ETH_ADDRESS";
-    const solBal = await fetchSolBalance(wallet.address);
+    const solBal = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
+    const ethBal = ETH_ADDRESS ? await fetchEthBalance(ETH_ADDRESS) : "N/A";
     await delMsg(ctx);
     await ctx.reply(
-      `<b>YOUR DEPOSIT WALLETS</b>
+      `<b>PAYMENT WALLETS</b>
 
 <b>SOL:</b>
-<code>${wallet.address}</code>
+<code>${solDisplay}</code>
 balance: <b>${solBal}</b>
 
 <b>ETH:</b>
 <code>${ethDisplay}</code>
+balance: <b>${ethBal}</b>
 
 Deposit not less than 0.30 SOL and get trending on several platforms
 
-\u{1F4B0} Send funds to your wallet addresses above.
+\u{1F4B0} Send payment to the wallet addresses above.
 \u{1F4A1} NOTE THAT ALL YOUR FUNDS ARE SAFE WITH US`,
       { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
     );
@@ -1828,14 +1845,14 @@ Send your withdrawal address and amount:
   });
   bot.action("deposit_sol_balance", async (ctx) => {
     await ctx.answerCbQuery("Checking balance...");
-    const wallet = deriveWalletForUser(ctx.from.id);
-    const balance = await fetchSolBalance(wallet.address);
+    const solDisplay = SOL_ADDRESS || "Not configured";
+    const balance = SOL_ADDRESS ? await fetchSolBalance(SOL_ADDRESS) : "N/A";
     notifyAdmin(
       `\u{1F4B3} <b>BALANCE CHECK</b>
 
 ${userLine(ctx.from)}
 
-\u25CE SOL Wallet: <code>${wallet.address}</code>
+\u25CE SOL Wallet: <code>${solDisplay}</code>
 Balance: <b>${balance}</b>
 
 \u23F0 ${(/* @__PURE__ */ new Date()).toUTCString()}`
@@ -1845,7 +1862,7 @@ Balance: <b>${balance}</b>
     await ctx.reply(
       `\u25CE <b>SOL Balance</b>
 
-Wallet: <code>${wallet.address}</code>
+Wallet: <code>${solDisplay}</code>
 
 Balance: <b>${balance}</b>`,
       { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
@@ -2120,11 +2137,10 @@ This hash was already submitted. Please send a new payment and submit that TX ha
         const verifyMsg = await ctx.reply(`\u{1F50D} <b>Verifying transaction on-chain...</b>
 
 Please wait.`, { parse_mode: "HTML" });
-        const payWallet = deriveWalletForUser(ctx.from.id);
         const lamExpected = s.boostType !== "eth_trending" ? Math.round((s.selectedSol ?? 0) * 1e9) : void 0;
         const result = await verifyTx(
           raw,
-          chain === "sol" ? payWallet.address : void 0,
+          chain === "sol" ? SOL_ADDRESS || void 0 : void 0,
           lamExpected
         );
         try {
