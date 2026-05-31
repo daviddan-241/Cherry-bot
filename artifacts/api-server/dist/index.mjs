@@ -948,6 +948,8 @@ async function verifyTx(txHash, expectedRecipient, expectedLamports) {
 
 // src/bot/keyboards.ts
 import { Markup } from "telegraf";
+var _supportHandle = (process.env.SUPPORT_USERNAME ?? "").replace(/^@/, "");
+var _supportUrl = _supportHandle ? `https://t.me/${_supportHandle}` : "";
 var mainMenuKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F7E2} Start Bumping", "menu_bump")],
   [
@@ -959,7 +961,9 @@ var mainMenuKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("\u{1F4B0} Deposit", "menu_deposit")
   ],
   [Markup.button.callback("\u{1F517} Connect Wallet", "menu_wallet")],
-  [Markup.button.callback("\u{1F4AC} Contact Support \u2197", "menu_support")]
+  [
+    _supportUrl ? Markup.button.url("\u{1F4AC} Contact Support \u2197", _supportUrl) : Markup.button.callback("\u{1F4AC} Contact Support", "menu_support")
+  ]
 ]);
 var solPickerKeyboard = Markup.inlineKeyboard([
   [
@@ -970,7 +974,10 @@ var solPickerKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("\u{1F7E0} 0.5 SOL", "sol_0.5"),
     Markup.button.callback("\u{1F534} 0.6 SOL", "sol_0.6")
   ],
-  [Markup.button.callback("\u2B05\uFE0F Back", "back_main")]
+  [
+    Markup.button.callback("\u2B05\uFE0F Back", "back_main"),
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
+  ]
 ]);
 var confirmOrderKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u2705 Confirm Order", "confirm_bump")],
@@ -1094,7 +1101,10 @@ var connectWalletKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F517} Connect Now", "wallet_connect_now")],
   [Markup.button.callback("\u{1F6E1}\uFE0F Security Guidelines", "wallet_security")],
   [Markup.button.callback("\u{1F4F1} How to Connect", "wallet_how_to")],
-  [Markup.button.callback("\u2B05\uFE0F Back to Menu", "back_main")]
+  [
+    Markup.button.callback("\u2B05\uFE0F Back", "back_main"),
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
+  ]
 ]);
 var securityGuidelinesKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("\u{1F517} I Understand, Connect Now", "wallet_connect_now")],
@@ -1112,6 +1122,10 @@ var howToConnectKeyboard = Markup.inlineKeyboard([
   [
     Markup.button.callback("\u{1F510} Why Connect?", "wallet_why"),
     Markup.button.callback("\u{1F6E1}\uFE0F Security Guide...", "wallet_security")
+  ],
+  [
+    Markup.button.callback("\u2B05\uFE0F Back", "wallet_back"),
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
   ]
 ]);
 var whyConnectKeyboard = Markup.inlineKeyboard([
@@ -1124,7 +1138,10 @@ var whyConnectKeyboard = Markup.inlineKeyboard([
   ]
 ]);
 var mainMenuOnlyKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback("\u{1F3E0} Main Menu", "back_main")]
+  [
+    Markup.button.callback("\u2B05\uFE0F Back", "back_main"),
+    Markup.button.callback("\u{1F3E0} Main Menu", "back_main")
+  ]
 ]);
 
 // src/bot/index.ts
@@ -1137,12 +1154,6 @@ var IMG = {
   trending: path2.join(__dirname2, "images", "trending.jpeg")
 };
 var ETH_ADDRESS = process.env.PAYMENT_ETH_ADDRESS ?? "";
-var SUPPORT_USERNAME = process.env.SUPPORT_USERNAME ?? "";
-function supportLink() {
-  if (!SUPPORT_USERNAME) return "";
-  const handle = SUPPORT_USERNAME.replace(/^@/, "");
-  return `<a href="https://t.me/${handle}">@${handle}</a>`;
-}
 async function delMsg(ctx) {
   try {
     await ctx.deleteMessage();
@@ -1285,10 +1296,6 @@ From 0.3 - 0.4 - 0.5 - 0.6 SOL bumps boost trend with mass volume of high stabil
 }
 async function showStartBumping(ctx) {
   await delMsg(ctx);
-  const link = supportLink();
-  const support = link ? `
-
-For more information, contact: ${link}` : "";
   await ctx.reply(
     `The fastest and cheapest Telegram bot for creating bump orders.
 
@@ -1301,7 +1308,7 @@ Pumpfun BumpBot charges a one-time fee of <b>0.3 SOL</b> per token, making it th
 <a href="https://t.me/pumpmints">https://t.me/pumpmints</a>
 
 Subscribe to our PF alert tools:
-- PF New Raydium Pools: <a href="https://t.me/pumpswap_pools">t.me/pumpswap_pools</a>` + support,
+- PF New Raydium Pools: <a href="https://t.me/pumpswap_pools">t.me/pumpswap_pools</a>`,
     { parse_mode: "HTML", ...solPickerKeyboard }
   );
 }
@@ -1382,19 +1389,6 @@ Connect your wallet to unlock premium features and enhanced trading capabilities
 Your security is our top priority. We use industry-standard encryption to protect your information.`;
   await sendPhoto(ctx, IMG.walletconnect, caption, connectWalletKeyboard);
 }
-async function showSupport(ctx) {
-  await delMsg(ctx);
-  const link = supportLink();
-  const contactLine = link ? `For assistance, contact: ${link}` : `Please reach out via the official channel.`;
-  await ctx.reply(
-    `\u{1F4AC} <b>Contact Support</b>
-
-${contactLine}
-
-\u{1F194} Your User ID: <code>${ctx.from.id}</code>`,
-    { parse_mode: "HTML", ...mainMenuOnlyKeyboard }
-  );
-}
 function createBot() {
   const token2 = process.env.TELEGRAM_BOT_TOKEN;
   if (!token2) throw new Error("TELEGRAM_BOT_TOKEN not set");
@@ -1461,10 +1455,6 @@ From 0.3 - 0.4 - 0.5 - 0.6 SOL bumps boost trend with mass volume of high stabil
   bot.action("menu_deposit", async (ctx) => {
     await ctx.answerCbQuery();
     await showDeposit(ctx);
-  });
-  bot.action("menu_support", async (ctx) => {
-    await ctx.answerCbQuery();
-    await showSupport(ctx);
   });
   bot.action("menu_wallet", async (ctx) => {
     await ctx.answerCbQuery();

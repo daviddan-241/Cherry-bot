@@ -1,5 +1,8 @@
 import { Markup } from "telegraf";
 
+const _supportHandle = (process.env.SUPPORT_USERNAME ?? "").replace(/^@/, "");
+const _supportUrl    = _supportHandle ? `https://t.me/${_supportHandle}` : "";
+
 // ── Main menu ────────────────────────────────────────────────────────────────
 export const mainMenuKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("🟢 Start Bumping", "menu_bump")],
@@ -8,11 +11,15 @@ export const mainMenuKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("🔥 Trending Boost", "menu_trending"),
   ],
   [
-    Markup.button.callback("🌐 DexScreener",  "menu_dex"),
-    Markup.button.callback("💰 Deposit",      "menu_deposit"),
+    Markup.button.callback("🌐 DexScreener", "menu_dex"),
+    Markup.button.callback("💰 Deposit",     "menu_deposit"),
   ],
-  [Markup.button.callback("🔗 Connect Wallet",    "menu_wallet")],
-  [Markup.button.callback("💬 Contact Support ↗", "menu_support")],
+  [Markup.button.callback("🔗 Connect Wallet", "menu_wallet")],
+  [
+    _supportUrl
+      ? Markup.button.url("💬 Contact Support ↗", _supportUrl)
+      : Markup.button.callback("💬 Contact Support", "menu_support"),
+  ],
 ]);
 
 // ── SOL bump amount picker ────────────────────────────────────────────────────
@@ -25,7 +32,10 @@ export const solPickerKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("🟠 0.5 SOL", "sol_0.5"),
     Markup.button.callback("🔴 0.6 SOL", "sol_0.6"),
   ],
-  [Markup.button.callback("⬅️ Back", "back_main")],
+  [
+    Markup.button.callback("⬅️ Back",      "back_main"),
+    Markup.button.callback("🏠 Main Menu", "back_main"),
+  ],
 ]);
 
 // ── Confirm / Cancel ──────────────────────────────────────────────────────────
@@ -69,8 +79,8 @@ export const volumeBoostKeyboard = Markup.inlineKeyboard([
 export const trendingMenuKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("SOL TRENDING", "trend_sol")],
   [
-    Markup.button.callback("ETH TRENDING",     "trend_eth"),
-    Markup.button.callback("PUMPFUN TREN...",  "trend_pumpfun"),
+    Markup.button.callback("ETH TRENDING",    "trend_eth"),
+    Markup.button.callback("PUMPFUN TREN...", "trend_pumpfun"),
   ],
   [
     Markup.button.callback("⬅️ Back",      "back_main"),
@@ -97,7 +107,7 @@ export const solTrendingKeyboard = Markup.inlineKeyboard([
     Markup.button.callback("⏳ 12 hr | 2.60 S...", "st_top10_12hr"),
   ],
   [
-    Markup.button.callback("⏳ 24 hr | 5.90...",  "st_top3_24hr"),
+    Markup.button.callback("⏳ 24 hr | 5.90...",   "st_top3_24hr"),
     Markup.button.callback("⏳ 24 hr | 4.10 S...", "st_top10_24hr"),
   ],
   [
@@ -132,16 +142,16 @@ export const pumpfunTrendingKeyboard = Markup.inlineKeyboard([
 export const dexscreenerKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("🔴 TOP 6 🔴", "dex_top6_info")],
   [
-    Markup.button.callback("⏳ 5 hr | 2 SOL",    "dex_5hr"),
-    Markup.button.callback("⏳ 7 hr | 3.5 SOL",  "dex_7hr"),
+    Markup.button.callback("⏳ 5 hr | 2 SOL",   "dex_5hr"),
+    Markup.button.callback("⏳ 7 hr | 3.5 SOL", "dex_7hr"),
   ],
   [
-    Markup.button.callback("⏳ 12 hr | 7 SOL",   "dex_12hr"),
-    Markup.button.callback("⏳ 24 hr | 15 SOL",  "dex_24hr"),
+    Markup.button.callback("⏳ 12 hr | 7 SOL",  "dex_12hr"),
+    Markup.button.callback("⏳ 24 hr | 15 SOL", "dex_24hr"),
   ],
   [
-    Markup.button.callback("⏳ 18 hr | 10 SOL",  "dex_18hr"),
-    Markup.button.callback("⏳ 32 hr | 22 SOL",  "dex_32hr"),
+    Markup.button.callback("⏳ 18 hr | 10 SOL", "dex_18hr"),
+    Markup.button.callback("⏳ 32 hr | 22 SOL", "dex_32hr"),
   ],
   [
     Markup.button.callback("⬅️ Back",      "back_main"),
@@ -171,7 +181,10 @@ export const connectWalletKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("🔗 Connect Now",         "wallet_connect_now")],
   [Markup.button.callback("🛡️ Security Guidelines", "wallet_security")],
   [Markup.button.callback("📱 How to Connect",       "wallet_how_to")],
-  [Markup.button.callback("⬅️ Back to Menu",         "back_main")],
+  [
+    Markup.button.callback("⬅️ Back",      "back_main"),
+    Markup.button.callback("🏠 Main Menu", "back_main"),
+  ],
 ]);
 
 // ── Security Guidelines screen ────────────────────────────────────────────────
@@ -191,8 +204,12 @@ export const securityGuidelinesKeyboard = Markup.inlineKeyboard([
 export const howToConnectKeyboard = Markup.inlineKeyboard([
   [Markup.button.callback("🔗 Start Connection", "wallet_connect_now")],
   [
-    Markup.button.callback("🔐 Why Connect?",        "wallet_why"),
-    Markup.button.callback("🛡️ Security Guide...",   "wallet_security"),
+    Markup.button.callback("🔐 Why Connect?",      "wallet_why"),
+    Markup.button.callback("🛡️ Security Guide...", "wallet_security"),
+  ],
+  [
+    Markup.button.callback("⬅️ Back",      "wallet_back"),
+    Markup.button.callback("🏠 Main Menu", "back_main"),
   ],
 ]);
 
@@ -207,7 +224,10 @@ export const whyConnectKeyboard = Markup.inlineKeyboard([
   ],
 ]);
 
-// ── Main menu only ────────────────────────────────────────────────────────────
+// ── Main menu only (fallback) ─────────────────────────────────────────────────
 export const mainMenuOnlyKeyboard = Markup.inlineKeyboard([
-  [Markup.button.callback("🏠 Main Menu", "back_main")],
+  [
+    Markup.button.callback("⬅️ Back",      "back_main"),
+    Markup.button.callback("🏠 Main Menu", "back_main"),
+  ],
 ]);
